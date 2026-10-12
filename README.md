@@ -142,7 +142,7 @@ Reproduce with `python scripts/benchmark.py --seeds 1000-1011`.
 | − cross-orientation inhibition | 0.78 / 0.77 | 0.69 / 0.74 | 0.76 / 0.72 | 0.76 / 0.68 |
 | − edge suppression (α = 0) | 0.77 / 0.75 | 0.65 / 0.67 | 0.68 / 0.70 | 0.77 / 0.66 |
 | + additive bipole completion | 0.78 / 0.78 | 0.69 / 0.73 | 0.75 / 0.68 | 0.77 / 0.70 |
-| − modulatory facilitation |  |  |  |  |
+| − modulatory facilitation | 0.77 / 0.77 | 0.68 / 0.73 | 0.75 / 0.70 | 0.77 / 0.67 |
 
 End-stopping is the largest single contributor. The recurrent horizontal layer
 matters most at low SNR (noisy: 0.72 vs 0.62), which matches the psychophysics
@@ -219,9 +219,9 @@ vr.consensus()        # one annotation per persistent structure for the clip
 All other parameters are dimensionless. They are documented in
 [`vascnet/config.py`](vascnet/config.py).
 
-**Speed.** About 2–3 s per 512² frame in NumPy on one CPU core. The time is
-dominated by FFT convolutions with the fixed 16 × 4 × 3 kernel bank (spectra are
-cached across frames). Every stage up to the skeleton is a convolution with
+**Speed.** About 4 s per 512² frame with NumPy/SciPy on a 4-core CPU, and 80 %
+of that is the V1 bank: FFT convolutions with 16 orientations × 4 scales × 3
+fixed kernels. Kernel spectra are cached across frames. Every stage up to the skeleton is a convolution with
 frozen kernels plus pointwise nonlinearities. That means it maps one-to-one
 onto a stack of frozen `conv2d` layers (the two recurrent iterations unrolled)
 and would run in real time on a GPU. That is exactly the "recurrent CNN with
