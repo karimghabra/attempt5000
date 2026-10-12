@@ -1,0 +1,306 @@
+{
+  "config": {
+    "polarity": "dark",
+    "adapt_sigma": 6.0,
+    "radii": [
+      1.0,
+      1.8,
+      3.2,
+      5.6
+    ],
+    "min_sigma": 1.0,
+    "n_orient": 16,
+    "elongation": 2.5,
+    "edge_suppression": 1.0,
+    "end_stopping": 1.0,
+    "n_iter": 2,
+    "assoc_sigma": 6.0,
+    "assoc_angle": 20.0,
+    "assoc_orient_bins": 2,
+    "modulation": 0.5,
+    "modulation_halfsat": 3.0,
+    "completion": 0.0,
+    "cross_inhibition": 1.0,
+    "saturation": 0.02,
+    "pool_sigma": 4.0,
+    "relax": 0.7,
+    "t_high": 4.5,
+    "t_low": 2.0,
+    "nms_min_sep": 1,
+    "nms_secondary_ratio": 0.0,
+    "min_length": 10,
+    "spur_factor": 2.0,
+    "spur_min": 4.0,
+    "merge_factor": 1.0,
+    "merge_min": 3.0,
+    "crossing_merge_factor": 2.5,
+    "link_factor": 3.0,
+    "link_min": 5.0,
+    "link_cone": 35.0,
+    "straight_tol": 32.0,
+    "t_straight_max": 20.0,
+    "t_side_min": 50.0,
+    "cross_dev_max": 45.0,
+    "cross_margin": 25.0,
+    "completion_cone": 0.0,
+    "completion_ratio": 0.35,
+    "min_cross_angle": 12.0,
+    "pair_width_tol": 0.45,
+    "pair_contrast_tol": 0.55
+  },
+  "seeds": "1000-1011",
+  "results": {
+    "default": {
+      "n_images": 12,
+      "sec_per_image": 6.283070260083377,
+      "centerline_precision": 0.9898304057496118,
+      "centerline_recall": 0.9711959775795064,
+      "centerline_f1": 0.9803353338833265,
+      "junction_precision": 0.7771739130434783,
+      "junction_recall": 0.807909604519774,
+      "junction_f1": 0.7922437673130194,
+      "type_accuracy": 0.7552447552447552,
+      "per_type": {
+        "bifurcation": {
+          "n": 178,
+          "recall": 0.7191011235955056,
+          "type_acc": 0.9296875
+        },
+        "crossover": {
+          "n": 120,
+          "recall": 0.875,
+          "type_acc": 0.6666666666666666
+        },
+        "complex": {
+          "n": 56,
+          "recall": 0.9464285714285714,
+          "type_acc": 0.5094339622641509
+        }
+      }
+    },
+    "noisy": {
+      "n_images": 12,
+      "sec_per_image": 4.218333128416437,
+      "centerline_precision": 0.9883783480420752,
+      "centerline_recall": 0.9704195467505493,
+      "centerline_f1": 0.9792144989451462,
+      "junction_precision": 0.654639175257732,
+      "junction_recall": 0.8300653594771242,
+      "junction_f1": 0.7319884726224785,
+      "type_accuracy": 0.7086614173228346,
+      "per_type": {
+        "bifurcation": {
+          "n": 85,
+          "recall": 0.7647058823529411,
+          "type_acc": 0.8615384615384616
+        },
+        "crossover": {
+          "n": 47,
+          "recall": 0.8723404255319149,
+          "type_acc": 0.5609756097560976
+        },
+        "complex": {
+          "n": 21,
+          "recall": 1.0,
+          "type_acc": 0.5238095238095238
+        }
+      }
+    },
+    "blurry": {
+      "n_images": 12,
+      "sec_per_image": 4.611789539000104,
+      "centerline_precision": 0.983136400687968,
+      "centerline_recall": 0.9338327129452876,
+      "centerline_f1": 0.9573896761937015,
+      "junction_precision": 0.7761904761904762,
+      "junction_recall": 0.7442922374429224,
+      "junction_f1": 0.7599067599067599,
+      "type_accuracy": 0.6809815950920245,
+      "per_type": {
+        "bifurcation": {
+          "n": 115,
+          "recall": 0.7304347826086957,
+          "type_acc": 0.8809523809523809
+        },
+        "crossover": {
+          "n": 72,
+          "recall": 0.7083333333333334,
+          "type_acc": 0.49019607843137253
+        },
+        "complex": {
+          "n": 32,
+          "recall": 0.875,
+          "type_acc": 0.42857142857142855
+        }
+      }
+    },
+    "faint": {
+      "n_images": 12,
+      "sec_per_image": 4.372461651083465,
+      "centerline_precision": 0.9924140821632675,
+      "centerline_recall": 0.9757886721909553,
+      "centerline_f1": 0.9839540730754118,
+      "junction_precision": 0.7295081967213115,
+      "junction_recall": 0.8202764976958525,
+      "junction_f1": 0.7722342733188721,
+      "type_accuracy": 0.7359550561797753,
+      "per_type": {
+        "bifurcation": {
+          "n": 121,
+          "recall": 0.743801652892562,
+          "type_acc": 0.9222222222222223
+        },
+        "crossover": {
+          "n": 65,
+          "recall": 0.8769230769230769,
+          "type_acc": 0.5964912280701754
+        },
+        "complex": {
+          "n": 31,
+          "recall": 1.0,
+          "type_acc": 0.45161290322580644
+        }
+      }
+    },
+    "tortuous": {
+      "n_images": 12,
+      "sec_per_image": 4.182571048833249,
+      "centerline_precision": 0.9549148681052019,
+      "centerline_recall": 0.9258658946959178,
+      "centerline_f1": 0.9400223208367199,
+      "junction_precision": 0.5633802816901409,
+      "junction_recall": 0.7547169811320755,
+      "junction_f1": 0.6451612903225807,
+      "type_accuracy": 0.62,
+      "per_type": {
+        "bifurcation": {
+          "n": 133,
+          "recall": 0.6842105263157895,
+          "type_acc": 0.8131868131868132
+        },
+        "crossover": {
+          "n": 88,
+          "recall": 0.8068181818181818,
+          "type_acc": 0.39436619718309857
+        },
+        "complex": {
+          "n": 44,
+          "recall": 0.8636363636363636,
+          "type_acc": 0.5789473684210527
+        }
+      }
+    },
+    "knotted": {
+      "n_images": 12,
+      "sec_per_image": 4.555414213166614,
+      "centerline_precision": 0.9660522057181339,
+      "centerline_recall": 0.9157862735799469,
+      "centerline_f1": 0.9399979102188601,
+      "junction_precision": 0.5514705882352942,
+      "junction_recall": 0.7075471698113207,
+      "junction_f1": 0.6198347107438017,
+      "type_accuracy": 0.5266666666666666,
+      "per_type": {
+        "bifurcation": {
+          "n": 80,
+          "recall": 0.5875,
+          "type_acc": 0.7021276595744681
+        },
+        "crossover": {
+          "n": 94,
+          "recall": 0.7659574468085106,
+          "type_acc": 0.375
+        },
+        "complex": {
+          "n": 38,
+          "recall": 0.8157894736842105,
+          "type_acc": 0.6129032258064516
+        }
+      }
+    },
+    "dense": {
+      "n_images": 12,
+      "sec_per_image": 4.718977876333308,
+      "centerline_precision": 0.9933830681520038,
+      "centerline_recall": 0.9564291696792934,
+      "centerline_f1": 0.9745227113408578,
+      "junction_precision": 0.7540983606557377,
+      "junction_recall": 0.7931034482758621,
+      "junction_f1": 0.7731092436974789,
+      "type_accuracy": 0.6726342710997443,
+      "per_type": {
+        "bifurcation": {
+          "n": 430,
+          "recall": 0.7,
+          "type_acc": 0.9069767441860465
+        },
+        "crossover": {
+          "n": 355,
+          "recall": 0.828169014084507,
+          "type_acc": 0.5782312925170068
+        },
+        "complex": {
+          "n": 201,
+          "recall": 0.9303482587064676,
+          "type_acc": 0.44385026737967914
+        }
+      }
+    },
+    "reflex": {
+      "n_images": 12,
+      "sec_per_image": 4.279403366083443,
+      "centerline_precision": 0.9929032681714386,
+      "centerline_recall": 0.9587654864189769,
+      "centerline_f1": 0.9753987912656106,
+      "junction_precision": 0.7334754797441365,
+      "junction_recall": 0.8229665071770335,
+      "junction_f1": 0.7756482525366404,
+      "type_accuracy": 0.7354651162790697,
+      "per_type": {
+        "bifurcation": {
+          "n": 195,
+          "recall": 0.717948717948718,
+          "type_acc": 0.95
+        },
+        "crossover": {
+          "n": 145,
+          "recall": 0.9103448275862069,
+          "type_acc": 0.6515151515151515
+        },
+        "complex": {
+          "n": 78,
+          "recall": 0.9230769230769231,
+          "type_acc": 0.4722222222222222
+        }
+      }
+    },
+    "texture": {
+      "n_images": 12,
+      "sec_per_image": 4.2388062379999765,
+      "centerline_precision": 0.9866102589032306,
+      "centerline_recall": 0.9716141833563827,
+      "centerline_f1": 0.9788943176389894,
+      "junction_precision": 0.7798408488063661,
+      "junction_recall": 0.8305084745762712,
+      "junction_f1": 0.8043775649794801,
+      "type_accuracy": 0.7414965986394558,
+      "per_type": {
+        "bifurcation": {
+          "n": 178,
+          "recall": 0.7471910112359551,
+          "type_acc": 0.9699248120300752
+        },
+        "crossover": {
+          "n": 120,
+          "recall": 0.8833333333333333,
+          "type_acc": 0.6037735849056604
+        },
+        "complex": {
+          "n": 56,
+          "recall": 0.9821428571428571,
+          "type_acc": 0.45454545454545453
+        }
+      }
+    }
+  }
+}

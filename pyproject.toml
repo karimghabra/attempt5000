@@ -1,0 +1,17 @@
+[project]
+name = "vascnet"
+version = "0.1.0"
+description = "Fixed-weight, biologically inspired network for vessel centerlines and junctions (no learning)"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "scipy>=1.10", "scikit-image>=0.21"]
+
+[project.optional-dependencies]
+viz = ["matplotlib>=3.7"]
+dev = ["pytest>=7", "matplotlib>=3.7"]
+
+[tool.setuptools]
+packages = ["vascnet"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
