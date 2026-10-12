@@ -1,0 +1,6426 @@
+{
+ "consensus": [
+  {
+   "id": 0,
+   "x": 230.46,
+   "y": 26.51,
+   "type": "bifurcation",
+   "confidence": 0.944,
+   "radius": 2.48,
+   "hits": 16,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 16
+   }
+  },
+  {
+   "id": 1,
+   "x": 13.88,
+   "y": 35.49,
+   "type": "bifurcation",
+   "confidence": 0.925,
+   "radius": 2.71,
+   "hits": 16,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 16
+   }
+  },
+  {
+   "id": 2,
+   "x": 143.62,
+   "y": 40.07,
+   "type": "bifurcation",
+   "confidence": 0.68,
+   "radius": 5.6,
+   "hits": 16,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 16
+   }
+  },
+  {
+   "id": 3,
+   "x": 190.53,
+   "y": 46.59,
+   "type": "crossover",
+   "confidence": 0.569,
+   "radius": 2.86,
+   "hits": 16,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 6,
+    "crossover": 10
+   }
+  },
+  {
+   "id": 4,
+   "x": 314.97,
+   "y": 57.71,
+   "type": "complex",
+   "confidence": 0.512,
+   "radius": 3.67,
+   "hits": 14,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 3,
+    "complex": 11
+   }
+  },
+  {
+   "id": 5,
+   "x": 266.9,
+   "y": 80.79,
+   "type": "bifurcation",
+   "confidence": 1.0,
+   "radius": 3.77,
+   "hits": 16,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 16
+   }
+  },
+  {
+   "id": 6,
+   "x": 127.01,
+   "y": 91.44,
+   "type": "crossover",
+   "confidence": 0.712,
+   "radius": 5.6,
+   "hits": 16,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 2,
+    "crossover": 14
+   }
+  },
+  {
+   "id": 7,
+   "x": 89.58,
+   "y": 96.91,
+   "type": "bifurcation",
+   "confidence": 0.992,
+   "radius": 5.58,
+   "hits": 16,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 16
+   }
+  },
+  {
+   "id": 8,
+   "x": 63.88,
+   "y": 100.81,
+   "type": "bifurcation",
+   "confidence": 0.958,
+   "radius": 5.56,
+   "hits": 16,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 16
+   }
+  },
+  {
+   "id": 9,
+   "x": 38.36,
+   "y": 109.41,
+   "type": "bifurcation",
+   "confidence": 0.926,
+   "radius": 3.57,
+   "hits": 16,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 16
+   }
+  },
+  {
+   "id": 10,
+   "x": 156.64,
+   "y": 110.54,
+   "type": "bifurcation",
+   "confidence": 0.808,
+   "radius": 3.5,
+   "hits": 16,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 16
+   }
+  },
+  {
+   "id": 11,
+   "x": 51.7,
+   "y": 131.63,
+   "type": "bifurcation",
+   "confidence": 0.916,
+   "radius": 3.44,
+   "hits": 15,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 15
+   }
+  },
+  {
+   "id": 12,
+   "x": 312.79,
+   "y": 134.53,
+   "type": "bifurcation",
+   "confidence": 0.912,
+   "radius": 2.79,
+   "hits": 16,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 16
+   }
+  },
+  {
+   "id": 13,
+   "x": 23.0,
+   "y": 142.91,
+   "type": "bifurcation",
+   "confidence": 0.878,
+   "radius": 3.98,
+   "hits": 16,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 16
+   }
+  },
+  {
+   "id": 14,
+   "x": 255.44,
+   "y": 6.42,
+   "type": "bifurcation",
+   "confidence": 0.471,
+   "radius": 5.6,
+   "hits": 11,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "complex": 4,
+    "bifurcation": 7
+   }
+  },
+  {
+   "id": 15,
+   "x": 250.75,
+   "y": 8.91,
+   "type": "complex",
+   "confidence": 0.46,
+   "radius": 5.27,
+   "hits": 16,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "complex": 11,
+    "crossover": 5
+   }
+  },
+  {
+   "id": 16,
+   "x": 361.51,
+   "y": 20.13,
+   "type": "crossover",
+   "confidence": 0.432,
+   "radius": 3.13,
+   "hits": 16,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "crossover": 10,
+    "complex": 6
+   }
+  },
+  {
+   "id": 17,
+   "x": 257.39,
+   "y": 46.13,
+   "type": "crossover",
+   "confidence": 0.9,
+   "radius": 3.68,
+   "hits": 16,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "crossover": 16
+   }
+  },
+  {
+   "id": 18,
+   "x": 307.07,
+   "y": 62.74,
+   "type": "complex",
+   "confidence": 0.295,
+   "radius": 4.61,
+   "hits": 16,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "crossover": 5,
+    "complex": 7,
+    "bifurcation": 4
+   }
+  },
+  {
+   "id": 19,
+   "x": 281.31,
+   "y": 87.3,
+   "type": "complex",
+   "confidence": 0.55,
+   "radius": 4.77,
+   "hits": 16,
+   "first_frame": 0,
+   "last_frame": 15,
+   "type_votes": {
+    "complex": 16
+   }
+  },
+  {
+   "id": 20,
+   "x": 292.13,
+   "y": 16.8,
+   "type": "complex",
+   "confidence": 0.405,
+   "radius": 3.49,
+   "hits": 15,
+   "first_frame": 1,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 7,
+    "complex": 8
+   }
+  },
+  {
+   "id": 21,
+   "x": 295.79,
+   "y": 23.55,
+   "type": "bifurcation",
+   "confidence": 0.583,
+   "radius": 3.04,
+   "hits": 7,
+   "first_frame": 1,
+   "last_frame": 14,
+   "type_votes": {
+    "bifurcation": 5,
+    "crossover": 2
+   }
+  },
+  {
+   "id": 22,
+   "x": 208.56,
+   "y": 77.48,
+   "type": "bifurcation",
+   "confidence": 0.675,
+   "radius": 3.49,
+   "hits": 15,
+   "first_frame": 1,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 15
+   }
+  },
+  {
+   "id": 23,
+   "x": 306.65,
+   "y": 111.37,
+   "type": "bifurcation",
+   "confidence": 0.988,
+   "radius": 2.88,
+   "hits": 15,
+   "first_frame": 1,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 15
+   }
+  },
+  {
+   "id": 24,
+   "x": 68.03,
+   "y": 144.91,
+   "type": "bifurcation",
+   "confidence": 0.232,
+   "radius": 3.96,
+   "hits": 6,
+   "first_frame": 1,
+   "last_frame": 12,
+   "type_votes": {
+    "bifurcation": 3,
+    "complex": 1,
+    "crossover": 2
+   }
+  },
+  {
+   "id": 25,
+   "x": 363.38,
+   "y": 189.12,
+   "type": "crossover",
+   "confidence": 0.534,
+   "radius": 2.4,
+   "hits": 15,
+   "first_frame": 1,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 1,
+    "crossover": 14
+   }
+  },
+  {
+   "id": 26,
+   "x": 358.62,
+   "y": 120.17,
+   "type": "crossover",
+   "confidence": 0.444,
+   "radius": 2.73,
+   "hits": 14,
+   "first_frame": 2,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 6,
+    "crossover": 8
+   }
+  },
+  {
+   "id": 27,
+   "x": 327.08,
+   "y": 147.26,
+   "type": "bifurcation",
+   "confidence": 0.975,
+   "radius": 2.29,
+   "hits": 14,
+   "first_frame": 2,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 14
+   }
+  },
+  {
+   "id": 28,
+   "x": 100.48,
+   "y": 150.29,
+   "type": "crossover",
+   "confidence": 0.602,
+   "radius": 3.32,
+   "hits": 14,
+   "first_frame": 2,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 3,
+    "crossover": 11
+   }
+  },
+  {
+   "id": 29,
+   "x": 302.61,
+   "y": 53.27,
+   "type": "bifurcation",
+   "confidence": 0.276,
+   "radius": 3.12,
+   "hits": 7,
+   "first_frame": 2,
+   "last_frame": 15,
+   "type_votes": {
+    "complex": 2,
+    "bifurcation": 3,
+    "crossover": 2
+   }
+  },
+  {
+   "id": 30,
+   "x": 257.23,
+   "y": -0.03,
+   "type": "bifurcation",
+   "confidence": 1.0,
+   "radius": 4.16,
+   "hits": 7,
+   "first_frame": 5,
+   "last_frame": 12,
+   "type_votes": {
+    "bifurcation": 7
+   }
+  },
+  {
+   "id": 31,
+   "x": 221.93,
+   "y": 28.08,
+   "type": "bifurcation",
+   "confidence": 0.884,
+   "radius": 2.7,
+   "hits": 10,
+   "first_frame": 5,
+   "last_frame": 15,
+   "type_votes": {
+    "bifurcation": 9,
+    "crossover": 1
+   }
+  },
+  {
+   "id": 32,
+   "x": 60.99,
+   "y": 152.6,
+   "type": "complex",
+   "confidence": 0.35,
+   "radius": 4.82,
+   "hits": 10,
+   "first_frame": 5,
+   "last_frame": 15,
+   "type_votes": {
+    "complex": 5,
+    "bifurcation": 5
+   }
+  },
+  {
+   "id": 33,
+   "x": 74.41,
+   "y": 140.97,
+   "type": "crossover",
+   "confidence": 0.266,
+   "radius": 3.08,
+   "hits": 10,
+   "first_frame": 5,
+   "last_frame": 15,
+   "type_votes": {
+    "crossover": 4,
+    "bifurcation": 2,
+    "complex": 4
+   }
+  }
+ ],
+ "per_frame": [
+  {
+   "frame": 0,
+   "tracks": []
+  },
+  {
+   "frame": 1,
+   "tracks": []
+  },
+  {
+   "frame": 2,
+   "tracks": [
+    {
+     "id": 0,
+     "x": 230.44,
+     "y": 25.66,
+     "type": "bifurcation",
+     "confidence": 0.699,
+     "radius": 3.15,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 1,
+     "x": 14.6,
+     "y": 35.41,
+     "type": "bifurcation",
+     "confidence": 0.901,
+     "radius": 2.83,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 2,
+     "x": 143.61,
+     "y": 39.28,
+     "type": "bifurcation",
+     "confidence": 0.675,
+     "radius": 5.6,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 3,
+     "x": 188.94,
+     "y": 48.86,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.0,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 4,
+     "x": 313.29,
+     "y": 58.35,
+     "type": "bifurcation",
+     "confidence": 0.839,
+     "radius": 3.04,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 5,
+     "x": 266.76,
+     "y": 80.56,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.83,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 6,
+     "x": 127.24,
+     "y": 90.9,
+     "type": "crossover",
+     "confidence": 0.59,
+     "radius": 5.6,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 2
+     }
+    },
+    {
+     "id": 7,
+     "x": 88.75,
+     "y": 97.53,
+     "type": "bifurcation",
+     "confidence": 0.958,
+     "radius": 5.27,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 8,
+     "x": 64.36,
+     "y": 100.74,
+     "type": "bifurcation",
+     "confidence": 0.775,
+     "radius": 4.95,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 9,
+     "x": 37.5,
+     "y": 109.49,
+     "type": "bifurcation",
+     "confidence": 0.606,
+     "radius": 4.75,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 10,
+     "x": 155.83,
+     "y": 111.65,
+     "type": "bifurcation",
+     "confidence": 0.95,
+     "radius": 3.61,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 11,
+     "x": 53.48,
+     "y": 136.08,
+     "type": "bifurcation",
+     "confidence": 0.631,
+     "radius": 3.39,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 12,
+     "x": 313.29,
+     "y": 134.44,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.14,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 13,
+     "x": 21.04,
+     "y": 143.4,
+     "type": "bifurcation",
+     "confidence": 0.742,
+     "radius": 5.11,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 15,
+     "x": 250.65,
+     "y": 10.25,
+     "type": "crossover",
+     "confidence": 0.528,
+     "radius": 4.97,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "complex": 1,
+      "crossover": 2
+     }
+    },
+    {
+     "id": 16,
+     "x": 360.62,
+     "y": 21.36,
+     "type": "crossover",
+     "confidence": 0.715,
+     "radius": 3.37,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "crossover": 3
+     }
+    },
+    {
+     "id": 17,
+     "x": 257.43,
+     "y": 46.38,
+     "type": "crossover",
+     "confidence": 0.896,
+     "radius": 3.64,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "crossover": 3
+     }
+    },
+    {
+     "id": 18,
+     "x": 307.04,
+     "y": 65.06,
+     "type": "complex",
+     "confidence": 0.327,
+     "radius": 5.27,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "crossover": 1,
+      "complex": 2
+     }
+    },
+    {
+     "id": 19,
+     "x": 282.68,
+     "y": 88.12,
+     "type": "complex",
+     "confidence": 0.6,
+     "radius": 5.44,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 2,
+     "type_votes": {
+      "complex": 3
+     }
+    }
+   ]
+  },
+  {
+   "frame": 3,
+   "tracks": [
+    {
+     "id": 0,
+     "x": 230.56,
+     "y": 25.82,
+     "type": "bifurcation",
+     "confidence": 0.775,
+     "radius": 3.05,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 1,
+     "x": 14.39,
+     "y": 35.44,
+     "type": "bifurcation",
+     "confidence": 0.858,
+     "radius": 2.77,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 2,
+     "x": 143.6,
+     "y": 39.38,
+     "type": "bifurcation",
+     "confidence": 0.676,
+     "radius": 5.6,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 3,
+     "x": 188.92,
+     "y": 48.89,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 2.99,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 4,
+     "x": 313.6,
+     "y": 58.31,
+     "type": "bifurcation",
+     "confidence": 0.584,
+     "radius": 3.02,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 3,
+      "complex": 1
+     }
+    },
+    {
+     "id": 5,
+     "x": 266.85,
+     "y": 80.65,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.79,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 6,
+     "x": 127.44,
+     "y": 90.93,
+     "type": "crossover",
+     "confidence": 0.655,
+     "radius": 5.6,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 3
+     }
+    },
+    {
+     "id": 7,
+     "x": 88.6,
+     "y": 97.43,
+     "type": "bifurcation",
+     "confidence": 0.969,
+     "radius": 5.34,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 8,
+     "x": 64.3,
+     "y": 100.7,
+     "type": "bifurcation",
+     "confidence": 0.831,
+     "radius": 5.08,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 9,
+     "x": 37.44,
+     "y": 109.69,
+     "type": "bifurcation",
+     "confidence": 0.705,
+     "radius": 4.48,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 10,
+     "x": 156.11,
+     "y": 111.33,
+     "type": "bifurcation",
+     "confidence": 0.903,
+     "radius": 3.62,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 11,
+     "x": 53.14,
+     "y": 135.3,
+     "type": "bifurcation",
+     "confidence": 0.684,
+     "radius": 3.39,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 12,
+     "x": 313.3,
+     "y": 134.67,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.09,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 13,
+     "x": 21.02,
+     "y": 143.34,
+     "type": "bifurcation",
+     "confidence": 0.753,
+     "radius": 5.21,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 15,
+     "x": 250.67,
+     "y": 11.0,
+     "type": "crossover",
+     "confidence": 0.614,
+     "radius": 4.75,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "complex": 1,
+      "crossover": 3
+     }
+    },
+    {
+     "id": 16,
+     "x": 360.73,
+     "y": 21.15,
+     "type": "crossover",
+     "confidence": 0.731,
+     "radius": 3.33,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "crossover": 4
+     }
+    },
+    {
+     "id": 17,
+     "x": 257.37,
+     "y": 46.3,
+     "type": "crossover",
+     "confidence": 0.902,
+     "radius": 3.66,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "crossover": 4
+     }
+    },
+    {
+     "id": 18,
+     "x": 307.19,
+     "y": 65.18,
+     "type": "crossover",
+     "confidence": 0.275,
+     "radius": 4.99,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "crossover": 2,
+      "complex": 2
+     }
+    },
+    {
+     "id": 19,
+     "x": 282.46,
+     "y": 87.97,
+     "type": "complex",
+     "confidence": 0.6,
+     "radius": 5.47,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 3,
+     "type_votes": {
+      "complex": 4
+     }
+    },
+    {
+     "id": 20,
+     "x": 290.89,
+     "y": 14.79,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.18,
+     "hits": 3,
+     "first_frame": 1,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 21,
+     "x": 296.53,
+     "y": 23.67,
+     "type": "bifurcation",
+     "confidence": 0.866,
+     "radius": 3.08,
+     "hits": 3,
+     "first_frame": 1,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 22,
+     "x": 209.05,
+     "y": 77.4,
+     "type": "bifurcation",
+     "confidence": 0.64,
+     "radius": 3.69,
+     "hits": 3,
+     "first_frame": 1,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 23,
+     "x": 304.77,
+     "y": 110.95,
+     "type": "bifurcation",
+     "confidence": 0.942,
+     "radius": 3.43,
+     "hits": 3,
+     "first_frame": 1,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 24,
+     "x": 69.0,
+     "y": 145.06,
+     "type": "bifurcation",
+     "confidence": 0.254,
+     "radius": 3.73,
+     "hits": 3,
+     "first_frame": 1,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 2,
+      "complex": 1
+     }
+    },
+    {
+     "id": 25,
+     "x": 363.93,
+     "y": 188.93,
+     "type": "crossover",
+     "confidence": 0.275,
+     "radius": 3.06,
+     "hits": 3,
+     "first_frame": 1,
+     "last_frame": 3,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 2
+     }
+    }
+   ]
+  },
+  {
+   "frame": 4,
+   "tracks": [
+    {
+     "id": 0,
+     "x": 230.88,
+     "y": 26.06,
+     "type": "bifurcation",
+     "confidence": 0.82,
+     "radius": 2.93,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 1,
+     "x": 14.37,
+     "y": 35.6,
+     "type": "bifurcation",
+     "confidence": 0.887,
+     "radius": 2.72,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 2,
+     "x": 143.6,
+     "y": 39.55,
+     "type": "bifurcation",
+     "confidence": 0.678,
+     "radius": 5.6,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 3,
+     "x": 188.94,
+     "y": 48.92,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.0,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 4,
+     "x": 313.87,
+     "y": 58.25,
+     "type": "bifurcation",
+     "confidence": 0.446,
+     "radius": 3.0,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 3,
+      "complex": 2
+     }
+    },
+    {
+     "id": 5,
+     "x": 266.91,
+     "y": 80.72,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.85,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 6,
+     "x": 127.61,
+     "y": 91.02,
+     "type": "crossover",
+     "confidence": 0.692,
+     "radius": 5.6,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 4
+     }
+    },
+    {
+     "id": 7,
+     "x": 88.68,
+     "y": 97.19,
+     "type": "bifurcation",
+     "confidence": 0.975,
+     "radius": 5.39,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 8,
+     "x": 64.26,
+     "y": 100.67,
+     "type": "bifurcation",
+     "confidence": 0.865,
+     "radius": 5.18,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 9,
+     "x": 37.45,
+     "y": 109.83,
+     "type": "bifurcation",
+     "confidence": 0.764,
+     "radius": 4.26,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 10,
+     "x": 156.33,
+     "y": 111.07,
+     "type": "bifurcation",
+     "confidence": 0.873,
+     "radius": 3.64,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 11,
+     "x": 53.04,
+     "y": 134.76,
+     "type": "bifurcation",
+     "confidence": 0.747,
+     "radius": 3.38,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 12,
+     "x": 313.31,
+     "y": 134.74,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.04,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 13,
+     "x": 21.29,
+     "y": 143.29,
+     "type": "bifurcation",
+     "confidence": 0.765,
+     "radius": 5.13,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 14,
+     "x": 255.06,
+     "y": 5.69,
+     "type": "bifurcation",
+     "confidence": 0.406,
+     "radius": 5.6,
+     "hits": 3,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "complex": 1,
+      "bifurcation": 2
+     }
+    },
+    {
+     "id": 15,
+     "x": 250.56,
+     "y": 11.34,
+     "type": "crossover",
+     "confidence": 0.664,
+     "radius": 4.58,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "complex": 1,
+      "crossover": 4
+     }
+    },
+    {
+     "id": 16,
+     "x": 360.82,
+     "y": 20.97,
+     "type": "crossover",
+     "confidence": 0.736,
+     "radius": 3.27,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "crossover": 5
+     }
+    },
+    {
+     "id": 17,
+     "x": 257.33,
+     "y": 46.24,
+     "type": "crossover",
+     "confidence": 0.905,
+     "radius": 3.69,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "crossover": 5
+     }
+    },
+    {
+     "id": 18,
+     "x": 307.06,
+     "y": 65.57,
+     "type": "complex",
+     "confidence": 0.312,
+     "radius": 4.76,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "crossover": 2,
+      "complex": 3
+     }
+    },
+    {
+     "id": 19,
+     "x": 282.27,
+     "y": 87.87,
+     "type": "complex",
+     "confidence": 0.56,
+     "radius": 5.5,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 4,
+     "type_votes": {
+      "complex": 5
+     }
+    },
+    {
+     "id": 20,
+     "x": 290.77,
+     "y": 14.62,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.17,
+     "hits": 4,
+     "first_frame": 1,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 21,
+     "x": 296.36,
+     "y": 23.68,
+     "type": "bifurcation",
+     "confidence": 0.818,
+     "radius": 3.07,
+     "hits": 4,
+     "first_frame": 1,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 22,
+     "x": 208.96,
+     "y": 77.46,
+     "type": "bifurcation",
+     "confidence": 0.646,
+     "radius": 3.69,
+     "hits": 4,
+     "first_frame": 1,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 23,
+     "x": 304.72,
+     "y": 110.82,
+     "type": "bifurcation",
+     "confidence": 0.957,
+     "radius": 3.42,
+     "hits": 4,
+     "first_frame": 1,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 24,
+     "x": 68.32,
+     "y": 145.11,
+     "type": "bifurcation",
+     "confidence": 0.211,
+     "radius": 3.86,
+     "hits": 4,
+     "first_frame": 1,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 2,
+      "complex": 1,
+      "crossover": 1
+     }
+    },
+    {
+     "id": 25,
+     "x": 363.72,
+     "y": 188.95,
+     "type": "crossover",
+     "confidence": 0.304,
+     "radius": 3.1,
+     "hits": 4,
+     "first_frame": 1,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 3
+     }
+    },
+    {
+     "id": 26,
+     "x": 358.25,
+     "y": 120.77,
+     "type": "bifurcation",
+     "confidence": 0.428,
+     "radius": 2.77,
+     "hits": 3,
+     "first_frame": 2,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 2,
+      "crossover": 1
+     }
+    },
+    {
+     "id": 27,
+     "x": 326.68,
+     "y": 147.1,
+     "type": "bifurcation",
+     "confidence": 0.884,
+     "radius": 1.98,
+     "hits": 3,
+     "first_frame": 2,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 28,
+     "x": 102.26,
+     "y": 148.06,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 4.98,
+     "hits": 3,
+     "first_frame": 2,
+     "last_frame": 4,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    }
+   ]
+  },
+  {
+   "frame": 5,
+   "tracks": [
+    {
+     "id": 0,
+     "x": 231.13,
+     "y": 26.25,
+     "type": "bifurcation",
+     "confidence": 0.85,
+     "radius": 2.74,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 1,
+     "x": 14.39,
+     "y": 35.57,
+     "type": "bifurcation",
+     "confidence": 0.905,
+     "radius": 2.72,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 2,
+     "x": 143.57,
+     "y": 39.56,
+     "type": "bifurcation",
+     "confidence": 0.676,
+     "radius": 5.6,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 3,
+     "x": 188.9,
+     "y": 48.89,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.01,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 4,
+     "x": 314.07,
+     "y": 58.16,
+     "type": "bifurcation",
+     "confidence": 0.36,
+     "radius": 2.94,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 3,
+      "complex": 3
+     }
+    },
+    {
+     "id": 5,
+     "x": 266.89,
+     "y": 80.72,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.9,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 6,
+     "x": 127.43,
+     "y": 91.1,
+     "type": "crossover",
+     "confidence": 0.707,
+     "radius": 5.6,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 5
+     }
+    },
+    {
+     "id": 7,
+     "x": 88.74,
+     "y": 97.05,
+     "type": "bifurcation",
+     "confidence": 0.979,
+     "radius": 5.43,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 8,
+     "x": 64.32,
+     "y": 100.59,
+     "type": "bifurcation",
+     "confidence": 0.888,
+     "radius": 5.26,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 9,
+     "x": 37.61,
+     "y": 109.74,
+     "type": "bifurcation",
+     "confidence": 0.803,
+     "radius": 4.06,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 10,
+     "x": 156.48,
+     "y": 110.87,
+     "type": "bifurcation",
+     "confidence": 0.85,
+     "radius": 3.65,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 11,
+     "x": 52.68,
+     "y": 134.34,
+     "type": "bifurcation",
+     "confidence": 0.789,
+     "radius": 3.36,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 12,
+     "x": 313.32,
+     "y": 134.8,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 2.97,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 13,
+     "x": 21.76,
+     "y": 143.19,
+     "type": "bifurcation",
+     "confidence": 0.804,
+     "radius": 5.23,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 14,
+     "x": 255.37,
+     "y": 6.52,
+     "type": "bifurcation",
+     "confidence": 0.483,
+     "radius": 5.6,
+     "hits": 4,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "complex": 1,
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 15,
+     "x": 250.54,
+     "y": 10.89,
+     "type": "crossover",
+     "confidence": 0.528,
+     "radius": 4.78,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "complex": 2,
+      "crossover": 4
+     }
+    },
+    {
+     "id": 16,
+     "x": 360.96,
+     "y": 20.86,
+     "type": "crossover",
+     "confidence": 0.737,
+     "radius": 3.28,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "crossover": 6
+     }
+    },
+    {
+     "id": 17,
+     "x": 257.32,
+     "y": 46.21,
+     "type": "crossover",
+     "confidence": 0.904,
+     "radius": 3.71,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "crossover": 6
+     }
+    },
+    {
+     "id": 18,
+     "x": 306.96,
+     "y": 65.77,
+     "type": "complex",
+     "confidence": 0.333,
+     "radius": 4.77,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "crossover": 2,
+      "complex": 4
+     }
+    },
+    {
+     "id": 19,
+     "x": 282.14,
+     "y": 87.81,
+     "type": "complex",
+     "confidence": 0.533,
+     "radius": 5.52,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 5,
+     "type_votes": {
+      "complex": 6
+     }
+    },
+    {
+     "id": 20,
+     "x": 291.29,
+     "y": 15.13,
+     "type": "bifurcation",
+     "confidence": 0.736,
+     "radius": 3.17,
+     "hits": 5,
+     "first_frame": 1,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 4,
+      "complex": 1
+     }
+    },
+    {
+     "id": 22,
+     "x": 208.78,
+     "y": 77.54,
+     "type": "bifurcation",
+     "confidence": 0.655,
+     "radius": 3.68,
+     "hits": 5,
+     "first_frame": 1,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 23,
+     "x": 304.79,
+     "y": 110.79,
+     "type": "bifurcation",
+     "confidence": 0.965,
+     "radius": 3.4,
+     "hits": 5,
+     "first_frame": 1,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 25,
+     "x": 363.6,
+     "y": 188.91,
+     "type": "crossover",
+     "confidence": 0.336,
+     "radius": 3.09,
+     "hits": 5,
+     "first_frame": 1,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 4
+     }
+    },
+    {
+     "id": 26,
+     "x": 358.17,
+     "y": 120.71,
+     "type": "bifurcation",
+     "confidence": 0.493,
+     "radius": 2.76,
+     "hits": 4,
+     "first_frame": 2,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 1
+     }
+    },
+    {
+     "id": 27,
+     "x": 326.77,
+     "y": 147.11,
+     "type": "bifurcation",
+     "confidence": 0.913,
+     "radius": 1.97,
+     "hits": 4,
+     "first_frame": 2,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 28,
+     "x": 101.84,
+     "y": 148.45,
+     "type": "bifurcation",
+     "confidence": 0.7,
+     "radius": 4.63,
+     "hits": 4,
+     "first_frame": 2,
+     "last_frame": 5,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 1
+     }
+    }
+   ]
+  },
+  {
+   "frame": 6,
+   "tracks": [
+    {
+     "id": 0,
+     "x": 231.33,
+     "y": 26.4,
+     "type": "bifurcation",
+     "confidence": 0.871,
+     "radius": 2.69,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 1,
+     "x": 14.41,
+     "y": 35.66,
+     "type": "bifurcation",
+     "confidence": 0.919,
+     "radius": 2.69,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 2,
+     "x": 143.46,
+     "y": 39.89,
+     "type": "bifurcation",
+     "confidence": 0.672,
+     "radius": 5.6,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 3,
+     "x": 189.08,
+     "y": 48.45,
+     "type": "bifurcation",
+     "confidence": 0.836,
+     "radius": 3.03,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 6,
+      "crossover": 1
+     }
+    },
+    {
+     "id": 4,
+     "x": 314.38,
+     "y": 57.87,
+     "type": "complex",
+     "confidence": 0.401,
+     "radius": 2.88,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 3,
+      "complex": 4
+     }
+    },
+    {
+     "id": 5,
+     "x": 266.86,
+     "y": 80.69,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 4.24,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 6,
+     "x": 127.46,
+     "y": 91.25,
+     "type": "crossover",
+     "confidence": 0.717,
+     "radius": 5.6,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 6
+     }
+    },
+    {
+     "id": 7,
+     "x": 88.7,
+     "y": 97.0,
+     "type": "bifurcation",
+     "confidence": 0.982,
+     "radius": 5.46,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 8,
+     "x": 64.26,
+     "y": 100.6,
+     "type": "bifurcation",
+     "confidence": 0.904,
+     "radius": 5.33,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 9,
+     "x": 37.57,
+     "y": 109.94,
+     "type": "bifurcation",
+     "confidence": 0.831,
+     "radius": 3.94,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 10,
+     "x": 156.33,
+     "y": 110.94,
+     "type": "bifurcation",
+     "confidence": 0.871,
+     "radius": 3.65,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 11,
+     "x": 52.46,
+     "y": 133.83,
+     "type": "bifurcation",
+     "confidence": 0.819,
+     "radius": 3.39,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 12,
+     "x": 313.09,
+     "y": 134.84,
+     "type": "bifurcation",
+     "confidence": 0.947,
+     "radius": 2.94,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 13,
+     "x": 22.04,
+     "y": 143.2,
+     "type": "bifurcation",
+     "confidence": 0.804,
+     "radius": 4.98,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 14,
+     "x": 255.62,
+     "y": 7.18,
+     "type": "bifurcation",
+     "confidence": 0.548,
+     "radius": 5.6,
+     "hits": 5,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "complex": 1,
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 15,
+     "x": 250.52,
+     "y": 10.53,
+     "type": "crossover",
+     "confidence": 0.437,
+     "radius": 4.95,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "complex": 3,
+      "crossover": 4
+     }
+    },
+    {
+     "id": 16,
+     "x": 361.2,
+     "y": 20.75,
+     "type": "crossover",
+     "confidence": 0.615,
+     "radius": 3.28,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "crossover": 6,
+      "complex": 1
+     }
+    },
+    {
+     "id": 17,
+     "x": 257.32,
+     "y": 46.26,
+     "type": "crossover",
+     "confidence": 0.903,
+     "radius": 3.72,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "crossover": 7
+     }
+    },
+    {
+     "id": 18,
+     "x": 307.17,
+     "y": 65.6,
+     "type": "complex",
+     "confidence": 0.303,
+     "radius": 4.63,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "crossover": 3,
+      "complex": 4
+     }
+    },
+    {
+     "id": 19,
+     "x": 281.89,
+     "y": 87.69,
+     "type": "complex",
+     "confidence": 0.514,
+     "radius": 5.53,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 6,
+     "type_votes": {
+      "complex": 7
+     }
+    },
+    {
+     "id": 20,
+     "x": 291.67,
+     "y": 15.69,
+     "type": "bifurcation",
+     "confidence": 0.578,
+     "radius": 3.19,
+     "hits": 6,
+     "first_frame": 1,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 4,
+      "complex": 2
+     }
+    },
+    {
+     "id": 22,
+     "x": 208.76,
+     "y": 77.52,
+     "type": "bifurcation",
+     "confidence": 0.66,
+     "radius": 3.66,
+     "hits": 6,
+     "first_frame": 1,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 23,
+     "x": 304.85,
+     "y": 110.8,
+     "type": "bifurcation",
+     "confidence": 0.971,
+     "radius": 3.39,
+     "hits": 6,
+     "first_frame": 1,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 25,
+     "x": 363.33,
+     "y": 188.75,
+     "type": "crossover",
+     "confidence": 0.347,
+     "radius": 3.14,
+     "hits": 6,
+     "first_frame": 1,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 5
+     }
+    },
+    {
+     "id": 26,
+     "x": 358.19,
+     "y": 120.67,
+     "type": "bifurcation",
+     "confidence": 0.404,
+     "radius": 2.72,
+     "hits": 5,
+     "first_frame": 2,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 2
+     }
+    },
+    {
+     "id": 27,
+     "x": 326.78,
+     "y": 147.21,
+     "type": "bifurcation",
+     "confidence": 0.931,
+     "radius": 2.0,
+     "hits": 5,
+     "first_frame": 2,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 28,
+     "x": 101.61,
+     "y": 148.79,
+     "type": "bifurcation",
+     "confidence": 0.53,
+     "radius": 4.35,
+     "hits": 5,
+     "first_frame": 2,
+     "last_frame": 6,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 2
+     }
+    }
+   ]
+  },
+  {
+   "frame": 7,
+   "tracks": [
+    {
+     "id": 0,
+     "x": 231.49,
+     "y": 26.52,
+     "type": "bifurcation",
+     "confidence": 0.887,
+     "radius": 2.6,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 8
+     }
+    },
+    {
+     "id": 1,
+     "x": 14.44,
+     "y": 35.74,
+     "type": "bifurcation",
+     "confidence": 0.929,
+     "radius": 2.7,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 8
+     }
+    },
+    {
+     "id": 2,
+     "x": 143.41,
+     "y": 40.12,
+     "type": "bifurcation",
+     "confidence": 0.672,
+     "radius": 5.6,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 8
+     }
+    },
+    {
+     "id": 3,
+     "x": 189.22,
+     "y": 48.12,
+     "type": "bifurcation",
+     "confidence": 0.718,
+     "radius": 3.01,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 6,
+      "crossover": 2
+     }
+    },
+    {
+     "id": 5,
+     "x": 266.74,
+     "y": 80.61,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 4.17,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 8
+     }
+    },
+    {
+     "id": 6,
+     "x": 127.4,
+     "y": 91.44,
+     "type": "crossover",
+     "confidence": 0.722,
+     "radius": 5.6,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 7
+     }
+    },
+    {
+     "id": 7,
+     "x": 88.77,
+     "y": 96.94,
+     "type": "bifurcation",
+     "confidence": 0.984,
+     "radius": 5.49,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 8
+     }
+    },
+    {
+     "id": 8,
+     "x": 64.22,
+     "y": 100.63,
+     "type": "bifurcation",
+     "confidence": 0.916,
+     "radius": 5.39,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 8
+     }
+    },
+    {
+     "id": 9,
+     "x": 37.71,
+     "y": 109.89,
+     "type": "bifurcation",
+     "confidence": 0.852,
+     "radius": 3.84,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 8
+     }
+    },
+    {
+     "id": 10,
+     "x": 156.41,
+     "y": 110.85,
+     "type": "bifurcation",
+     "confidence": 0.859,
+     "radius": 3.64,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 8
+     }
+    },
+    {
+     "id": 11,
+     "x": 52.22,
+     "y": 133.36,
+     "type": "bifurcation",
+     "confidence": 0.842,
+     "radius": 3.38,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 8
+     }
+    },
+    {
+     "id": 12,
+     "x": 312.97,
+     "y": 134.79,
+     "type": "bifurcation",
+     "confidence": 0.905,
+     "radius": 2.91,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 8
+     }
+    },
+    {
+     "id": 13,
+     "x": 22.3,
+     "y": 143.15,
+     "type": "bifurcation",
+     "confidence": 0.829,
+     "radius": 4.77,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 8
+     }
+    },
+    {
+     "id": 14,
+     "x": 255.71,
+     "y": 7.66,
+     "type": "bifurcation",
+     "confidence": 0.606,
+     "radius": 5.6,
+     "hits": 6,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "complex": 1,
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 15,
+     "x": 250.47,
+     "y": 10.21,
+     "type": "complex",
+     "confidence": 0.372,
+     "radius": 5.08,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "complex": 4,
+      "crossover": 4
+     }
+    },
+    {
+     "id": 16,
+     "x": 361.28,
+     "y": 20.71,
+     "type": "crossover",
+     "confidence": 0.632,
+     "radius": 3.23,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "crossover": 7,
+      "complex": 1
+     }
+    },
+    {
+     "id": 17,
+     "x": 257.32,
+     "y": 46.43,
+     "type": "crossover",
+     "confidence": 0.899,
+     "radius": 3.74,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "crossover": 8
+     }
+    },
+    {
+     "id": 18,
+     "x": 307.58,
+     "y": 64.49,
+     "type": "complex",
+     "confidence": 0.337,
+     "radius": 4.42,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "crossover": 3,
+      "complex": 5
+     }
+    },
+    {
+     "id": 19,
+     "x": 281.68,
+     "y": 87.7,
+     "type": "complex",
+     "confidence": 0.525,
+     "radius": 5.55,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 7,
+     "type_votes": {
+      "complex": 8
+     }
+    },
+    {
+     "id": 20,
+     "x": 292.03,
+     "y": 16.18,
+     "type": "bifurcation",
+     "confidence": 0.473,
+     "radius": 3.18,
+     "hits": 7,
+     "first_frame": 1,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 4,
+      "complex": 3
+     }
+    },
+    {
+     "id": 22,
+     "x": 208.53,
+     "y": 77.71,
+     "type": "bifurcation",
+     "confidence": 0.654,
+     "radius": 3.65,
+     "hits": 7,
+     "first_frame": 1,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 23,
+     "x": 305.13,
+     "y": 110.95,
+     "type": "bifurcation",
+     "confidence": 0.975,
+     "radius": 3.37,
+     "hits": 7,
+     "first_frame": 1,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 25,
+     "x": 363.28,
+     "y": 188.73,
+     "type": "crossover",
+     "confidence": 0.381,
+     "radius": 2.95,
+     "hits": 7,
+     "first_frame": 1,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 6
+     }
+    },
+    {
+     "id": 26,
+     "x": 358.16,
+     "y": 120.63,
+     "type": "bifurcation",
+     "confidence": 0.347,
+     "radius": 2.74,
+     "hits": 6,
+     "first_frame": 2,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 3
+     }
+    },
+    {
+     "id": 27,
+     "x": 326.8,
+     "y": 147.28,
+     "type": "bifurcation",
+     "confidence": 0.942,
+     "radius": 1.98,
+     "hits": 6,
+     "first_frame": 2,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 28,
+     "x": 101.47,
+     "y": 149.11,
+     "type": "bifurcation",
+     "confidence": 0.425,
+     "radius": 4.13,
+     "hits": 6,
+     "first_frame": 2,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 3
+     }
+    },
+    {
+     "id": 30,
+     "x": 257.03,
+     "y": -0.34,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 4.4,
+     "hits": 3,
+     "first_frame": 5,
+     "last_frame": 7,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 32,
+     "x": 62.82,
+     "y": 151.19,
+     "type": "complex",
+     "confidence": 0.52,
+     "radius": 3.63,
+     "hits": 3,
+     "first_frame": 5,
+     "last_frame": 7,
+     "type_votes": {
+      "complex": 3
+     }
+    },
+    {
+     "id": 33,
+     "x": 74.38,
+     "y": 138.86,
+     "type": "crossover",
+     "confidence": 0.406,
+     "radius": 3.5,
+     "hits": 3,
+     "first_frame": 5,
+     "last_frame": 7,
+     "type_votes": {
+      "crossover": 2,
+      "bifurcation": 1
+     }
+    }
+   ]
+  },
+  {
+   "frame": 8,
+   "tracks": [
+    {
+     "id": 0,
+     "x": 231.26,
+     "y": 26.58,
+     "type": "bifurcation",
+     "confidence": 0.9,
+     "radius": 2.54,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 9
+     }
+    },
+    {
+     "id": 1,
+     "x": 14.38,
+     "y": 35.63,
+     "type": "bifurcation",
+     "confidence": 0.937,
+     "radius": 2.71,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 9
+     }
+    },
+    {
+     "id": 2,
+     "x": 143.38,
+     "y": 40.07,
+     "type": "bifurcation",
+     "confidence": 0.668,
+     "radius": 5.6,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 9
+     }
+    },
+    {
+     "id": 3,
+     "x": 189.88,
+     "y": 47.69,
+     "type": "bifurcation",
+     "confidence": 0.631,
+     "radius": 3.0,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 6,
+      "crossover": 3
+     }
+    },
+    {
+     "id": 4,
+     "x": 314.57,
+     "y": 57.59,
+     "type": "complex",
+     "confidence": 0.431,
+     "radius": 2.97,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 3,
+      "complex": 5
+     }
+    },
+    {
+     "id": 5,
+     "x": 266.64,
+     "y": 80.55,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 4.1,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 9
+     }
+    },
+    {
+     "id": 6,
+     "x": 127.19,
+     "y": 91.43,
+     "type": "crossover",
+     "confidence": 0.727,
+     "radius": 5.6,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 8
+     }
+    },
+    {
+     "id": 7,
+     "x": 88.92,
+     "y": 96.97,
+     "type": "bifurcation",
+     "confidence": 0.986,
+     "radius": 5.51,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 9
+     }
+    },
+    {
+     "id": 8,
+     "x": 64.14,
+     "y": 100.64,
+     "type": "bifurcation",
+     "confidence": 0.925,
+     "radius": 5.43,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 9
+     }
+    },
+    {
+     "id": 9,
+     "x": 37.67,
+     "y": 109.93,
+     "type": "bifurcation",
+     "confidence": 0.869,
+     "radius": 3.76,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 9
+     }
+    },
+    {
+     "id": 10,
+     "x": 156.48,
+     "y": 110.8,
+     "type": "bifurcation",
+     "confidence": 0.852,
+     "radius": 3.61,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 9
+     }
+    },
+    {
+     "id": 11,
+     "x": 52.06,
+     "y": 133.12,
+     "type": "bifurcation",
+     "confidence": 0.86,
+     "radius": 3.38,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 9
+     }
+    },
+    {
+     "id": 12,
+     "x": 312.81,
+     "y": 134.43,
+     "type": "bifurcation",
+     "confidence": 0.916,
+     "radius": 2.88,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 9
+     }
+    },
+    {
+     "id": 13,
+     "x": 22.51,
+     "y": 143.11,
+     "type": "bifurcation",
+     "confidence": 0.848,
+     "radius": 4.58,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 9
+     }
+    },
+    {
+     "id": 14,
+     "x": 255.77,
+     "y": 8.05,
+     "type": "bifurcation",
+     "confidence": 0.654,
+     "radius": 5.6,
+     "hits": 7,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "complex": 1,
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 15,
+     "x": 250.45,
+     "y": 10.01,
+     "type": "complex",
+     "confidence": 0.404,
+     "radius": 5.18,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "complex": 5,
+      "crossover": 4
+     }
+    },
+    {
+     "id": 16,
+     "x": 361.42,
+     "y": 20.64,
+     "type": "crossover",
+     "confidence": 0.551,
+     "radius": 3.24,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "crossover": 7,
+      "complex": 2
+     }
+    },
+    {
+     "id": 17,
+     "x": 257.37,
+     "y": 46.58,
+     "type": "crossover",
+     "confidence": 0.896,
+     "radius": 3.73,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "crossover": 9
+     }
+    },
+    {
+     "id": 18,
+     "x": 307.6,
+     "y": 64.56,
+     "type": "complex",
+     "confidence": 0.311,
+     "radius": 4.37,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "crossover": 4,
+      "complex": 5
+     }
+    },
+    {
+     "id": 19,
+     "x": 281.66,
+     "y": 87.65,
+     "type": "complex",
+     "confidence": 0.533,
+     "radius": 5.56,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 8,
+     "type_votes": {
+      "complex": 9
+     }
+    },
+    {
+     "id": 20,
+     "x": 292.24,
+     "y": 16.36,
+     "type": "bifurcation",
+     "confidence": 0.4,
+     "radius": 3.19,
+     "hits": 8,
+     "first_frame": 1,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 4,
+      "complex": 4
+     }
+    },
+    {
+     "id": 22,
+     "x": 208.51,
+     "y": 77.67,
+     "type": "bifurcation",
+     "confidence": 0.658,
+     "radius": 3.6,
+     "hits": 8,
+     "first_frame": 1,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 8
+     }
+    },
+    {
+     "id": 23,
+     "x": 305.36,
+     "y": 110.9,
+     "type": "bifurcation",
+     "confidence": 0.978,
+     "radius": 3.39,
+     "hits": 8,
+     "first_frame": 1,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 8
+     }
+    },
+    {
+     "id": 24,
+     "x": 67.46,
+     "y": 145.06,
+     "type": "bifurcation",
+     "confidence": 0.175,
+     "radius": 4.21,
+     "hits": 5,
+     "first_frame": 1,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 2,
+      "complex": 1,
+      "crossover": 2
+     }
+    },
+    {
+     "id": 25,
+     "x": 363.3,
+     "y": 188.79,
+     "type": "crossover",
+     "confidence": 0.397,
+     "radius": 2.95,
+     "hits": 8,
+     "first_frame": 1,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 7
+     }
+    },
+    {
+     "id": 26,
+     "x": 358.18,
+     "y": 120.55,
+     "type": "crossover",
+     "confidence": 0.405,
+     "radius": 2.73,
+     "hits": 7,
+     "first_frame": 2,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 4
+     }
+    },
+    {
+     "id": 27,
+     "x": 326.81,
+     "y": 147.34,
+     "type": "bifurcation",
+     "confidence": 0.95,
+     "radius": 2.02,
+     "hits": 7,
+     "first_frame": 2,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 28,
+     "x": 101.37,
+     "y": 149.4,
+     "type": "crossover",
+     "confidence": 0.472,
+     "radius": 3.97,
+     "hits": 7,
+     "first_frame": 2,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 4
+     }
+    },
+    {
+     "id": 29,
+     "x": 302.97,
+     "y": 52.89,
+     "type": "bifurcation",
+     "confidence": 0.404,
+     "radius": 3.18,
+     "hits": 3,
+     "first_frame": 2,
+     "last_frame": 8,
+     "type_votes": {
+      "complex": 1,
+      "bifurcation": 2
+     }
+    },
+    {
+     "id": 30,
+     "x": 257.2,
+     "y": -0.26,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 4.21,
+     "hits": 4,
+     "first_frame": 5,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 31,
+     "x": 223.5,
+     "y": 27.52,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 2.76,
+     "hits": 3,
+     "first_frame": 5,
+     "last_frame": 8,
+     "type_votes": {
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 32,
+     "x": 62.04,
+     "y": 151.68,
+     "type": "complex",
+     "confidence": 0.41,
+     "radius": 4.03,
+     "hits": 4,
+     "first_frame": 5,
+     "last_frame": 8,
+     "type_votes": {
+      "complex": 3,
+      "bifurcation": 1
+     }
+    },
+    {
+     "id": 33,
+     "x": 74.36,
+     "y": 138.28,
+     "type": "crossover",
+     "confidence": 0.354,
+     "radius": 3.33,
+     "hits": 4,
+     "first_frame": 5,
+     "last_frame": 8,
+     "type_votes": {
+      "crossover": 2,
+      "bifurcation": 2
+     }
+    }
+   ]
+  },
+  {
+   "frame": 9,
+   "tracks": [
+    {
+     "id": 0,
+     "x": 231.19,
+     "y": 26.63,
+     "type": "bifurcation",
+     "confidence": 0.91,
+     "radius": 2.53,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 10
+     }
+    },
+    {
+     "id": 1,
+     "x": 14.29,
+     "y": 35.54,
+     "type": "bifurcation",
+     "confidence": 0.943,
+     "radius": 2.67,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 10
+     }
+    },
+    {
+     "id": 2,
+     "x": 143.43,
+     "y": 39.96,
+     "type": "bifurcation",
+     "confidence": 0.669,
+     "radius": 5.6,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 10
+     }
+    },
+    {
+     "id": 3,
+     "x": 190.08,
+     "y": 47.42,
+     "type": "bifurcation",
+     "confidence": 0.562,
+     "radius": 2.95,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 6,
+      "crossover": 4
+     }
+    },
+    {
+     "id": 4,
+     "x": 314.65,
+     "y": 57.46,
+     "type": "complex",
+     "confidence": 0.453,
+     "radius": 3.05,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 3,
+      "complex": 6
+     }
+    },
+    {
+     "id": 5,
+     "x": 266.52,
+     "y": 80.49,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 4.02,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 10
+     }
+    },
+    {
+     "id": 6,
+     "x": 127.05,
+     "y": 91.59,
+     "type": "crossover",
+     "confidence": 0.73,
+     "radius": 5.6,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 9
+     }
+    },
+    {
+     "id": 7,
+     "x": 89.2,
+     "y": 96.95,
+     "type": "bifurcation",
+     "confidence": 0.987,
+     "radius": 5.53,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 10
+     }
+    },
+    {
+     "id": 8,
+     "x": 64.1,
+     "y": 100.67,
+     "type": "bifurcation",
+     "confidence": 0.933,
+     "radius": 5.46,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 10
+     }
+    },
+    {
+     "id": 9,
+     "x": 37.84,
+     "y": 109.8,
+     "type": "bifurcation",
+     "confidence": 0.882,
+     "radius": 3.7,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 10
+     }
+    },
+    {
+     "id": 10,
+     "x": 156.38,
+     "y": 110.77,
+     "type": "bifurcation",
+     "confidence": 0.846,
+     "radius": 3.59,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 10
+     }
+    },
+    {
+     "id": 11,
+     "x": 51.95,
+     "y": 132.93,
+     "type": "bifurcation",
+     "confidence": 0.874,
+     "radius": 3.37,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 10
+     }
+    },
+    {
+     "id": 12,
+     "x": 312.84,
+     "y": 134.25,
+     "type": "bifurcation",
+     "confidence": 0.924,
+     "radius": 2.86,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 10
+     }
+    },
+    {
+     "id": 13,
+     "x": 22.67,
+     "y": 143.09,
+     "type": "bifurcation",
+     "confidence": 0.848,
+     "radius": 4.47,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 10
+     }
+    },
+    {
+     "id": 14,
+     "x": 255.42,
+     "y": 7.32,
+     "type": "bifurcation",
+     "confidence": 0.557,
+     "radius": 5.6,
+     "hits": 8,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "complex": 2,
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 15,
+     "x": 250.47,
+     "y": 9.9,
+     "type": "complex",
+     "confidence": 0.365,
+     "radius": 5.27,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "complex": 5,
+      "crossover": 5
+     }
+    },
+    {
+     "id": 16,
+     "x": 361.41,
+     "y": 20.52,
+     "type": "crossover",
+     "confidence": 0.489,
+     "radius": 3.22,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "crossover": 7,
+      "complex": 3
+     }
+    },
+    {
+     "id": 17,
+     "x": 257.4,
+     "y": 46.6,
+     "type": "crossover",
+     "confidence": 0.896,
+     "radius": 3.71,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "crossover": 10
+     }
+    },
+    {
+     "id": 18,
+     "x": 307.54,
+     "y": 64.6,
+     "type": "crossover",
+     "confidence": 0.289,
+     "radius": 4.34,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "crossover": 5,
+      "complex": 5
+     }
+    },
+    {
+     "id": 19,
+     "x": 281.69,
+     "y": 87.68,
+     "type": "complex",
+     "confidence": 0.54,
+     "radius": 5.57,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 9,
+     "type_votes": {
+      "complex": 10
+     }
+    },
+    {
+     "id": 20,
+     "x": 292.53,
+     "y": 17.03,
+     "type": "complex",
+     "confidence": 0.432,
+     "radius": 3.21,
+     "hits": 9,
+     "first_frame": 1,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 4,
+      "complex": 5
+     }
+    },
+    {
+     "id": 22,
+     "x": 208.56,
+     "y": 77.52,
+     "type": "bifurcation",
+     "confidence": 0.667,
+     "radius": 3.56,
+     "hits": 9,
+     "first_frame": 1,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 9
+     }
+    },
+    {
+     "id": 23,
+     "x": 305.7,
+     "y": 111.0,
+     "type": "bifurcation",
+     "confidence": 0.981,
+     "radius": 3.28,
+     "hits": 9,
+     "first_frame": 1,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 9
+     }
+    },
+    {
+     "id": 25,
+     "x": 363.33,
+     "y": 188.86,
+     "type": "crossover",
+     "confidence": 0.431,
+     "radius": 2.77,
+     "hits": 9,
+     "first_frame": 1,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 8
+     }
+    },
+    {
+     "id": 26,
+     "x": 358.27,
+     "y": 120.38,
+     "type": "crossover",
+     "confidence": 0.444,
+     "radius": 2.71,
+     "hits": 8,
+     "first_frame": 2,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 5
+     }
+    },
+    {
+     "id": 27,
+     "x": 326.85,
+     "y": 147.29,
+     "type": "bifurcation",
+     "confidence": 0.957,
+     "radius": 1.98,
+     "hits": 8,
+     "first_frame": 2,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 8
+     }
+    },
+    {
+     "id": 28,
+     "x": 101.23,
+     "y": 149.63,
+     "type": "crossover",
+     "confidence": 0.506,
+     "radius": 3.82,
+     "hits": 8,
+     "first_frame": 2,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 5
+     }
+    },
+    {
+     "id": 29,
+     "x": 303.11,
+     "y": 53.45,
+     "type": "bifurcation",
+     "confidence": 0.529,
+     "radius": 3.19,
+     "hits": 4,
+     "first_frame": 2,
+     "last_frame": 9,
+     "type_votes": {
+      "complex": 1,
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 31,
+     "x": 223.11,
+     "y": 27.58,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 2.73,
+     "hits": 4,
+     "first_frame": 5,
+     "last_frame": 9,
+     "type_votes": {
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 32,
+     "x": 62.17,
+     "y": 151.73,
+     "type": "complex",
+     "confidence": 0.446,
+     "radius": 3.87,
+     "hits": 5,
+     "first_frame": 5,
+     "last_frame": 9,
+     "type_votes": {
+      "complex": 4,
+      "bifurcation": 1
+     }
+    },
+    {
+     "id": 33,
+     "x": 74.22,
+     "y": 138.7,
+     "type": "crossover",
+     "confidence": 0.424,
+     "radius": 3.22,
+     "hits": 5,
+     "first_frame": 5,
+     "last_frame": 9,
+     "type_votes": {
+      "crossover": 3,
+      "bifurcation": 2
+     }
+    }
+   ]
+  },
+  {
+   "frame": 10,
+   "tracks": [
+    {
+     "id": 0,
+     "x": 231.37,
+     "y": 26.43,
+     "type": "bifurcation",
+     "confidence": 0.918,
+     "radius": 2.62,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 11
+     }
+    },
+    {
+     "id": 1,
+     "x": 14.27,
+     "y": 35.5,
+     "type": "bifurcation",
+     "confidence": 0.948,
+     "radius": 2.71,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 11
+     }
+    },
+    {
+     "id": 2,
+     "x": 143.55,
+     "y": 39.65,
+     "type": "bifurcation",
+     "confidence": 0.672,
+     "radius": 5.6,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 11
+     }
+    },
+    {
+     "id": 3,
+     "x": 190.26,
+     "y": 47.13,
+     "type": "bifurcation",
+     "confidence": 0.507,
+     "radius": 2.94,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 6,
+      "crossover": 5
+     }
+    },
+    {
+     "id": 5,
+     "x": 266.43,
+     "y": 80.44,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.95,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 11
+     }
+    },
+    {
+     "id": 6,
+     "x": 127.0,
+     "y": 91.48,
+     "type": "crossover",
+     "confidence": 0.677,
+     "radius": 5.6,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 2,
+      "crossover": 9
+     }
+    },
+    {
+     "id": 7,
+     "x": 89.29,
+     "y": 97.03,
+     "type": "bifurcation",
+     "confidence": 0.989,
+     "radius": 5.54,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 11
+     }
+    },
+    {
+     "id": 8,
+     "x": 64.02,
+     "y": 100.71,
+     "type": "bifurcation",
+     "confidence": 0.939,
+     "radius": 5.49,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 11
+     }
+    },
+    {
+     "id": 9,
+     "x": 37.97,
+     "y": 109.7,
+     "type": "bifurcation",
+     "confidence": 0.893,
+     "radius": 3.65,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 11
+     }
+    },
+    {
+     "id": 10,
+     "x": 156.31,
+     "y": 110.74,
+     "type": "bifurcation",
+     "confidence": 0.839,
+     "radius": 3.57,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 11
+     }
+    },
+    {
+     "id": 11,
+     "x": 51.79,
+     "y": 132.56,
+     "type": "bifurcation",
+     "confidence": 0.885,
+     "radius": 3.39,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 11
+     }
+    },
+    {
+     "id": 12,
+     "x": 312.76,
+     "y": 134.03,
+     "type": "bifurcation",
+     "confidence": 0.931,
+     "radius": 2.81,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 11
+     }
+    },
+    {
+     "id": 13,
+     "x": 22.63,
+     "y": 143.11,
+     "type": "bifurcation",
+     "confidence": 0.844,
+     "radius": 4.35,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 11
+     }
+    },
+    {
+     "id": 14,
+     "x": 255.66,
+     "y": 7.82,
+     "type": "bifurcation",
+     "confidence": 0.6,
+     "radius": 5.6,
+     "hits": 9,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "complex": 2,
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 15,
+     "x": 250.48,
+     "y": 9.81,
+     "type": "complex",
+     "confidence": 0.392,
+     "radius": 5.33,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "complex": 6,
+      "crossover": 5
+     }
+    },
+    {
+     "id": 16,
+     "x": 361.44,
+     "y": 20.53,
+     "type": "crossover",
+     "confidence": 0.51,
+     "radius": 3.25,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "crossover": 8,
+      "complex": 3
+     }
+    },
+    {
+     "id": 17,
+     "x": 257.38,
+     "y": 46.52,
+     "type": "crossover",
+     "confidence": 0.895,
+     "radius": 3.7,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "crossover": 11
+     }
+    },
+    {
+     "id": 18,
+     "x": 307.6,
+     "y": 63.47,
+     "type": "complex",
+     "confidence": 0.316,
+     "radius": 4.19,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "crossover": 5,
+      "complex": 6
+     }
+    },
+    {
+     "id": 19,
+     "x": 281.75,
+     "y": 87.7,
+     "type": "complex",
+     "confidence": 0.545,
+     "radius": 5.39,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 10,
+     "type_votes": {
+      "complex": 11
+     }
+    },
+    {
+     "id": 20,
+     "x": 292.45,
+     "y": 17.2,
+     "type": "complex",
+     "confidence": 0.444,
+     "radius": 3.69,
+     "hits": 10,
+     "first_frame": 1,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 4,
+      "complex": 6
+     }
+    },
+    {
+     "id": 22,
+     "x": 208.77,
+     "y": 77.35,
+     "type": "bifurcation",
+     "confidence": 0.67,
+     "radius": 3.51,
+     "hits": 10,
+     "first_frame": 1,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 10
+     }
+    },
+    {
+     "id": 23,
+     "x": 305.99,
+     "y": 111.06,
+     "type": "bifurcation",
+     "confidence": 0.983,
+     "radius": 3.22,
+     "hits": 10,
+     "first_frame": 1,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 10
+     }
+    },
+    {
+     "id": 25,
+     "x": 363.29,
+     "y": 188.85,
+     "type": "crossover",
+     "confidence": 0.464,
+     "radius": 2.66,
+     "hits": 10,
+     "first_frame": 1,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 9
+     }
+    },
+    {
+     "id": 26,
+     "x": 358.3,
+     "y": 120.28,
+     "type": "crossover",
+     "confidence": 0.478,
+     "radius": 2.71,
+     "hits": 9,
+     "first_frame": 2,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 6
+     }
+    },
+    {
+     "id": 27,
+     "x": 326.98,
+     "y": 147.4,
+     "type": "bifurcation",
+     "confidence": 0.961,
+     "radius": 1.96,
+     "hits": 9,
+     "first_frame": 2,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 9
+     }
+    },
+    {
+     "id": 28,
+     "x": 101.05,
+     "y": 149.75,
+     "type": "crossover",
+     "confidence": 0.533,
+     "radius": 3.68,
+     "hits": 9,
+     "first_frame": 2,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 6
+     }
+    },
+    {
+     "id": 30,
+     "x": 257.47,
+     "y": 0.02,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 4.28,
+     "hits": 5,
+     "first_frame": 5,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 31,
+     "x": 222.57,
+     "y": 27.79,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 2.7,
+     "hits": 5,
+     "first_frame": 5,
+     "last_frame": 10,
+     "type_votes": {
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 32,
+     "x": 62.53,
+     "y": 151.61,
+     "type": "complex",
+     "confidence": 0.47,
+     "radius": 3.7,
+     "hits": 6,
+     "first_frame": 5,
+     "last_frame": 10,
+     "type_votes": {
+      "complex": 5,
+      "bifurcation": 1
+     }
+    },
+    {
+     "id": 33,
+     "x": 74.29,
+     "y": 138.67,
+     "type": "crossover",
+     "confidence": 0.472,
+     "radius": 3.18,
+     "hits": 6,
+     "first_frame": 5,
+     "last_frame": 10,
+     "type_votes": {
+      "crossover": 4,
+      "bifurcation": 2
+     }
+    }
+   ]
+  },
+  {
+   "frame": 11,
+   "tracks": [
+    {
+     "id": 0,
+     "x": 231.19,
+     "y": 26.42,
+     "type": "bifurcation",
+     "confidence": 0.925,
+     "radius": 2.59,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 12
+     }
+    },
+    {
+     "id": 1,
+     "x": 14.34,
+     "y": 35.61,
+     "type": "bifurcation",
+     "confidence": 0.953,
+     "radius": 2.7,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 12
+     }
+    },
+    {
+     "id": 2,
+     "x": 143.63,
+     "y": 39.61,
+     "type": "bifurcation",
+     "confidence": 0.675,
+     "radius": 5.6,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 12
+     }
+    },
+    {
+     "id": 3,
+     "x": 190.52,
+     "y": 46.79,
+     "type": "bifurcation",
+     "confidence": 0.461,
+     "radius": 2.9,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 6,
+      "crossover": 6
+     }
+    },
+    {
+     "id": 4,
+     "x": 314.91,
+     "y": 57.43,
+     "type": "complex",
+     "confidence": 0.47,
+     "radius": 2.99,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 3,
+      "complex": 7
+     }
+    },
+    {
+     "id": 5,
+     "x": 266.41,
+     "y": 80.45,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.91,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 12
+     }
+    },
+    {
+     "id": 6,
+     "x": 127.12,
+     "y": 91.47,
+     "type": "crossover",
+     "confidence": 0.688,
+     "radius": 5.6,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 2,
+      "crossover": 10
+     }
+    },
+    {
+     "id": 7,
+     "x": 89.32,
+     "y": 97.09,
+     "type": "bifurcation",
+     "confidence": 0.99,
+     "radius": 5.56,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 12
+     }
+    },
+    {
+     "id": 8,
+     "x": 63.89,
+     "y": 100.77,
+     "type": "bifurcation",
+     "confidence": 0.944,
+     "radius": 5.51,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 12
+     }
+    },
+    {
+     "id": 9,
+     "x": 38.1,
+     "y": 109.56,
+     "type": "bifurcation",
+     "confidence": 0.902,
+     "radius": 3.63,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 12
+     }
+    },
+    {
+     "id": 10,
+     "x": 156.41,
+     "y": 110.46,
+     "type": "bifurcation",
+     "confidence": 0.824,
+     "radius": 3.56,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 12
+     }
+    },
+    {
+     "id": 11,
+     "x": 51.68,
+     "y": 132.12,
+     "type": "bifurcation",
+     "confidence": 0.895,
+     "radius": 3.42,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 12
+     }
+    },
+    {
+     "id": 12,
+     "x": 312.78,
+     "y": 134.21,
+     "type": "bifurcation",
+     "confidence": 0.937,
+     "radius": 2.8,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 12
+     }
+    },
+    {
+     "id": 13,
+     "x": 22.59,
+     "y": 143.15,
+     "type": "bifurcation",
+     "confidence": 0.838,
+     "radius": 4.21,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 12
+     }
+    },
+    {
+     "id": 15,
+     "x": 250.56,
+     "y": 9.43,
+     "type": "complex",
+     "confidence": 0.413,
+     "radius": 5.39,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "complex": 7,
+      "crossover": 5
+     }
+    },
+    {
+     "id": 16,
+     "x": 361.43,
+     "y": 20.51,
+     "type": "crossover",
+     "confidence": 0.529,
+     "radius": 3.21,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "crossover": 9,
+      "complex": 3
+     }
+    },
+    {
+     "id": 17,
+     "x": 257.37,
+     "y": 46.41,
+     "type": "crossover",
+     "confidence": 0.896,
+     "radius": 3.69,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "crossover": 12
+     }
+    },
+    {
+     "id": 18,
+     "x": 307.38,
+     "y": 63.98,
+     "type": "complex",
+     "confidence": 0.329,
+     "radius": 4.33,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "crossover": 5,
+      "complex": 7
+     }
+    },
+    {
+     "id": 19,
+     "x": 281.8,
+     "y": 87.62,
+     "type": "complex",
+     "confidence": 0.55,
+     "radius": 5.43,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 11,
+     "type_votes": {
+      "complex": 12
+     }
+    },
+    {
+     "id": 20,
+     "x": 292.69,
+     "y": 17.78,
+     "type": "complex",
+     "confidence": 0.451,
+     "radius": 3.54,
+     "hits": 11,
+     "first_frame": 1,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 4,
+      "complex": 7
+     }
+    },
+    {
+     "id": 22,
+     "x": 209.07,
+     "y": 77.17,
+     "type": "bifurcation",
+     "confidence": 0.668,
+     "radius": 3.48,
+     "hits": 11,
+     "first_frame": 1,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 11
+     }
+    },
+    {
+     "id": 23,
+     "x": 306.22,
+     "y": 111.17,
+     "type": "bifurcation",
+     "confidence": 0.984,
+     "radius": 3.12,
+     "hits": 11,
+     "first_frame": 1,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 11
+     }
+    },
+    {
+     "id": 25,
+     "x": 363.23,
+     "y": 188.89,
+     "type": "crossover",
+     "confidence": 0.484,
+     "radius": 2.51,
+     "hits": 11,
+     "first_frame": 1,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 10
+     }
+    },
+    {
+     "id": 26,
+     "x": 358.25,
+     "y": 120.12,
+     "type": "crossover",
+     "confidence": 0.501,
+     "radius": 2.73,
+     "hits": 10,
+     "first_frame": 2,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 7
+     }
+    },
+    {
+     "id": 27,
+     "x": 326.99,
+     "y": 147.33,
+     "type": "bifurcation",
+     "confidence": 0.965,
+     "radius": 2.05,
+     "hits": 10,
+     "first_frame": 2,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 10
+     }
+    },
+    {
+     "id": 28,
+     "x": 100.86,
+     "y": 149.99,
+     "type": "crossover",
+     "confidence": 0.552,
+     "radius": 3.6,
+     "hits": 10,
+     "first_frame": 2,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 7
+     }
+    },
+    {
+     "id": 29,
+     "x": 303.05,
+     "y": 53.75,
+     "type": "bifurcation",
+     "confidence": 0.403,
+     "radius": 3.17,
+     "hits": 5,
+     "first_frame": 2,
+     "last_frame": 11,
+     "type_votes": {
+      "complex": 1,
+      "bifurcation": 3,
+      "crossover": 1
+     }
+    },
+    {
+     "id": 30,
+     "x": 257.45,
+     "y": 0.01,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 4.33,
+     "hits": 6,
+     "first_frame": 5,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 31,
+     "x": 222.0,
+     "y": 28.06,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 2.68,
+     "hits": 6,
+     "first_frame": 5,
+     "last_frame": 11,
+     "type_votes": {
+      "bifurcation": 6
+     }
+    },
+    {
+     "id": 33,
+     "x": 74.11,
+     "y": 139.44,
+     "type": "crossover",
+     "confidence": 0.395,
+     "radius": 3.13,
+     "hits": 7,
+     "first_frame": 5,
+     "last_frame": 11,
+     "type_votes": {
+      "crossover": 4,
+      "bifurcation": 2,
+      "complex": 1
+     }
+    }
+   ]
+  },
+  {
+   "frame": 12,
+   "tracks": [
+    {
+     "id": 0,
+     "x": 230.72,
+     "y": 26.5,
+     "type": "bifurcation",
+     "confidence": 0.931,
+     "radius": 2.55,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 13
+     }
+    },
+    {
+     "id": 1,
+     "x": 14.39,
+     "y": 35.69,
+     "type": "bifurcation",
+     "confidence": 0.956,
+     "radius": 2.7,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 13
+     }
+    },
+    {
+     "id": 2,
+     "x": 143.7,
+     "y": 39.55,
+     "type": "bifurcation",
+     "confidence": 0.678,
+     "radius": 5.6,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 13
+     }
+    },
+    {
+     "id": 3,
+     "x": 190.54,
+     "y": 46.7,
+     "type": "crossover",
+     "confidence": 0.494,
+     "radius": 2.9,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 6,
+      "crossover": 7
+     }
+    },
+    {
+     "id": 4,
+     "x": 314.9,
+     "y": 57.64,
+     "type": "complex",
+     "confidence": 0.484,
+     "radius": 3.52,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 3,
+      "complex": 8
+     }
+    },
+    {
+     "id": 5,
+     "x": 266.64,
+     "y": 80.62,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.83,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 13
+     }
+    },
+    {
+     "id": 6,
+     "x": 127.15,
+     "y": 91.32,
+     "type": "crossover",
+     "confidence": 0.697,
+     "radius": 5.6,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 2,
+      "crossover": 11
+     }
+    },
+    {
+     "id": 7,
+     "x": 89.32,
+     "y": 97.05,
+     "type": "bifurcation",
+     "confidence": 0.99,
+     "radius": 5.56,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 13
+     }
+    },
+    {
+     "id": 8,
+     "x": 63.91,
+     "y": 100.74,
+     "type": "bifurcation",
+     "confidence": 0.948,
+     "radius": 5.53,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 13
+     }
+    },
+    {
+     "id": 9,
+     "x": 38.18,
+     "y": 109.5,
+     "type": "bifurcation",
+     "confidence": 0.909,
+     "radius": 3.59,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 13
+     }
+    },
+    {
+     "id": 10,
+     "x": 156.51,
+     "y": 110.47,
+     "type": "bifurcation",
+     "confidence": 0.82,
+     "radius": 3.54,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 13
+     }
+    },
+    {
+     "id": 11,
+     "x": 51.66,
+     "y": 131.82,
+     "type": "bifurcation",
+     "confidence": 0.903,
+     "radius": 3.43,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 13
+     }
+    },
+    {
+     "id": 12,
+     "x": 312.79,
+     "y": 134.42,
+     "type": "bifurcation",
+     "confidence": 0.942,
+     "radius": 2.8,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 13
+     }
+    },
+    {
+     "id": 13,
+     "x": 22.78,
+     "y": 143.12,
+     "type": "bifurcation",
+     "confidence": 0.85,
+     "radius": 4.14,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 13
+     }
+    },
+    {
+     "id": 15,
+     "x": 250.73,
+     "y": 9.23,
+     "type": "complex",
+     "confidence": 0.421,
+     "radius": 5.43,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "complex": 8,
+      "crossover": 5
+     }
+    },
+    {
+     "id": 16,
+     "x": 361.33,
+     "y": 20.51,
+     "type": "crossover",
+     "confidence": 0.549,
+     "radius": 3.17,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "crossover": 10,
+      "complex": 3
+     }
+    },
+    {
+     "id": 17,
+     "x": 257.4,
+     "y": 46.43,
+     "type": "crossover",
+     "confidence": 0.895,
+     "radius": 3.68,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "crossover": 13
+     }
+    },
+    {
+     "id": 18,
+     "x": 307.26,
+     "y": 63.55,
+     "type": "complex",
+     "confidence": 0.322,
+     "radius": 4.34,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "crossover": 5,
+      "complex": 7,
+      "bifurcation": 1
+     }
+    },
+    {
+     "id": 19,
+     "x": 281.54,
+     "y": 87.62,
+     "type": "complex",
+     "confidence": 0.554,
+     "radius": 5.06,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 12,
+     "type_votes": {
+      "complex": 13
+     }
+    },
+    {
+     "id": 20,
+     "x": 292.32,
+     "y": 17.29,
+     "type": "complex",
+     "confidence": 0.428,
+     "radius": 3.44,
+     "hits": 12,
+     "first_frame": 1,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 5,
+      "complex": 7
+     }
+    },
+    {
+     "id": 21,
+     "x": 296.18,
+     "y": 23.63,
+     "type": "bifurcation",
+     "confidence": 0.661,
+     "radius": 3.09,
+     "hits": 5,
+     "first_frame": 1,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 4,
+      "crossover": 1
+     }
+    },
+    {
+     "id": 22,
+     "x": 209.07,
+     "y": 77.12,
+     "type": "bifurcation",
+     "confidence": 0.673,
+     "radius": 3.49,
+     "hits": 12,
+     "first_frame": 1,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 12
+     }
+    },
+    {
+     "id": 23,
+     "x": 306.27,
+     "y": 111.06,
+     "type": "bifurcation",
+     "confidence": 0.986,
+     "radius": 3.04,
+     "hits": 12,
+     "first_frame": 1,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 12
+     }
+    },
+    {
+     "id": 24,
+     "x": 68.03,
+     "y": 144.91,
+     "type": "bifurcation",
+     "confidence": 0.232,
+     "radius": 3.96,
+     "hits": 6,
+     "first_frame": 1,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 3,
+      "complex": 1,
+      "crossover": 2
+     }
+    },
+    {
+     "id": 25,
+     "x": 363.27,
+     "y": 188.94,
+     "type": "crossover",
+     "confidence": 0.503,
+     "radius": 2.4,
+     "hits": 12,
+     "first_frame": 1,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 11
+     }
+    },
+    {
+     "id": 26,
+     "x": 358.37,
+     "y": 120.11,
+     "type": "crossover",
+     "confidence": 0.472,
+     "radius": 2.71,
+     "hits": 11,
+     "first_frame": 2,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 4,
+      "crossover": 7
+     }
+    },
+    {
+     "id": 27,
+     "x": 327.08,
+     "y": 147.43,
+     "type": "bifurcation",
+     "confidence": 0.968,
+     "radius": 2.19,
+     "hits": 11,
+     "first_frame": 2,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 11
+     }
+    },
+    {
+     "id": 28,
+     "x": 100.75,
+     "y": 150.08,
+     "type": "crossover",
+     "confidence": 0.569,
+     "radius": 3.5,
+     "hits": 11,
+     "first_frame": 2,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 8
+     }
+    },
+    {
+     "id": 30,
+     "x": 257.23,
+     "y": -0.03,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 4.16,
+     "hits": 7,
+     "first_frame": 5,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 31,
+     "x": 222.0,
+     "y": 28.11,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 2.66,
+     "hits": 7,
+     "first_frame": 5,
+     "last_frame": 12,
+     "type_votes": {
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 32,
+     "x": 61.81,
+     "y": 151.87,
+     "type": "complex",
+     "confidence": 0.448,
+     "radius": 4.08,
+     "hits": 7,
+     "first_frame": 5,
+     "last_frame": 12,
+     "type_votes": {
+      "complex": 5,
+      "bifurcation": 2
+     }
+    }
+   ]
+  },
+  {
+   "frame": 13,
+   "tracks": [
+    {
+     "id": 0,
+     "x": 230.92,
+     "y": 26.44,
+     "type": "bifurcation",
+     "confidence": 0.936,
+     "radius": 2.5,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 14
+     }
+    },
+    {
+     "id": 1,
+     "x": 14.14,
+     "y": 35.55,
+     "type": "bifurcation",
+     "confidence": 0.945,
+     "radius": 2.65,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 14
+     }
+    },
+    {
+     "id": 2,
+     "x": 143.74,
+     "y": 39.63,
+     "type": "bifurcation",
+     "confidence": 0.68,
+     "radius": 5.6,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 14
+     }
+    },
+    {
+     "id": 3,
+     "x": 190.56,
+     "y": 46.62,
+     "type": "crossover",
+     "confidence": 0.523,
+     "radius": 2.86,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 6,
+      "crossover": 8
+     }
+    },
+    {
+     "id": 4,
+     "x": 314.96,
+     "y": 57.73,
+     "type": "complex",
+     "confidence": 0.495,
+     "radius": 3.59,
+     "hits": 12,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 3,
+      "complex": 9
+     }
+    },
+    {
+     "id": 5,
+     "x": 266.83,
+     "y": 80.78,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.77,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 14
+     }
+    },
+    {
+     "id": 6,
+     "x": 127.15,
+     "y": 91.16,
+     "type": "crossover",
+     "confidence": 0.705,
+     "radius": 5.6,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 2,
+      "crossover": 12
+     }
+    },
+    {
+     "id": 7,
+     "x": 89.35,
+     "y": 96.95,
+     "type": "bifurcation",
+     "confidence": 0.991,
+     "radius": 5.57,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 14
+     }
+    },
+    {
+     "id": 8,
+     "x": 63.89,
+     "y": 100.79,
+     "type": "bifurcation",
+     "confidence": 0.952,
+     "radius": 5.54,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 14
+     }
+    },
+    {
+     "id": 9,
+     "x": 38.29,
+     "y": 109.42,
+     "type": "bifurcation",
+     "confidence": 0.916,
+     "radius": 3.57,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 14
+     }
+    },
+    {
+     "id": 10,
+     "x": 156.55,
+     "y": 110.44,
+     "type": "bifurcation",
+     "confidence": 0.813,
+     "radius": 3.53,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 14
+     }
+    },
+    {
+     "id": 11,
+     "x": 51.75,
+     "y": 132.02,
+     "type": "bifurcation",
+     "confidence": 0.91,
+     "radius": 3.44,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 14
+     }
+    },
+    {
+     "id": 12,
+     "x": 312.75,
+     "y": 134.55,
+     "type": "bifurcation",
+     "confidence": 0.92,
+     "radius": 2.79,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 14
+     }
+    },
+    {
+     "id": 13,
+     "x": 22.93,
+     "y": 142.99,
+     "type": "bifurcation",
+     "confidence": 0.861,
+     "radius": 4.08,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 14
+     }
+    },
+    {
+     "id": 15,
+     "x": 250.9,
+     "y": 8.82,
+     "type": "complex",
+     "confidence": 0.436,
+     "radius": 5.08,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "complex": 9,
+      "crossover": 5
+     }
+    },
+    {
+     "id": 16,
+     "x": 361.34,
+     "y": 20.25,
+     "type": "crossover",
+     "confidence": 0.504,
+     "radius": 3.14,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "crossover": 10,
+      "complex": 4
+     }
+    },
+    {
+     "id": 17,
+     "x": 257.39,
+     "y": 46.32,
+     "type": "crossover",
+     "confidence": 0.897,
+     "radius": 3.68,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "crossover": 14
+     }
+    },
+    {
+     "id": 18,
+     "x": 307.14,
+     "y": 63.2,
+     "type": "complex",
+     "confidence": 0.313,
+     "radius": 4.45,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "crossover": 5,
+      "complex": 7,
+      "bifurcation": 2
+     }
+    },
+    {
+     "id": 19,
+     "x": 281.55,
+     "y": 87.48,
+     "type": "complex",
+     "confidence": 0.557,
+     "radius": 4.79,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 13,
+     "type_votes": {
+      "complex": 14
+     }
+    },
+    {
+     "id": 20,
+     "x": 291.88,
+     "y": 16.64,
+     "type": "complex",
+     "confidence": 0.406,
+     "radius": 3.35,
+     "hits": 13,
+     "first_frame": 1,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 6,
+      "complex": 7
+     }
+    },
+    {
+     "id": 21,
+     "x": 296.02,
+     "y": 23.51,
+     "type": "bifurcation",
+     "confidence": 0.563,
+     "radius": 3.07,
+     "hits": 6,
+     "first_frame": 1,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 4,
+      "crossover": 2
+     }
+    },
+    {
+     "id": 22,
+     "x": 208.99,
+     "y": 77.12,
+     "type": "bifurcation",
+     "confidence": 0.677,
+     "radius": 3.51,
+     "hits": 13,
+     "first_frame": 1,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 13
+     }
+    },
+    {
+     "id": 23,
+     "x": 306.48,
+     "y": 111.23,
+     "type": "bifurcation",
+     "confidence": 0.987,
+     "radius": 2.98,
+     "hits": 13,
+     "first_frame": 1,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 13
+     }
+    },
+    {
+     "id": 25,
+     "x": 363.57,
+     "y": 188.99,
+     "type": "crossover",
+     "confidence": 0.518,
+     "radius": 2.41,
+     "hits": 13,
+     "first_frame": 1,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 12
+     }
+    },
+    {
+     "id": 26,
+     "x": 358.52,
+     "y": 120.18,
+     "type": "crossover",
+     "confidence": 0.445,
+     "radius": 2.71,
+     "hits": 12,
+     "first_frame": 2,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 5,
+      "crossover": 7
+     }
+    },
+    {
+     "id": 27,
+     "x": 327.15,
+     "y": 147.51,
+     "type": "bifurcation",
+     "confidence": 0.971,
+     "radius": 2.23,
+     "hits": 12,
+     "first_frame": 2,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 12
+     }
+    },
+    {
+     "id": 28,
+     "x": 100.69,
+     "y": 150.11,
+     "type": "crossover",
+     "confidence": 0.583,
+     "radius": 3.42,
+     "hits": 12,
+     "first_frame": 2,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 9
+     }
+    },
+    {
+     "id": 29,
+     "x": 302.84,
+     "y": 53.44,
+     "type": "bifurcation",
+     "confidence": 0.33,
+     "radius": 3.14,
+     "hits": 6,
+     "first_frame": 2,
+     "last_frame": 13,
+     "type_votes": {
+      "complex": 2,
+      "bifurcation": 3,
+      "crossover": 1
+     }
+    },
+    {
+     "id": 31,
+     "x": 222.09,
+     "y": 27.97,
+     "type": "bifurcation",
+     "confidence": 0.855,
+     "radius": 2.67,
+     "hits": 8,
+     "first_frame": 5,
+     "last_frame": 13,
+     "type_votes": {
+      "bifurcation": 7,
+      "crossover": 1
+     }
+    },
+    {
+     "id": 32,
+     "x": 61.28,
+     "y": 152.11,
+     "type": "complex",
+     "confidence": 0.421,
+     "radius": 4.39,
+     "hits": 8,
+     "first_frame": 5,
+     "last_frame": 13,
+     "type_votes": {
+      "complex": 5,
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 33,
+     "x": 74.15,
+     "y": 140.27,
+     "type": "crossover",
+     "confidence": 0.34,
+     "radius": 3.12,
+     "hits": 8,
+     "first_frame": 5,
+     "last_frame": 13,
+     "type_votes": {
+      "crossover": 4,
+      "bifurcation": 2,
+      "complex": 2
+     }
+    }
+   ]
+  },
+  {
+   "frame": 14,
+   "tracks": [
+    {
+     "id": 0,
+     "x": 230.61,
+     "y": 26.49,
+     "type": "bifurcation",
+     "confidence": 0.94,
+     "radius": 2.45,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 15
+     }
+    },
+    {
+     "id": 1,
+     "x": 13.95,
+     "y": 35.4,
+     "type": "bifurcation",
+     "confidence": 0.938,
+     "radius": 2.7,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 15
+     }
+    },
+    {
+     "id": 2,
+     "x": 143.7,
+     "y": 39.82,
+     "type": "bifurcation",
+     "confidence": 0.681,
+     "radius": 5.6,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 15
+     }
+    },
+    {
+     "id": 3,
+     "x": 190.57,
+     "y": 46.56,
+     "type": "crossover",
+     "confidence": 0.547,
+     "radius": 2.88,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 6,
+      "crossover": 9
+     }
+    },
+    {
+     "id": 4,
+     "x": 315.01,
+     "y": 57.8,
+     "type": "complex",
+     "confidence": 0.504,
+     "radius": 3.63,
+     "hits": 13,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 3,
+      "complex": 10
+     }
+    },
+    {
+     "id": 5,
+     "x": 266.93,
+     "y": 80.81,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.76,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 15
+     }
+    },
+    {
+     "id": 6,
+     "x": 127.01,
+     "y": 91.32,
+     "type": "crossover",
+     "confidence": 0.708,
+     "radius": 5.6,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 2,
+      "crossover": 13
+     }
+    },
+    {
+     "id": 7,
+     "x": 89.39,
+     "y": 96.85,
+     "type": "bifurcation",
+     "confidence": 0.992,
+     "radius": 5.58,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 15
+     }
+    },
+    {
+     "id": 8,
+     "x": 63.86,
+     "y": 100.8,
+     "type": "bifurcation",
+     "confidence": 0.955,
+     "radius": 5.56,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 15
+     }
+    },
+    {
+     "id": 9,
+     "x": 38.26,
+     "y": 109.43,
+     "type": "bifurcation",
+     "confidence": 0.921,
+     "radius": 3.57,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 15
+     }
+    },
+    {
+     "id": 10,
+     "x": 156.6,
+     "y": 110.49,
+     "type": "bifurcation",
+     "confidence": 0.81,
+     "radius": 3.51,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 15
+     }
+    },
+    {
+     "id": 12,
+     "x": 312.74,
+     "y": 134.34,
+     "type": "bifurcation",
+     "confidence": 0.925,
+     "radius": 2.84,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 15
+     }
+    },
+    {
+     "id": 13,
+     "x": 23.07,
+     "y": 142.94,
+     "type": "bifurcation",
+     "confidence": 0.87,
+     "radius": 4.02,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 15
+     }
+    },
+    {
+     "id": 14,
+     "x": 255.54,
+     "y": 7.05,
+     "type": "bifurcation",
+     "confidence": 0.528,
+     "radius": 5.6,
+     "hits": 10,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "complex": 3,
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 15,
+     "x": 250.82,
+     "y": 8.88,
+     "type": "complex",
+     "confidence": 0.449,
+     "radius": 5.19,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "complex": 10,
+      "crossover": 5
+     }
+    },
+    {
+     "id": 16,
+     "x": 361.37,
+     "y": 20.01,
+     "type": "crossover",
+     "confidence": 0.465,
+     "radius": 3.11,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "crossover": 10,
+      "complex": 5
+     }
+    },
+    {
+     "id": 17,
+     "x": 257.37,
+     "y": 46.11,
+     "type": "crossover",
+     "confidence": 0.899,
+     "radius": 3.67,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "crossover": 15
+     }
+    },
+    {
+     "id": 18,
+     "x": 307.01,
+     "y": 62.94,
+     "type": "complex",
+     "confidence": 0.304,
+     "radius": 4.53,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "crossover": 5,
+      "complex": 7,
+      "bifurcation": 3
+     }
+    },
+    {
+     "id": 19,
+     "x": 281.57,
+     "y": 87.37,
+     "type": "complex",
+     "confidence": 0.56,
+     "radius": 4.57,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 14,
+     "type_votes": {
+      "complex": 15
+     }
+    },
+    {
+     "id": 20,
+     "x": 291.74,
+     "y": 16.27,
+     "type": "bifurcation",
+     "confidence": 0.386,
+     "radius": 3.54,
+     "hits": 14,
+     "first_frame": 1,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 7,
+      "complex": 7
+     }
+    },
+    {
+     "id": 21,
+     "x": 295.79,
+     "y": 23.55,
+     "type": "bifurcation",
+     "confidence": 0.583,
+     "radius": 3.04,
+     "hits": 7,
+     "first_frame": 1,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 5,
+      "crossover": 2
+     }
+    },
+    {
+     "id": 22,
+     "x": 208.63,
+     "y": 77.39,
+     "type": "bifurcation",
+     "confidence": 0.677,
+     "radius": 3.5,
+     "hits": 14,
+     "first_frame": 1,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 14
+     }
+    },
+    {
+     "id": 23,
+     "x": 306.46,
+     "y": 111.11,
+     "type": "bifurcation",
+     "confidence": 0.988,
+     "radius": 2.96,
+     "hits": 14,
+     "first_frame": 1,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 14
+     }
+    },
+    {
+     "id": 25,
+     "x": 363.69,
+     "y": 189.11,
+     "type": "crossover",
+     "confidence": 0.528,
+     "radius": 2.49,
+     "hits": 14,
+     "first_frame": 1,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 13
+     }
+    },
+    {
+     "id": 26,
+     "x": 358.53,
+     "y": 120.19,
+     "type": "crossover",
+     "confidence": 0.421,
+     "radius": 2.72,
+     "hits": 13,
+     "first_frame": 2,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 6,
+      "crossover": 7
+     }
+    },
+    {
+     "id": 27,
+     "x": 327.11,
+     "y": 147.37,
+     "type": "bifurcation",
+     "confidence": 0.973,
+     "radius": 2.29,
+     "hits": 13,
+     "first_frame": 2,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 13
+     }
+    },
+    {
+     "id": 28,
+     "x": 100.55,
+     "y": 150.2,
+     "type": "crossover",
+     "confidence": 0.594,
+     "radius": 3.37,
+     "hits": 13,
+     "first_frame": 2,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 10
+     }
+    },
+    {
+     "id": 31,
+     "x": 221.99,
+     "y": 27.99,
+     "type": "bifurcation",
+     "confidence": 0.871,
+     "radius": 2.7,
+     "hits": 9,
+     "first_frame": 5,
+     "last_frame": 14,
+     "type_votes": {
+      "bifurcation": 8,
+      "crossover": 1
+     }
+    },
+    {
+     "id": 32,
+     "x": 61.45,
+     "y": 152.54,
+     "type": "complex",
+     "confidence": 0.37,
+     "radius": 4.63,
+     "hits": 9,
+     "first_frame": 5,
+     "last_frame": 14,
+     "type_votes": {
+      "complex": 5,
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 33,
+     "x": 74.5,
+     "y": 140.59,
+     "type": "crossover",
+     "confidence": 0.298,
+     "radius": 3.09,
+     "hits": 9,
+     "first_frame": 5,
+     "last_frame": 14,
+     "type_votes": {
+      "crossover": 4,
+      "bifurcation": 2,
+      "complex": 3
+     }
+    },
+    {
+     "id": 34,
+     "x": 305.52,
+     "y": 69.32,
+     "type": "complex",
+     "confidence": 0.385,
+     "radius": 3.5,
+     "hits": 3,
+     "first_frame": 12,
+     "last_frame": 14,
+     "type_votes": {
+      "complex": 2,
+      "crossover": 1
+     }
+    }
+   ]
+  },
+  {
+   "frame": 15,
+   "tracks": [
+    {
+     "id": 0,
+     "x": 230.46,
+     "y": 26.51,
+     "type": "bifurcation",
+     "confidence": 0.944,
+     "radius": 2.48,
+     "hits": 16,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 16
+     }
+    },
+    {
+     "id": 1,
+     "x": 13.88,
+     "y": 35.49,
+     "type": "bifurcation",
+     "confidence": 0.925,
+     "radius": 2.71,
+     "hits": 16,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 16
+     }
+    },
+    {
+     "id": 2,
+     "x": 143.62,
+     "y": 40.07,
+     "type": "bifurcation",
+     "confidence": 0.68,
+     "radius": 5.6,
+     "hits": 16,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 16
+     }
+    },
+    {
+     "id": 3,
+     "x": 190.53,
+     "y": 46.59,
+     "type": "crossover",
+     "confidence": 0.569,
+     "radius": 2.86,
+     "hits": 16,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 6,
+      "crossover": 10
+     }
+    },
+    {
+     "id": 4,
+     "x": 314.97,
+     "y": 57.71,
+     "type": "complex",
+     "confidence": 0.512,
+     "radius": 3.67,
+     "hits": 14,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 3,
+      "complex": 11
+     }
+    },
+    {
+     "id": 5,
+     "x": 266.9,
+     "y": 80.79,
+     "type": "bifurcation",
+     "confidence": 1.0,
+     "radius": 3.77,
+     "hits": 16,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 16
+     }
+    },
+    {
+     "id": 6,
+     "x": 127.01,
+     "y": 91.44,
+     "type": "crossover",
+     "confidence": 0.712,
+     "radius": 5.6,
+     "hits": 16,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 2,
+      "crossover": 14
+     }
+    },
+    {
+     "id": 7,
+     "x": 89.58,
+     "y": 96.91,
+     "type": "bifurcation",
+     "confidence": 0.992,
+     "radius": 5.58,
+     "hits": 16,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 16
+     }
+    },
+    {
+     "id": 8,
+     "x": 63.88,
+     "y": 100.81,
+     "type": "bifurcation",
+     "confidence": 0.958,
+     "radius": 5.56,
+     "hits": 16,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 16
+     }
+    },
+    {
+     "id": 9,
+     "x": 38.36,
+     "y": 109.41,
+     "type": "bifurcation",
+     "confidence": 0.926,
+     "radius": 3.57,
+     "hits": 16,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 16
+     }
+    },
+    {
+     "id": 10,
+     "x": 156.64,
+     "y": 110.54,
+     "type": "bifurcation",
+     "confidence": 0.808,
+     "radius": 3.5,
+     "hits": 16,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 16
+     }
+    },
+    {
+     "id": 11,
+     "x": 51.7,
+     "y": 131.63,
+     "type": "bifurcation",
+     "confidence": 0.916,
+     "radius": 3.44,
+     "hits": 15,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 15
+     }
+    },
+    {
+     "id": 12,
+     "x": 312.79,
+     "y": 134.53,
+     "type": "bifurcation",
+     "confidence": 0.912,
+     "radius": 2.79,
+     "hits": 16,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 16
+     }
+    },
+    {
+     "id": 13,
+     "x": 23.0,
+     "y": 142.91,
+     "type": "bifurcation",
+     "confidence": 0.878,
+     "radius": 3.98,
+     "hits": 16,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 16
+     }
+    },
+    {
+     "id": 14,
+     "x": 255.44,
+     "y": 6.42,
+     "type": "bifurcation",
+     "confidence": 0.471,
+     "radius": 5.6,
+     "hits": 11,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "complex": 4,
+      "bifurcation": 7
+     }
+    },
+    {
+     "id": 15,
+     "x": 250.75,
+     "y": 8.91,
+     "type": "complex",
+     "confidence": 0.46,
+     "radius": 5.27,
+     "hits": 16,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "complex": 11,
+      "crossover": 5
+     }
+    },
+    {
+     "id": 16,
+     "x": 361.51,
+     "y": 20.13,
+     "type": "crossover",
+     "confidence": 0.432,
+     "radius": 3.13,
+     "hits": 16,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "crossover": 10,
+      "complex": 6
+     }
+    },
+    {
+     "id": 17,
+     "x": 257.39,
+     "y": 46.13,
+     "type": "crossover",
+     "confidence": 0.9,
+     "radius": 3.68,
+     "hits": 16,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "crossover": 16
+     }
+    },
+    {
+     "id": 18,
+     "x": 307.07,
+     "y": 62.74,
+     "type": "complex",
+     "confidence": 0.295,
+     "radius": 4.61,
+     "hits": 16,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "crossover": 5,
+      "complex": 7,
+      "bifurcation": 4
+     }
+    },
+    {
+     "id": 19,
+     "x": 281.31,
+     "y": 87.3,
+     "type": "complex",
+     "confidence": 0.55,
+     "radius": 4.77,
+     "hits": 16,
+     "first_frame": 0,
+     "last_frame": 15,
+     "type_votes": {
+      "complex": 16
+     }
+    },
+    {
+     "id": 20,
+     "x": 292.13,
+     "y": 16.8,
+     "type": "complex",
+     "confidence": 0.405,
+     "radius": 3.49,
+     "hits": 15,
+     "first_frame": 1,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 7,
+      "complex": 8
+     }
+    },
+    {
+     "id": 22,
+     "x": 208.56,
+     "y": 77.48,
+     "type": "bifurcation",
+     "confidence": 0.675,
+     "radius": 3.49,
+     "hits": 15,
+     "first_frame": 1,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 15
+     }
+    },
+    {
+     "id": 23,
+     "x": 306.65,
+     "y": 111.37,
+     "type": "bifurcation",
+     "confidence": 0.988,
+     "radius": 2.88,
+     "hits": 15,
+     "first_frame": 1,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 15
+     }
+    },
+    {
+     "id": 25,
+     "x": 363.38,
+     "y": 189.12,
+     "type": "crossover",
+     "confidence": 0.534,
+     "radius": 2.4,
+     "hits": 15,
+     "first_frame": 1,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 1,
+      "crossover": 14
+     }
+    },
+    {
+     "id": 26,
+     "x": 358.62,
+     "y": 120.17,
+     "type": "crossover",
+     "confidence": 0.444,
+     "radius": 2.73,
+     "hits": 14,
+     "first_frame": 2,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 6,
+      "crossover": 8
+     }
+    },
+    {
+     "id": 27,
+     "x": 327.08,
+     "y": 147.26,
+     "type": "bifurcation",
+     "confidence": 0.975,
+     "radius": 2.29,
+     "hits": 14,
+     "first_frame": 2,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 14
+     }
+    },
+    {
+     "id": 28,
+     "x": 100.48,
+     "y": 150.29,
+     "type": "crossover",
+     "confidence": 0.602,
+     "radius": 3.32,
+     "hits": 14,
+     "first_frame": 2,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 3,
+      "crossover": 11
+     }
+    },
+    {
+     "id": 29,
+     "x": 302.61,
+     "y": 53.27,
+     "type": "bifurcation",
+     "confidence": 0.276,
+     "radius": 3.12,
+     "hits": 7,
+     "first_frame": 2,
+     "last_frame": 15,
+     "type_votes": {
+      "complex": 2,
+      "bifurcation": 3,
+      "crossover": 2
+     }
+    },
+    {
+     "id": 31,
+     "x": 221.93,
+     "y": 28.08,
+     "type": "bifurcation",
+     "confidence": 0.884,
+     "radius": 2.7,
+     "hits": 10,
+     "first_frame": 5,
+     "last_frame": 15,
+     "type_votes": {
+      "bifurcation": 9,
+      "crossover": 1
+     }
+    },
+    {
+     "id": 32,
+     "x": 60.99,
+     "y": 152.6,
+     "type": "complex",
+     "confidence": 0.35,
+     "radius": 4.82,
+     "hits": 10,
+     "first_frame": 5,
+     "last_frame": 15,
+     "type_votes": {
+      "complex": 5,
+      "bifurcation": 5
+     }
+    },
+    {
+     "id": 33,
+     "x": 74.41,
+     "y": 140.97,
+     "type": "crossover",
+     "confidence": 0.266,
+     "radius": 3.08,
+     "hits": 10,
+     "first_frame": 5,
+     "last_frame": 15,
+     "type_votes": {
+      "crossover": 4,
+      "bifurcation": 2,
+      "complex": 4
+     }
+    },
+    {
+     "id": 34,
+     "x": 305.65,
+     "y": 69.18,
+     "type": "complex",
+     "confidence": 0.437,
+     "radius": 3.57,
+     "hits": 4,
+     "first_frame": 12,
+     "last_frame": 15,
+     "type_votes": {
+      "complex": 3,
+      "crossover": 1
+     }
+    }
+   ]
+  }
+ ]
+}
