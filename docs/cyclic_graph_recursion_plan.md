@@ -107,21 +107,23 @@ Two radii, on purpose: `R_ridge` from the scale competition and `R_od` from the 
 
 Edges are drawn into their own small canvases, so that a proposal that touches two edges re-renders two canvases and the residual is updated locally. That is what makes several rounds of section 39 affordable.
 
-**The residual**: `residual = density_mean − rendered`, in units of the local noise (section 19's contrast layer gives it), on valid pixels. Three readings of it:
+**The residual**: `residual = density_mean − rendered`, in units of the local noise (section 19's contrast layer gives it), on valid pixels. It is only ever the residual of the whole network, never of one vessel drawn alone, and it is read in three places:
 
-1. **Along every edge**, sampled on the centerline and on two lines at ±2R: a profile `residual_along(edge)`. Positive = darkness the model does not explain; negative = darkness the model drew that is not there.
-2. **At every vertex**, within its core: the sign and size of the residual at the core says whether the composition was right. Positive core under a max composition: the arms were two vessels after all (they add). Negative core under a sum: one lumen (they do not add).
-3. **Off the graph**: the residual's own ridges (the hypercolumns of section 20 run on the residual) are candidate vessels nobody has yet.
+1. **At every vertex**, within its core. Nothing was fitted inside a core (the arms are read on the ring outside it) and the composition is a discrete choice, so the residual there is a genuine test of the reading. Positive core under a max composition: the arms were two vessels after all (they add). Negative core under a sum: one lumen (they do not add).
+2. **Off the graph**: the residual's own ridges (the hypercolumns of section 20 run on the residual) are candidate vessels nobody has yet. The thick vessels are gone from the residual, so a thin vessel at a thick one's flank, which the scale competition and the flank inhibition suppress in the data, stands alone against noise here. The residual is a better place to look for thin vessels than the data.
+3. **Along every edge**, for what the fit could not absorb. The per-window fit of R and κ reproduces the data under the edge at any scale longer than the knot spacing, so along an edge the residual holds only features shorter than that (a crossing vessel's bump, about 2R of the crossing vessel), cross-profiles that one blurred cylinder cannot make (a second peak beside the edge), and the two ends, which are cores. A vessel underdrawn or overdrawn along its whole length does not appear: the fit raised or lowered κ.
 
-The interpretation table you gave becomes the residual profile's classifier:
+The interpretation table, restricted to what the residual can carry:
 
-| residual along an edge | reading |
+| residual | reading |
 |---|---|
-| positive along the whole edge | the edge is underdrawn: κ or R too small (refit), or a second vessel runs along it (twin, or a deeper vessel) |
-| negative along the whole edge | overdrawn: a stub drawn as a vessel, or a halo counted as a lumen |
-| good in the middle, off at both ends | the vertices are mis-modelled: wrong composition, wrong core radius, or a missing arm |
-| off at one end only | that end: a junction misread, or a free end that is a gap |
-| a bump in the middle | a crossing vessel is missing there: look for a ridge through the bump in the residual's field |
+| wrong sign at a core | the composition is wrong: sum where one lumen, or max where two vessels (step 4) |
+| off at both ends of an edge, good between | the vertices are mis-modelled: wrong composition, wrong core radius, or a missing arm (step 3) |
+| off at one end only | that end: a junction misread, or a free end that is a gap (steps 1 and 2) |
+| a bump on an edge, continued by ridges off the graph on either side | a crossing vessel is missing: the residual's field finds its two tails and the association field links them through (step 5) |
+| a ridge off the graph, beside or away from any edge | a vessel nobody has: a thin one at a thick one's flank, a faint one, or the tails of a shallow crossing (step 5) |
+
+**What is not looked for, and why.** A second vessel lying exactly along an existing edge for a stretch, with nothing emerging at either end, leaves no trace in the residual: the fit absorbed it into κ, and no filter finds a line in a flat picture. Holding κ fixed per edge would leave a ridge on top of the edge, but every edge leaves some line-shaped residual of its own (the cylinder profile is never exactly right), so that ridge would be confounded with shape misfit on every edge of the graph. The rule adopted: **a new vessel is proposed only on evidence outside the pixels of existing edges**, the residual's ridges off the graph, including the tails of a shallow crossing. Where there is no such evidence, the vessel is not added, and the cost is accepted as a stated limit: a perfectly collinear overlap with no visible tails is missed by the still. The kymograph could still see it (two families of streaks where one vessel has one), and that stays open as a later, separate test; it does not add a vessel on its own.
 
 **Shadows and big vessels.** Thick vessels in the real burst carry a broad halo. It is fitted first, biggest vessels first, as the offset c and the halo (h, σ_h) of their profiles, before anything thin is judged: a thin vessel inside a big one's halo is otherwise read as overdrawn.
 
@@ -153,7 +155,7 @@ with `PARAMETER_COST` = ln(number of valid pixels the proposal touches) (the BIC
 
 **Step 4, fusing lumens.** At every vertex whose composition is in doubt (the core residual has the wrong sign for its composition by more than `Z_PASS`): render the other way (sum ↔ max) and keep the better. Where a halo makes the density test weak (a thin vessel inside a thick one's halo), the decision is left to the radius continuity (one lumen has one R_od across the core; two overlapping vessels have two) and to flow (one speed and direction through the core, or two). The reading's confidence takes the Δχ² of the two renderings as one more likelihood ratio.
 
-**Step 5, missing vessels.** The residual's own field (section 20's hypercolumns on the residual) is strung into chains (section 22); every chain longer than one field length and above `T_HIGH` is proposed as an edge, joined to the graph where it meets it, accepted by Δχ². This is where a vessel that the static score never saw (a faint one under a thick one's halo, or one the consolidation would have dropped) comes in, with the lowest confidence of all, and is then subject to every step above in the next round.
+**Step 5, missing vessels.** The residual's own field (section 20's hypercolumns on the residual) is strung into chains (section 22); every chain longer than one field length and above `T_HIGH` that lies off the existing edges is proposed as an edge, joined to the graph where it meets it, accepted by Δχ². This is where a vessel that the static score never saw (a faint one under a thick one's halo, a thin one at a thick one's flank, the tails of a shallow crossing, or one the consolidation would have dropped) comes in, with the lowest confidence of all, and is then subject to every step above in the next round. The rule of section 38 holds: evidence outside the pixels of existing edges adds a vessel; a residual on an existing edge alone adds none, whatever its shape, and the miss is accepted and counted on the harness (section 35's generator can make the collinear case, so the count is known).
 
 **Step 6, the flux network** (section 40), run once per round, which sends its findings back up: inconsistent fluxes lower the confidence of the measurements, persistent imbalances at a vertex flag a missing arm (back to step 3) or a misread (back to step 2 or 4), and flux at a free end ranks the bridges (step 1).
 
