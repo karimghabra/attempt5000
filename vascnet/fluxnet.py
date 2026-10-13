@@ -12,8 +12,12 @@ a share `sigma_flux` of the lumen's mean absolute flux (the balance is soft: den
 flow exactly). Measurements are reweighted iteratively, so that one wrong speed does not spoil a whole tree.
 
 What comes out, per edge: a flux (measured or inferred) with its sigma, hence a direction with a confidence;
-per lumen: its imbalance in sigmas; and the chi-square of the fit, so that two readings of one junction can be
-compared by how well the network balances under each.
+per lumen: its imbalance in sigmas, measured with the network solved without that lumen's own balance (an
+imbalance read from a solve that enforced the balance is pulled towards zero by construction); and the chi-square
+of the fit. The imbalance is meant to enter the junction reading as one test among its others (the notebook's
+section 27 scores every partition by its tests and takes the most specific reading that fits); the chi-squares of
+two readings are compared only between readings with the same number of balances, because a reading with fewer
+balances always fits at least as well.
 """
 
 from __future__ import annotations
@@ -32,8 +36,9 @@ class FluxSolution:
     measured: np.ndarray          # bool per edge: a speed was read on it
     weight: np.ndarray            # the robust weight each measurement ended with (0..1); 0 where not measured
     flipped: np.ndarray           # bool per edge: the network found the measured direction wrong and turned it round
-    imbalance: np.ndarray         # per lumen: the net flux of the measurements (turned round where flipped), in
-                                  # sigmas of what the balance may miss
+    imbalance: np.ndarray         # per lumen: its net flux with the network solved without this lumen's own
+                                  # balance, in sigmas of what the balance may miss plus the prediction's spread;
+                                  # NaN where nothing but its own balance says what its edges carry
     chi2: float                   # the fit: sum of weighted squared misfits plus the balances' squared misses
     lumens: list[Lumen] = field(default_factory=list)
 
@@ -59,7 +64,8 @@ def _lumen_scale(lumen: Lumen, q_hat: np.ndarray, measured: np.ndarray, floor: f
 def _solve_linear(q_hat, sigma_hat, measured, weight, balance, scale, reached):
     """One weighted least-squares solve: minimise |W (q - q_hat)|^2 + |B q / scale|^2. The normal equations are
     (W^2 + B^T B) q = W^2 q_hat; the covariance is the inverse of that matrix. Returns q, the covariance (NaN off
-    the reached edges) and the measurements' leverages h (how much of its own measurement each edge's flux is)."""
+    the reached edges), the measurements' leverages h (how much of its own measurement each edge's flux is) and the
+    balances' leverages (how much of its own balance each lumen's net flux is)."""
     count = len(q_hat)
     precision = np.where(measured, weight / np.maximum(sigma_hat, 1e-12) ** 2, 0.0)
     normal = np.diag(precision) + (balance / scale[:, None]).T @ (balance / scale[:, None])
@@ -76,7 +82,9 @@ def _solve_linear(q_hat, sigma_hat, measured, weight, balance, scale, reached):
         q[inside] = inverse @ right[inside]
         covariance[np.ix_(inside, inside)] = inverse
     leverage = np.where(measured, precision * np.nan_to_num(np.diag(covariance)), 0.0)
-    return q, covariance, leverage
+    rows = balance / scale[:, None]
+    row_leverage = np.einsum("ij,jk,ik->i", rows, np.nan_to_num(covariance), rows) if len(rows) else np.zeros(0)
+    return q, covariance, leverage, row_leverage
 
 
 def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lumen], sigma_flux: float = 0.45,
@@ -115,7 +123,7 @@ def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lu
     prior = np.log(max(p, 1e-9) / max(1 - p, 1e-9))  # log odds that a direction is right, before the network speaks
     # 1. the signs: turn a measurement round where the rest of the network says so more strongly than p says not
     for _ in range(count + 1):
-        q, covariance, leverage = _solve_linear(q_hat, sigma_hat, measured, weight, balance, scale, reached)
+        q, covariance, leverage, row_leverage = _solve_linear(q_hat, sigma_hat, measured, weight, balance, scale, reached)
         changed = False
         for edge in np.flatnonzero(measured):
             if 1 - leverage[edge] < 1e-6:
@@ -132,14 +140,20 @@ def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lu
             break
     # 2. the sizes: Huber reweighting of the measurements
     for _ in range(max(robust_rounds, 1)):
-        q, covariance, leverage = _solve_linear(q_hat, sigma_hat, measured, weight, balance, scale, reached)
+        q, covariance, leverage, row_leverage = _solve_linear(q_hat, sigma_hat, measured, weight, balance, scale, reached)
         misfit = np.where(measured, np.abs(q - np.where(measured, q_hat, 0.0)) / np.maximum(sigma_hat, 1e-12), 0.0)
         new_weight = np.where(measured, np.where(misfit > huber, huber / np.maximum(misfit, 1e-12), 1.0), 0.0)
         if np.allclose(new_weight, weight):
             break
         weight = new_weight
     sigma = np.where(reached, np.sqrt(np.maximum(np.nan_to_num(np.diag(covariance)), 0.0)), np.inf)
-    imbalance = (balance @ np.where(measured, q_hat, q)) / scale
+    # Leave-one-lumen-out: the fitted net flux of a balance row, divided by its own scale and by sqrt(1 - h) with h
+    # the row's leverage, is what the rest of the network predicts for that lumen when its balance is not enforced,
+    # in sigmas of (what the balance may miss, plus the prediction's spread). Where the leverage is 1 nothing but the
+    # lumen's own balance says what its edges carry, and there is no test to make.
+    left = 1 - row_leverage
+    with np.errstate(divide="ignore", invalid="ignore"):
+        imbalance = np.where(left > 1e-6, (balance @ q) / scale / np.sqrt(np.maximum(left, 1e-12)), np.nan)
     chi2 = float(np.sum(np.where(measured, weight * ((q - np.where(measured, q_hat, 0.0)) / np.maximum(sigma_hat, 1e-12)) ** 2, 0.0))
                  + np.sum(((balance @ q) / scale) ** 2) + flipped.sum() * 2 * prior)  # a flip costs what p says it costs
     return FluxSolution(q=q, sigma=sigma, measured=measured, weight=weight, flipped=flipped, imbalance=imbalance,
@@ -196,9 +210,14 @@ def directed_cycles(edges: list[tuple[int, int]], direction: np.ndarray) -> list
 
 
 def compare_readings(q_hat, sigma_hat, lumens_a: list[Lumen], lumens_b: list[Lumen], sigma_flux=0.45) -> float:
-    """The flux's evidence between two readings of one or more junctions: chi2 under reading B minus chi2 under
-    reading A. Positive: A balances better. Each is half the log-likelihood ratio in favour of A (for Gaussian
-    misfits), so it adds to the directions' ratio of the notebook's section 33 directly."""
+    """The flux's evidence between two readings that have the same number of balances: chi2 under reading B minus
+    chi2 under reading A. Positive: A balances better. Each is half the log-likelihood ratio in favour of A (for
+    Gaussian misfits). Readings with different numbers of balances are refused (ValueError): the one with fewer
+    always fits at least as well, so the difference would only say which is looser. Between such readings the
+    imbalances are tests, and the junction reading takes the most specific reading that fits (section 27)."""
+    if len(lumens_a) != len(lumens_b):
+        raise ValueError(f"readings with {len(lumens_a)} and {len(lumens_b)} balances cannot be compared by chi-square: "
+                         "the looser one always fits at least as well; use the imbalances as tests instead")
     a = solve_flux_network(q_hat, sigma_hat, lumens_a, sigma_flux)
     b = solve_flux_network(q_hat, sigma_hat, lumens_b, sigma_flux)
     return b.chi2 - a.chi2
