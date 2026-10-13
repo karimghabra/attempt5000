@@ -8,20 +8,31 @@ vessel passing through: one group of two), and what comes into a lumen leaves it
     sum over the lumen's arms of  s * q  =  0,     s = +1 where the edge's points run out of the vertex, -1 in.
 
 The solve minimises  sum (q - q_hat)^2 / sigma^2  over the measured edges, with every balance allowed to miss by
-a share `sigma_flux` of the lumen's mean absolute flux (the balance is soft: density x velocity is not red-cell
-flow exactly). Measurements are reweighted iteratively, so that one wrong speed does not spoil a whole tree.
+a share `sigma_flux` of the sum of the absolute fluxes through the lumen (the notebook's SIGMA_FLUX, in the same
+unit as its per-junction flux test). The balance is soft because density x velocity is not red-cell flow exactly.
 
-What comes out, per edge: a flux (measured or inferred) with its sigma, hence a direction with a confidence;
-per lumen: its imbalance in sigmas, measured with the network solved without that lumen's own balance (an
-imbalance read from a solve that enforced the balance is pulled towards zero by construction); and the chi-square
-of the fit. The imbalance is meant to enter the junction reading as one test among its others (the notebook's
-section 27 scores every partition by its tests and takes the most specific reading that fits); the chi-squares of
-two readings are compared only between readings with the same number of balances, because a reading with fewer
-balances always fits at least as well.
+Three things are done with the one solve, all from its covariance C:
+
+- the signs: a wrong direction is a flipped sign, not noise. Within every lumen, every set of its measured arms is
+  a proposal to turn those measurements round; the change of the minimised chi-square under a proposal is in
+  closed form from C, with a cost of 2 ln(p / (1 - p)) per turned measurement (p: the share of directions that are
+  right, the notebook's section 33). The best proposal is applied while one lowers the total. A set within a lumen
+  is one move, so two wrong arms at one junction are turned together, where turning one at a time would turn the
+  right ones instead.
+- the sizes: Huber weights on the balance residuals (a lumen with a missing arm must not bend its neighbours) and
+  on the measurement misfits; and per measurement the studentised residual against what the rest of the network
+  predicts for it (the leave-one-out identity), which is the wrong-speed detector.
+- the tests: per lumen, its imbalance with its own balance not enforced; and for a vertex, every candidate lumen
+  of every candidate reading scored from one leave-one-vertex-out solve (a rank-k update of C), so that the
+  junction reading can take the most specific reading whose tests fit (the notebook's section 27).
+
+The chi-squares of two readings are compared only between readings with the same number of balances: one with
+fewer always fits at least as well. Flips and directed cycles are reported, never counted as measures of p.
 """
 
 from __future__ import annotations
 
+import itertools
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -33,14 +44,23 @@ Lumen = tuple[tuple[int, int], ...]  # ((edge, sign), ...): the arms of one lume
 class FluxSolution:
     q: np.ndarray                 # flux per edge, signed along the edge's points
     sigma: np.ndarray             # its sigma per edge (inf for an edge no balance reaches and no speed was read on)
+    covariance: np.ndarray        # the solve's covariance of q (NaN off the reached edges)
     measured: np.ndarray          # bool per edge: a speed was read on it
+    q_hat: np.ndarray             # the measurements as used: turned round where flipped; NaN where not measured
     weight: np.ndarray            # the robust weight each measurement ended with (0..1); 0 where not measured
-    flipped: np.ndarray           # bool per edge: the network found the measured direction wrong and turned it round
-    imbalance: np.ndarray         # per lumen: its net flux with the network solved without this lumen's own
-                                  # balance, in sigmas of what the balance may miss plus the prediction's spread;
-                                  # NaN where nothing but its own balance says what its edges carry
-    chi2: float                   # the fit: sum of weighted squared misfits plus the balances' squared misses
+    flipped: np.ndarray           # bool per edge: the network turned the measured direction round
+    forced: np.ndarray            # per lumen: how many flips it took to make its measured pattern possible (all
+                                  # in or all out cannot be); evidence against the reading that made the lumen
+    studentised: np.ndarray       # per measurement: (q_hat - what the rest of the network predicts) / its spread;
+                                  # 0 where not measured or where nothing else reaches the edge
+    scale: np.ndarray             # per lumen: what its balance may miss (sigma_flux x the sum of |q| through it)
+    balance_weight: np.ndarray    # per lumen: the robust weight its balance ended with
+    imbalance: np.ndarray         # per lumen: its net flux with its own balance not enforced, in sigmas of what
+                                  # the balance may miss plus the prediction's spread; NaN where nothing but its
+                                  # own balance says what its edges carry
+    chi2: float                   # the robust fit: Huber losses of the misfits and the balances, plus the flips' cost
     lumens: list[Lumen] = field(default_factory=list)
+    balance: np.ndarray | None = None  # the balance matrix (lumens x edges) of signs
 
     @property
     def direction(self) -> np.ndarray:
@@ -49,115 +69,238 @@ class FluxSolution:
 
     @property
     def direction_confidence(self) -> np.ndarray:
-        """How many sigmas the flux is from zero: the confidence of the direction."""
+        """How many sigmas the flux is from zero: the confidence of the direction (0 where nothing is known)."""
         with np.errstate(divide="ignore", invalid="ignore"):
             return np.where(np.isfinite(self.sigma) & (self.sigma > 0), np.abs(self.q) / self.sigma, 0.0)
 
 
-def _lumen_scale(lumen: Lumen, q_hat: np.ndarray, measured: np.ndarray, floor: float) -> float:
-    """What a lumen's balance may miss is a share of its mean absolute flux; where nothing on it is measured,
-    the mean over the whole graph stands in (so that the balance still ties the free edges to each other)."""
-    own = [abs(q_hat[edge]) for edge, _ in lumen if measured[edge]]
-    return max(float(np.mean(own)) if own else floor, 1e-9)
+def _huber_loss(z, c):
+    """Huber's loss of a standardised residual z: z^2 inside c, linear beyond."""
+    z = np.abs(z)
+    return np.where(z <= c, z ** 2, 2 * c * z - c ** 2)
 
 
-def _solve_linear(q_hat, sigma_hat, measured, weight, balance, scale, reached):
-    """One weighted least-squares solve: minimise |W (q - q_hat)|^2 + |B q / scale|^2. The normal equations are
-    (W^2 + B^T B) q = W^2 q_hat; the covariance is the inverse of that matrix. Returns q, the covariance (NaN off
-    the reached edges), the measurements' leverages h (how much of its own measurement each edge's flux is) and the
-    balances' leverages (how much of its own balance each lumen's net flux is)."""
-    count = len(q_hat)
-    precision = np.where(measured, weight / np.maximum(sigma_hat, 1e-12) ** 2, 0.0)
-    normal = np.diag(precision) + (balance / scale[:, None]).T @ (balance / scale[:, None])
-    right = precision * np.where(measured, q_hat, 0.0)
-    inside = np.flatnonzero(reached)
+def _solve_linear(right, precision, rows, reached):
+    """Minimise |W (q - q_hat)|^2 + |X q|^2 with `rows` = X (one scaled row per balance). The normal equations are
+    (P + X^T X) q = P q_hat = `right`. Returns q and the covariance (the inverse of the normal matrix; NaN off the
+    reached edges). A lumen made only of free edges leaves a null space; a very weak ridge picks the smallest flux
+    there and gives it a large sigma."""
+    count = len(right)
+    normal = np.diag(precision) + rows.T @ rows
     q = np.zeros(count)
     covariance = np.full((count, count), np.nan)
+    inside = np.flatnonzero(reached)
     if len(inside):
         sub = normal[np.ix_(inside, inside)]
-        # a lumen made only of free edges leaves a null space (any common flux round a free loop): regularise it
-        # very weakly, so that the solve picks the smallest such flux and reports a large sigma for it
         sub = sub + np.eye(len(inside)) * 1e-12 * max(np.trace(sub) / len(inside), 1e-12)
         inverse = np.linalg.pinv(sub)
         q[inside] = inverse @ right[inside]
         covariance[np.ix_(inside, inside)] = inverse
-    leverage = np.where(measured, precision * np.nan_to_num(np.diag(covariance)), 0.0)
-    rows = balance / scale[:, None]
-    row_leverage = np.einsum("ij,jk,ik->i", rows, np.nan_to_num(covariance), rows) if len(rows) else np.zeros(0)
-    return q, covariance, leverage, row_leverage
+    return q, covariance
+
+
+def _flip_sets(arms, most=6):
+    """The sets of measured arms of a lumen that may be turned round together: every nonempty subset while the
+    lumen has at most `most` measured arms, else every single arm and its complement."""
+    arms = list(arms)
+    if len(arms) <= most:
+        for size in range(1, len(arms) + 1):
+            yield from itertools.combinations(arms, size)
+    else:
+        for arm in arms:
+            yield (arm,)
+            yield tuple(other for other in arms if other != arm)
 
 
 def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lumen], sigma_flux: float = 0.45,
-                       p: float = 0.85, robust_rounds: int = 5, huber: float = 3.0) -> FluxSolution:
+                       p: float = 0.85, robust_rounds: int = 5, huber: float = 3.0, flips: bool = True,
+                       lumen_confidence: np.ndarray | None = None) -> FluxSolution:
     """Solve the flux network.
 
     q_hat, sigma_hat  per edge: the measured flux and its sigma; NaN where no speed was read.
     lumens            the balances: per vertex and lumen, ((edge, sign), ...) with sign +1 where the edge's points
                       run out of the vertex and -1 where they run in.
-    sigma_flux        the share of a lumen's mean absolute flux that its balance may miss.
-    p                 the share of measured directions that are right (the notebook's section 33 measures it
-                      without truth). A wrong direction is a flipped sign, not Gaussian noise: so a measurement is
-                      taken to be either as read (probability p) or turned round (1 - p), and the network decides
-                      between the two from what the rest of the graph says the edge carries (its leave-one-out
-                      prediction). Measurements that the network turns round are reported as `flipped`.
-    robust_rounds     rounds of reweighting after that: a measurement that is still off by more than `huber`
-                      sigmas is weighted down by huber / its misfit (Huber's weights), and the solve is repeated.
-
-    The problem is linear (see _solve_linear). An edge that no balance reaches and no speed was read on makes the
-    matrix singular: it is given a flux of zero with an infinite sigma, and the rest is solved.
+    sigma_flux        the share of the sum of the absolute fluxes through a lumen that its balance may miss (the
+                      notebook's SIGMA_FLUX, in the same unit as its per-junction flux test). The sum is taken
+                      over all the lumen's arms, the unmeasured ones at their fluxes from a first solve.
+    p                 the share of measured directions that are right (section 33 measures it without truth).
+    robust_rounds     rounds of Huber reweighting of the balances and the measurements.
+    flips             whether the sign step is made at all.
+    lumen_confidence  optional, per lumen: a confidence in (0, 1] that the lumen exists (a bridge's); its balance
+                      is softened by 1 / confidence, so that a doubtful connection barely constrains.
     """
     q_hat = np.array(q_hat, dtype=float)
     sigma_hat = np.asarray(sigma_hat, dtype=float)
     count = len(q_hat)
     measured = np.isfinite(q_hat) & np.isfinite(sigma_hat) & (sigma_hat > 0)
-    floor = float(np.mean(np.abs(q_hat[measured]))) if measured.any() else 1.0
     balance = np.zeros((len(lumens), count))
-    scale = np.zeros(len(lumens))
     for row, lumen in enumerate(lumens):
-        scale[row] = sigma_flux * _lumen_scale(lumen, q_hat, measured, floor)
         for edge, sign in lumen:
             balance[row, edge] += sign
     reached = measured | (np.abs(balance).sum(axis=0) > 0)
-    weight = measured.astype(float)
-    flipped = np.zeros(count, dtype=bool)
+    softness = np.ones(len(lumens)) if lumen_confidence is None else 1 / np.clip(np.asarray(lumen_confidence, float), 1e-3, 1)
+    floor = float(np.mean(np.abs(q_hat[measured]))) if measured.any() else 1.0
     prior = np.log(max(p, 1e-9) / max(1 - p, 1e-9))  # log odds that a direction is right, before the network speaks
-    # 1. the signs: turn a measurement round where the rest of the network says so more strongly than p says not
-    for _ in range(count + 1):
-        q, covariance, leverage, row_leverage = _solve_linear(q_hat, sigma_hat, measured, weight, balance, scale, reached)
-        changed = False
-        for edge in np.flatnonzero(measured):
-            if 1 - leverage[edge] < 1e-6:
-                continue  # nothing but its own measurement reaches this edge: the network has no opinion
-            without = (q[edge] - leverage[edge] * q_hat[edge]) / (1 - leverage[edge])  # the leave-one-out prediction
-            spread = np.sqrt(covariance[edge, edge] / (1 - leverage[edge]) + sigma_hat[edge] ** 2)
-            size = abs(q_hat[edge])
-            as_read, turned = (without - np.sign(q_hat[edge]) * size) ** 2, (without + np.sign(q_hat[edge]) * size) ** 2
-            odds = prior + (turned - as_read) / (2 * spread ** 2)  # log odds for the direction as read
-            if odds < 0:
-                q_hat[edge], flipped[edge], changed = -q_hat[edge], not flipped[edge], True
-                break  # one at a time: the others are judged again against the corrected network
-        if not changed:
-            break
-    # 2. the sizes: Huber reweighting of the measurements
+    precision_base = np.where(measured, 1 / np.maximum(sigma_hat, 1e-12) ** 2, 0.0)
+    weight = measured.astype(float)
+    balance_weight = np.ones(len(lumens))
+    flipped = np.zeros(count, dtype=bool)
+
+    def lumen_scale(through):
+        """What a balance may miss: sigma_flux x the sum of the absolute fluxes of the lumen's arms (the notebook's
+        unit), each arm's flux taken robustly (see robust_through)."""
+        return sigma_flux * np.maximum(np.abs(balance) @ np.maximum(through, 1e-9), floor * 1e-3) * softness
+
+    def robust_through(q_now, cov_now, precision_now):
+        """An arm's flux for sizing its balances: a measured arm counts the smaller of its measurement and what
+        the rest of the network predicts for it (the leave-one-out identity), so that a wrong speed cannot widen
+        its own lumen's balance to fit itself; an unmeasured arm counts its current flux."""
+        leverage = np.where(measured, precision_now * np.diag(cov_now), 0.0)
+        left = 1 - leverage
+        with np.errstate(divide="ignore", invalid="ignore"):
+            without = np.where(left > 1e-6, (q_now - leverage * np.nan_to_num(q_hat)) / np.maximum(left, 1e-12), np.nan_to_num(q_hat))
+        return np.where(measured, np.minimum(np.abs(np.nan_to_num(q_hat)), np.abs(without)), np.abs(q_now))
+
+    # For the signs the balances are sized by the measurements alone (an unmeasured arm at the graph's mean
+    # measured flux after a first solve): the sign step must not feed on its own solution, which on a plexus
+    # tightens the balances around a wrong neighbour and turns right measurements round.
+    scale = lumen_scale(np.where(measured, np.abs(np.nan_to_num(q_hat)), floor))
+    for sizing in range(2):
+        precision = precision_base * weight
+        rows = balance * (np.sqrt(balance_weight) / scale)[:, None]
+        q, covariance = _solve_linear(precision * np.nan_to_num(q_hat), precision, rows, reached)
+        cov = np.nan_to_num(covariance)
+        if sizing == 0:
+            scale = lumen_scale(np.where(measured, np.abs(np.nan_to_num(q_hat)), np.abs(q)))
+    # 1. the signs: sets of measured arms within one lumen, turned round together; closed form from C.
+    # Two kinds of evidence: the balance (soft, Gaussian) and the pattern (hard: within a lumen the blood has to
+    # come in and go out, so measured arms all in or all out cannot be the truth, whatever the sizes; this is the
+    # rule of the notebook's section 33). A proposal that leaves a lumen impossible is never the end; one that
+    # makes a lumen impossible is never taken.
+    lumens_of_edge: dict[int, list[int]] = {}
+    for row, lumen in enumerate(lumens):
+        for edge, _ in lumen:
+            lumens_of_edge.setdefault(edge, []).append(row)
+    IMPOSSIBLE = 1e6
+
+    def impossible(row, signs):
+        """All arms measured, and all in or all out: with an unmeasured arm the blood may pass through it."""
+        if not all(measured[edge] for edge, _ in lumens[row]):
+            return False
+        outs = [signs[edge] * sign for edge, sign in lumens[row]]
+        return len(outs) >= 2 and abs(sum(outs)) == len(outs)
+
+    forced = np.zeros(len(lumens), dtype=int)  # per lumen: flips it took to make its pattern possible
+    if flips:
+        right = precision * np.nan_to_num(q_hat)
+        signs = np.sign(np.nan_to_num(q_hat)).astype(int)
+        for _ in range(count + 1):
+            best, best_gain, best_rows = None, 0.0, ()
+            for lumen in lumens:
+                arms = [edge for edge, _ in lumen if measured[edge]]
+                for subset in _flip_sets(arms):
+                    S = list(subset)
+                    r = precision[S] * q_hat[S]
+                    # chi2_min = q_hat^T P q_hat - right^T C right; turning S round changes right by -2 r on S
+                    delta = 4 * float(r @ q[S]) - 4 * float(r @ cov[np.ix_(S, S)] @ r)
+                    cost = 2 * prior * (sum(not flipped[e] for e in S) - sum(flipped[e] for e in S))
+                    touched = sorted({row for e in S for row in lumens_of_edge[e]})
+                    before = sum(impossible(row, signs) for row in touched)
+                    signs[S] = -signs[S]
+                    after = sum(impossible(row, signs) for row in touched)
+                    signs[S] = -signs[S]
+                    gain = delta + cost + IMPOSSIBLE * (after - before)
+                    if gain < best_gain - 1e-9:
+                        best, best_gain, best_rows = S, gain, touched
+            if best is None:
+                break
+            q_hat[best] = -q_hat[best]
+            flipped[best] = ~flipped[best]
+            signs[best] = -signs[best]
+            for row in best_rows:
+                forced[row] += len(best) if not impossible(row, signs) and best_gain < -IMPOSSIBLE / 2 else 0
+            right = precision * np.nan_to_num(q_hat)
+            q = cov @ right
+    # 2. the sizes: now that the signs are settled the balances are sized robustly (a wrong speed must not widen
+    # its own lumen's balance to fit itself), then Huber weights on the balances and on the measurements, re-solving
+    scale = lumen_scale(robust_through(q, cov, precision))
     for _ in range(max(robust_rounds, 1)):
-        q, covariance, leverage, row_leverage = _solve_linear(q_hat, sigma_hat, measured, weight, balance, scale, reached)
-        misfit = np.where(measured, np.abs(q - np.where(measured, q_hat, 0.0)) / np.maximum(sigma_hat, 1e-12), 0.0)
+        precision = precision_base * weight
+        rows = balance * (np.sqrt(balance_weight) / scale)[:, None]
+        q, covariance = _solve_linear(precision * np.nan_to_num(q_hat), precision, rows, reached)
+        cov = np.nan_to_num(covariance)
+        misfit = np.where(measured, np.abs(q - np.nan_to_num(q_hat)) / np.maximum(sigma_hat, 1e-12), 0.0)
         new_weight = np.where(measured, np.where(misfit > huber, huber / np.maximum(misfit, 1e-12), 1.0), 0.0)
-        if np.allclose(new_weight, weight):
+        net = np.abs(balance @ q) / scale
+        new_balance_weight = np.where(net > huber, huber / np.maximum(net, 1e-12), 1.0)
+        if np.allclose(new_weight, weight) and np.allclose(new_balance_weight, balance_weight):
             break
-        weight = new_weight
-    sigma = np.where(reached, np.sqrt(np.maximum(np.nan_to_num(np.diag(covariance)), 0.0)), np.inf)
-    # Leave-one-lumen-out: the fitted net flux of a balance row, divided by its own scale and by sqrt(1 - h) with h
-    # the row's leverage, is what the rest of the network predicts for that lumen when its balance is not enforced,
-    # in sigmas of (what the balance may miss, plus the prediction's spread). Where the leverage is 1 nothing but the
-    # lumen's own balance says what its edges carry, and there is no test to make.
+        weight, balance_weight = new_weight, new_balance_weight
+    sigma = np.where(reached, np.sqrt(np.maximum(np.diag(cov), 0.0)), np.inf)
+    # per measurement: what the rest of the network predicts for it, and the measurement against that
+    leverage = np.where(measured, precision * np.diag(cov), 0.0)
+    studentised = np.zeros(count)
+    for edge in np.flatnonzero(measured):
+        left = 1 - leverage[edge]
+        if left < 1e-6:
+            continue  # nothing but its own measurement reaches this edge
+        without = (q[edge] - leverage[edge] * q_hat[edge]) / left
+        spread = np.sqrt(cov[edge, edge] / left + sigma_hat[edge] ** 2)
+        studentised[edge] = (q_hat[edge] - without) / spread
+    # per lumen: its imbalance with its own balance not enforced (the row's studentised residual)
+    rows = balance * (np.sqrt(balance_weight) / scale)[:, None]
+    row_leverage = np.einsum("ij,jk,ik->i", rows, cov, rows) if len(lumens) else np.zeros(0)
     left = 1 - row_leverage
     with np.errstate(divide="ignore", invalid="ignore"):
         imbalance = np.where(left > 1e-6, (balance @ q) / scale / np.sqrt(np.maximum(left, 1e-12)), np.nan)
-    chi2 = float(np.sum(np.where(measured, weight * ((q - np.where(measured, q_hat, 0.0)) / np.maximum(sigma_hat, 1e-12)) ** 2, 0.0))
-                 + np.sum(((balance @ q) / scale) ** 2) + flipped.sum() * 2 * prior)  # a flip costs what p says it costs
-    return FluxSolution(q=q, sigma=sigma, measured=measured, weight=weight, flipped=flipped, imbalance=imbalance,
-                        chi2=chi2, lumens=list(lumens))
+    chi2 = float(np.sum(np.where(measured, _huber_loss((q - np.nan_to_num(q_hat)) / np.maximum(sigma_hat, 1e-12), huber), 0.0))
+                 + np.sum(_huber_loss((balance @ q) / scale, huber)) + flipped.sum() * 2 * prior)
+    return FluxSolution(q=q, sigma=sigma, covariance=covariance, measured=measured, q_hat=q_hat, weight=weight,
+                        flipped=flipped, forced=forced, studentised=studentised, scale=scale,
+                        balance_weight=balance_weight, imbalance=imbalance, chi2=chi2, lumens=list(lumens),
+                        balance=balance)
+
+
+def vertex_tests(solution: FluxSolution, vertex_lumens: list[int], candidates: list[list[Lumen]],
+                 sigma_flux: float = 0.45) -> list[list[float]]:
+    """Score the candidate readings of one vertex from the network solved without that vertex's own balances.
+
+    vertex_lumens  the indices (into solution.lumens) of the balances the vertex has in the solve.
+    candidates     the readings to score: per reading, its lumens as `lumens_of` gives them.
+    Returns, per reading, one z per lumen: the net flux the rest of the network predicts through it, over the
+    spread of that prediction plus what the balance may miss (sigma_flux x the sum of |q| through it); NaN where
+    the rest of the network says nothing about it. These are the `flux` tests of the junction reading: a lumen
+    fits when |z| is small, and the reading taken is the most specific whose tests all fit (section 27).
+
+    The vertex's own rows are taken out of the one solve by a rank-k update of its covariance (Woodbury), so the
+    cost is k x k per vertex, not a solve per candidate.
+    """
+    cov = np.nan_to_num(solution.covariance)
+    q = solution.q
+    if vertex_lumens:
+        rows = solution.balance[vertex_lumens] * (np.sqrt(solution.balance_weight[vertex_lumens]) / solution.scale[vertex_lumens])[:, None]
+        inner = np.eye(len(vertex_lumens)) - rows @ cov @ rows.T
+        gain = cov @ rows.T @ np.linalg.pinv(inner)
+        cov_without = cov + gain @ rows @ cov
+        q_without = q + gain @ (rows @ q)
+    else:
+        cov_without, q_without = cov, q
+    through = np.where(solution.measured, np.minimum(np.abs(np.nan_to_num(solution.q_hat)), np.abs(q_without)), np.abs(q_without))
+    scores = []
+    for reading in candidates:
+        zs = []
+        for lumen in reading:
+            b = np.zeros(len(q))
+            for edge, sign in lumen:
+                b[edge] += sign
+            spread2 = float(b @ cov_without @ b)
+            scale = sigma_flux * max(float(np.abs(b) @ np.maximum(through, 1e-9)), 1e-9)
+            if spread2 > 1e6 * scale ** 2 or not np.isfinite(spread2):
+                zs.append(np.nan)  # nothing but this lumen's own balance would say what its edges carry
+            else:
+                zs.append(float(b @ q_without) / np.sqrt(spread2 + scale ** 2))
+        scores.append(zs)
+    return scores
 
 
 def lumens_of(partitions: dict[int, list[list[int]]], arms: dict[int, list[tuple[int, int]]]) -> list[Lumen]:
@@ -178,43 +321,99 @@ def lumens_of(partitions: dict[int, list[list[int]]], arms: dict[int, list[tuple
     return lumens
 
 
-def directed_cycles(edges: list[tuple[int, int]], direction: np.ndarray) -> list[list[int]]:
-    """The directed cycles of a digraph: blood does not go round a loop, so each one holds a wrong direction or a
-    crossing read as one lumen. `edges` are (first vertex, last vertex) per edge, `direction` +1 / -1 / 0 per edge
-    (0: the edge takes part in no cycle). Returns one list of edges per elementary directed cycle, found by a
-    depth-first search from every vertex (fine for graphs of hundreds of edges)."""
+def directed_cycles(edges: list[tuple[int, int]], direction: np.ndarray, confidence: np.ndarray | None = None,
+                    cutoff: float = 0.0) -> list[list[int]]:
+    """Where the digraph has directed cycles: blood does not go round a loop, so each one holds a wrong direction
+    or a crossing read as one lumen. `edges` are (first vertex, last vertex) per edge, `direction` +1 / -1 / 0 per
+    edge; with `confidence` (|q| / sigma per edge) only edges at or above `cutoff` take part, so that a cycle is
+    never made of directions that are noise. Returns one cycle (a list of edges) per strongly connected component
+    that holds one, found by Tarjan's algorithm (linear) and a breadth-first search inside the component; the
+    cycles are not enumerated, which would be exponential on a plexus."""
     out: dict[int, list[tuple[int, int]]] = {}
     for number, ((first, last), way) in enumerate(zip(edges, direction)):
+        if confidence is not None and confidence[number] < cutoff:
+            continue
         if way > 0:
             out.setdefault(first, []).append((last, number))
         elif way < 0:
             out.setdefault(last, []).append((first, number))
-    found: list[list[int]] = []
-    keys: set[frozenset] = set()
-
-    def walk(start, vertex, path, on_path):
-        """Every directed path from `start` through vertices above it (so that each cycle is found once, from its
-        lowest vertex); a step back to `start` closes a cycle."""
-        for following, edge in out.get(vertex, []):
-            if following == start:
-                key = frozenset(path + [edge])
-                if key not in keys:
-                    keys.add(key)
-                    found.append(path + [edge])
-            elif following > start and following not in on_path:
-                walk(start, following, path + [edge], on_path | {following})
-
-    for start in sorted(out):
-        walk(start, start, [], {start})
-    return found
+    # Tarjan, iterative
+    index, low, on_stack, stack, components = {}, {}, set(), [], []
+    counter = 0
+    for root in list(out):
+        if root in index:
+            continue
+        work = [(root, iter(out.get(root, [])))]
+        index[root] = low[root] = counter
+        counter += 1
+        stack.append(root)
+        on_stack.add(root)
+        while work:
+            vertex, following = work[-1]
+            advanced = False
+            for other, _ in following:
+                if other not in index:
+                    index[other] = low[other] = counter
+                    counter += 1
+                    stack.append(other)
+                    on_stack.add(other)
+                    work.append((other, iter(out.get(other, []))))
+                    advanced = True
+                    break
+                if other in on_stack:
+                    low[vertex] = min(low[vertex], index[other])
+            if advanced:
+                continue
+            work.pop()
+            if work:
+                low[work[-1][0]] = min(low[work[-1][0]], low[vertex])
+            if low[vertex] == index[vertex]:
+                component = set()
+                while True:
+                    member = stack.pop()
+                    on_stack.discard(member)
+                    component.add(member)
+                    if member == vertex:
+                        break
+                components.append(component)
+    cycles = []
+    for component in components:
+        members = sorted(component)
+        start = members[0]
+        has_cycle = len(component) > 1 or any(other == start for other, _ in out.get(start, []))
+        if not has_cycle:
+            continue
+        # one cycle through `start`: breadth-first inside the component back to start
+        parent = {start: None}
+        queue = [start]
+        found = None
+        while queue and found is None:
+            vertex = queue.pop(0)
+            for other, edge in out.get(vertex, []):
+                if other not in component:
+                    continue
+                if other == start:
+                    found = (vertex, edge)
+                    break
+                if other not in parent:
+                    parent[other] = (vertex, edge)
+                    queue.append(other)
+        if found is None:
+            continue
+        path, vertex = [found[1]], found[0]
+        while parent[vertex] is not None:
+            vertex, edge = parent[vertex]
+            path.append(edge)
+        cycles.append(path[::-1])
+    return cycles
 
 
 def compare_readings(q_hat, sigma_hat, lumens_a: list[Lumen], lumens_b: list[Lumen], sigma_flux=0.45) -> float:
     """The flux's evidence between two readings that have the same number of balances: chi2 under reading B minus
-    chi2 under reading A. Positive: A balances better. Each is half the log-likelihood ratio in favour of A (for
-    Gaussian misfits). Readings with different numbers of balances are refused (ValueError): the one with fewer
-    always fits at least as well, so the difference would only say which is looser. Between such readings the
-    imbalances are tests, and the junction reading takes the most specific reading that fits (section 27)."""
+    chi2 under reading A. Positive: A balances better. Readings with different numbers of balances are refused
+    (ValueError): the one with fewer always fits at least as well, so the difference would only say which is
+    looser. Between such readings the imbalances are tests (vertex_tests), and the junction reading takes the most
+    specific reading that fits (section 27)."""
     if len(lumens_a) != len(lumens_b):
         raise ValueError(f"readings with {len(lumens_a)} and {len(lumens_b)} balances cannot be compared by chi-square: "
                          "the looser one always fits at least as well; use the imbalances as tests instead")
