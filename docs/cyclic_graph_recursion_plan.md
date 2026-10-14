@@ -249,6 +249,22 @@ Every move is an edit to the spline set, the graph recomputed where it reaches (
 
 **Watching the fit.** Every fit in this plan is a sequence of candidates, some taken and some refused: the knot refinement of a spline, the κ passes, every move of every round, the sign moves of the flux network. A recorder (`vascnet.watch.Recorder`) is handed every candidate as a small state (the splines with their confidences, the vertices with their types and rates, the move's kind and gain, and for the rounds the changed lumen canvases and the window's residual, never the frame; the frame-size render only on taken states) and keeps one candidate in `WATCH_EVERY` (`Recorder.every`, default 5), every taken one, and the last. The recorder stores what it is handed, so the fit copies the arrays it hands over, as `fluxnet.py`'s `report` does. Recording then costs the fit nothing but a few megabytes per kept state; the frames are drawn afterwards (`vascnet.watch.animate`, with a drawing function per kind of fit) and written as a GIF, one per fit: `vessel_pictures/fit/initialisation.gif` (the splines settling and κ converging), `vessel_pictures/fit/round_<r>.gif` (each round's moves over the density, the proposed move highlighted, refused moves shown and faded, J and the self-consistency number in the caption) and `vessel_pictures/fit/flux.gif` (the sign moves and set-asides over the graph, directions as arrows, the move highlighted). The flux network's film exists (`scripts/watch_flux_demo.py`, `docs/flux_fit_demo.gif`); the others follow their fits.
 
+**As built (acceptance step 7).** What the code does where this section leaves a choice open, or where it differs from the text above:
+
+- **J.** The price is charged on the drawn splines only; a spline taken out of the rendering pays nothing. Its k is the knots of the place (x and y) and of the half-width.
+- **The zero point** is subtracted only where the render's channel answers above `T_LOW`, since it is measured on drawn lines.
+- **Evaluation.** Every candidate is evaluated over the whole frame, because on the synthetic frames and the 640 px real crop a window with its margin covers the frame. ΔJ is therefore exact.
+- **Order of a round.** The candidates are taken in order of their gain. Once one move has been taken, each later candidate is evaluated again on the model as it stands, and is taken only if J still falls. At most `CANDIDATES_MOST` = 30 are evaluated per round.
+- **Removal evidence (step 3b)** is read in each spline's own channel: its orientation and the width nearest its half-width. The maximum over all 128 channels finds some channel where the render out-answers the data along nearly every true spline (measured on four bursts for developing). One more removal is proposed, which this section does not name: a spline the render shows no line along, where only the price speaks.
+- **Composition (step 4)** reads `core_z` at the four-arm vertices of `spline_to_graph`, within three core radii. The noise spectrum is measured on the quiet pixels' residual. A flip is proposed when z is below `Z_PASS` and also `Z_PASS` below the z the template expects, because step 6 found the one-lumen z drifting below 0.
+- **Not built:**
+  - step 2;
+  - step 3's centerline shifts;
+  - step 3b's vertex merges and splits;
+  - step 5's linking of tails through a spline;
+  - step 6, the flux network's closing round.
+- **λ** is swept on a central crop of the real burst but not chosen, since the flux network is not run on the models the rule needs.
+
 **Result** per round: moves proposed and taken, J, the self-consistency number, the model; the last is `graph_final[n]`.
 
 **Column:** found-and-typed-right after each round on the harness; on the real burst the self-consistency number after each round. As description, bridges right / wrong at the bridge confidence's cutoffs, the per-edge density RMS, and the readings changed at step 6(d) with how many of `blame`'s lumens survive the second solve.

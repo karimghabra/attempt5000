@@ -1,0 +1,103 @@
+Run of development copy 2.ipynb started 2026-10-14 15:56:54: 5 code cells (only 4b1e8e10, recursion-functions, section-39-one-burst, section-39-harness, section-39-real)
+
+===== cell 0 id=4b1e8e10 | started at 15:56:55 | # In a fresh kernel, start here: nothing above this cell has to be run. The cells that only define f
+A fresh kernel: the definitions were run from the notebook file. Opened 2 fixations of 1920 x 1200 px: 113 frames, 18 frames
+[memory] inputs opened: 1.00 GB now, 1.00 GB at the most so far
+----- cell 0 took 2.3 s | 0.1 min since the start
+
+===== cell 1 id=recursion-functions | started at 15:56:57 | ROUNDS_MOST = 5            # rounds of the recursion at the most (section 39)
+----- cell 1 took 0.1 s | 0.1 min since the start
+
+===== cell 2 id=section-39-one-burst | started at 15:56:57 | # acceptance step 7 on one synthetic burst made to need each move: section 35's first tree burst for
+Tree burst 2001: 48 pieces in the model (34 drawn), blur 1.75 px | taken out: the longest drawn true piece (215 px from (454, 4) to (328, 176)) | put in: a false spline of 60 px at (480, 230), 45 degrees, 126 px from anything, kappa 0.0221 | 0.7 min
+   round  proposed  taken            J    chi2_topo     price  render in data  data in render   centerline P/R   junction P/R  found and typed right
+       0         0      0      4073523      4065081      8442           87.4%           78.7%    94.9/ 76.0%   80.0/ 44.4%                  33.3%
+       1         8      4      3728903      3719598      9305           91.2%           89.2%    94.5/ 84.0%   80.0/ 44.4%                  33.3%
+       2         2      0      3728903      3719598      9305           91.2%           89.2%    94.5/ 84.0%   80.0/ 44.4%                  33.3%
+   moves proposed / taken by kind: add 4 / 1, extend 2 / 1, one lumen 1 / 1, remove 3 / 1
+   J at every taken move falls: yes (4 moves, from 4073523 to 3728903); the final model drawn afresh gives J 3728903 (the moves' sum 3728903, off by 0.000%)
+   the vessel taken out: 100% of its points have an added spline within 2 px | the false spline: taken out of the rendering | added splines drawn at the end: 2, 1 of them true | splines taken out of the rendering: 1 (the false one)
+   composition move one lumen at (295, 338), taken (gain -18622): the nearest true junction is a crossing 1 px away
+   bridges (reported, never drawn): 4, of which 2 right; 2 with a positive ridge across the gap | the generator's gaps: 3
+   the rounds are filmed in vessel_pictures/fit/round_<r>.gif (4 frames of 10 candidates)
+[memory] section 39, one burst: 1.27 GB now, 1.40 GB at the most so far
+----- cell 2 took 41.4 s | 0.8 min since the start
+
+===== cell 3 id=section-39-harness | started at 15:57:39 | # acceptance step 7 on the harness: section 35's held-out trees (TREE_HELD_OUT), each with its initi
+   tree burst 3001: 3 rounds, 5 moves taken | 5.5 min since the start
+   tree burst 3002: 2 rounds, 3 moves taken | 6.3 min since the start
+   tree burst 3003: 2 rounds, 1 moves taken | 7.0 min since the start
+   tree burst 3004: 2 rounds, 1 moves taken | 7.6 min since the start
+   tree burst 3005: 2 rounds, 1 moves taken | 9.5 min since the start
+   tree burst 3006: 3 rounds, 5 moves taken | 12.0 min since the start
+   tree burst 3007: 5 rounds, 12 moves taken | 15.5 min since the start
+   tree burst 3008: 3 rounds, 10 moves taken | 18.7 min since the start
+   tree burst 3009: 2 rounds, 2 moves taken | 20.7 min since the start
+   tree burst 3010: 2 rounds, 7 moves taken | 23.6 min since the start
+   tree burst 3011: 2 rounds, 1 moves taken | 25.7 min since the start
+   tree burst 3012: 3 rounds, 6 moves taken | 27.7 min since the start
+   tree burst 3013: 3 rounds, 8 moves taken | 28.5 min since the start
+   tree burst 3014: 3 rounds, 3 moves taken | 29.3 min since the start
+   tree burst 3015: 4 rounds, 5 moves taken | 30.2 min since the start
+   tree burst 3016: 3 rounds, 5 moves taken | 31.0 min since the start
+
+The rounds on section 35's 16 held-out trees at lambda = 1 (the calibration on 16 trees for developing took 4.7 min; all 31.0 min). A burst whose rounds ended keeps its last model.
+   round  bursts moving     centerline precision       centerline recall      junction precision         junction recall   found and typed right
+       0             16        96.3 (95.6- 97.0)       79.5 (76.9- 81.8)       75.6 (66.7- 83.5)       36.7 (32.3- 41.1)       14.8 (11.9- 18.1)
+       1             16        96.1 (95.2- 96.9)       80.2 (78.0- 82.3)       71.3 (62.5- 78.6)       36.7 (31.8- 41.1)       14.8 (11.7- 18.4)
+       2             16        95.9 (95.0- 96.7)       80.5 (78.3- 82.5)       68.9 (60.2- 76.5)       36.7 (31.5- 41.7)       14.2 (10.8- 18.0)
+       3              9        95.9 (94.9- 96.7)       80.7 (78.4- 82.7)       69.6 (61.0- 77.1)       37.9 (32.7- 42.5)       14.2 (10.8- 18.0)
+       4              2        95.9 (94.9- 96.7)       80.7 (78.4- 82.8)       69.2 (60.5- 76.9)       37.3 (32.0- 42.1)       14.2 (10.8- 18.0)
+       5              1        95.9 (94.9- 96.7)       80.6 (78.4- 82.7)       69.6 (61.0- 77.1)       37.9 (32.7- 42.5)       14.2 (10.8- 18.0)
+   moves proposed / taken by kind: add 119 / 18, extend 66 / 31, remove 61 / 26
+   J falls at every taken move in 16 of 16 bursts; the final models drawn afresh give the J the moves summed to within 0.000%
+   the edge confidence told apart, round 0: 0.951 (0.931 to 0.970, 95% over bursts)
+   the edge confidence told apart, after the rounds, pieces taken out left out: 0.942 (0.916 to 0.964, 95% over bursts)
+   the edge confidence told apart, after the rounds, pieces taken out at 0: 0.924 (0.899 to 0.948, 95% over bursts)
+   pieces added and drawn at the end: 49, 35 of them true | pieces taken out of the rendering: 26, 19 of them true
+   bridges (reported, never drawn): 127, 70 right | the line-mass similarity told apart between right and wrong 0.67 | a positive ridge across the gap: 58 of the right, 25 of the wrong
+   composition moves to one lumen: 0 proposed, 0 taken | the taken ones at: none
+   composition moves to two vessels: 0 proposed, 0 taken | the taken ones at: none
+
+The gate: J falls at every taken move (yes); found-and-typed-right does not fall from one round to the next (no: 14.8 -> 14.8 -> 14.2 -> 14.2 -> 14.2 -> 14.2); the first principle's number after the rounds at least 0.75 (yes: 0.942, 0.924) -> FAILED
+[memory] section 39, harness: 1.27 GB now, 1.64 GB at the most so far
+----- cell 3 took 1861.8 s | 31.8 min since the start
+
+===== cell 4 id=section-39-real | started at 16:28:41 | # acceptance step 7 on the real burst: the rounds on a central 640 x 640 crop of the anchor's fixati
+Real burst, fixation 0, the crop rows 280-920, columns 640-1280: the initial model in 0.4 min, 432 pieces (255 drawn) in 146 lumens, blur fitted 3.00 px | ln n 14.7
+   zero point per width (median over the orientations measured): 1.5: +1.96, 2.1: +2.18, 3: +0.54, 4.2: +0.09, 6: +0.00, 8.5: +0.11, 12: +0.08
+   lambda round  proposed  taken            J    chi2_topo      price  render in data  data in render
+     0.25     0         0      0     23870115     23857603      12512           85.2%           69.6%
+     0.25     1        27     15     21592359     21579917      12442           88.4%           68.4%
+     0.25     2        24      5     21496227     21483814      12413           88.8%           69.1%
+     0.25     3        23      2     21483136     21470723      12413           88.9%           68.4%
+     0.25     4        23      2     21481396     21468983      12413           89.0%           68.6%
+     0.25     5        22      1     21481315     21468931      12384           89.0%           68.6%
+     1.00     0         0      0     23907651     23857603      50048           85.2%           69.6%
+     1.00     1        27     14     21629537     21580119      49417           88.4%           68.4%
+     1.00     2        26      6     21533085     21483975      49109           88.9%           68.9%
+     1.00     3        25      3     21519687     21470959      48728           88.9%           68.3%
+     1.00     4        26      3     21517857     21469217      48640           89.1%           68.5%
+     1.00     5        25      0     21517857     21469217      48640           89.1%           68.5%
+     4.00     0         0      0     24057794     23857603     200191           85.2%           69.6%
+     4.00     1        27     13     21777449     21580250     197199           88.4%           68.4%
+     4.00     2        27      9     21677724     21485863     191862           88.8%           68.5%
+     4.00     3        30      9     21660567     21471579     188988           88.8%           67.9%
+     4.00     4        30      9     21655059     21470529     184530           88.9%           67.9%
+     4.00     5        30      8     21406470     21225577     180893           89.3%           67.8%
+    16.00     0         0      0     24658367     23857603     800764           85.2%           69.6%
+    16.00     1        27     11     22366169     21581594     784575           88.2%           68.2%
+    16.00     2        29     10     22249577     21488230     761347           88.6%           68.2%
+    16.00     3        30     10     22216290     21476762     739527           88.7%           67.5%
+    16.00     4        30     10     21949306     21231598     717708           89.1%           67.4%
+    16.00     5        30     10     21924447     21229967     694480           89.0%           67.1%
+   lambda 0.25: moves proposed / taken: add 21 / 6, extend 43 / 3, remove 50 / 16, two vessels 5 / 0 | drawn pieces 255 -> 248 | bridges reported 64, 18 with a positive ridge across the gap | J falls at every taken move: yes; drawn afresh 21481312 against 21481315 | 3.9 min
+   lambda 1: moves proposed / taken: add 31 / 2, extend 43 / 4, remove 50 / 20, two vessels 5 / 0 | drawn pieces 255 -> 241 | bridges reported 58, 15 with a positive ridge across the gap | J falls at every taken move: yes; drawn afresh 21517857 against 21517857 | 4.2 min
+   lambda 4: moves proposed / taken: add 34 / 2, extend 55 / 3, remove 50 / 43, two vessels 5 / 0 | drawn pieces 255 -> 217 | bridges reported 64, 21 with a positive ridge across the gap | J falls at every taken move: yes; drawn afresh 21406470 against 21406470 | 5.1 min
+   lambda 16: moves proposed / taken: add 33 / 0, extend 58 / 1, remove 50 / 50, two vessels 5 / 0 | drawn pieces 255 -> 206 | bridges reported 70, 23 with a positive ridge across the gap | J falls at every taken move: yes; drawn afresh 21924447 against 21924447 | 5.3 min
+   the data's own repeatability (whole frame, step 5): 74.8% above chance | lambda is not chosen: the flux network is not run on these models
+   the rounds at lambda 1 are filmed in vessel_pictures/fit/real_round_<r>.gif (45 frames)
+[memory] section 39, real burst: 1.59 GB now, 1.92 GB at the most so far
+----- cell 4 took 1157.4 s | 51.1 min since the start
+
+DONE: 5 code cells in 51.1 min (3065 s), finished 2026-10-14 16:47:59

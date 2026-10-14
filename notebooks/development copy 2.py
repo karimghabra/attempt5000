@@ -7210,7 +7210,7 @@ DEFINITION_CELLS = ("setup", "background-functions", "graph-functions", "shared-
                     "segment-functions", "graph-builder", "junction-functions", "synthetic-functions",
                     "flow-vessel-functions", "harness-functions", "whole-vessel-functions", "flow-evidence-functions",
                     "generator-functions", "cyclic-graph-functions", "flux-network-functions",
-                    "junction-cell-functions", "render-functions", "core-functions")
+                    "junction-cell-functions", "render-functions", "core-functions", "recursion-functions")
 fresh_kernel = "load_saved" not in globals()
 if fresh_kernel:
     import contextlib
@@ -11953,3 +11953,991 @@ print(f"\nThe gate: decisive (z >= 3) for R >= 3 at the real burst's blur ({gate
       + f" -> {'PASSED' if all(value >= 3 for value in decisive.values()) else 'FAILED'} | capillaries as they come out, in the table")
 os.makedirs("vessel_pictures/core", exist_ok=True)
 save_table(core_rows, "vessel_pictures/core/z_table.csv")
+
+# %% [markdown]
+# ## 39. The recursion (acceptance step 7)
+#
+# The model is section 38's initial model as a set of splines: section 37's pieces, each with its darkness and radius per point, its lumen, and whether it is drawn (`piece_state`). Every structural change is a move, taken only when J falls:
+#
+# **J = χ²_topo + λ Σ k ln n** (`objective`):
+#
+# - **χ²_topo** (`chi_topo`) runs over every channel (16 orientations × 8 widths, before the competition). In each it takes the data's answer minus the render's, less the channel's zero point where the render answers above `T_LOW`. The square is weighted per width by 1 / (`CHANNEL_AREA` × width²), the share of an independent sample a channel-pixel is.
+# - **The price** charges each drawn spline its knots: x and y at the knot spacing, the half-width `RADIUS_KNOTS` times farther apart. n is the frame's independent samples.
+# - **A spline that is not drawn pays nothing.**
+#
+# **The moves of a round** come from the topology residual of the model as it stands. There are at most `CANDIDATES_MOST`, the strongest evidence first:
+#
+# | move | evidence | plan |
+# |---|---|---|
+# | remove a spline from the rendering (it stays in the model, not drawn) | its negative residual above `T_HIGH` on half its points; or the render shows no line along it (its darkness read as about 0), where only the price speaks | step 3b |
+# | add a spline | a positive ridge of the residual off the drawn splines (outside their tubes), cut as section 37 cuts the data's ridges; an end within its tube's reach of a spline's body is joined to it (a branch, a lumen of its own) | steps 3, 5 |
+# | extend an end | the same, where the new line's end lies at a drawn spline's end: it joins that lumen | steps 1, 3 |
+# | one lumen ↔ two vessels | the core filter (`core_z`) at a vertex of four arms contradicts the composition by more than `Z_PASS` | step 4 |
+# | bridge two free ends | reported with its line-mass similarity and whether a positive ridge continues across the gap; **never drawn** | step 1 |
+#
+# **How a round runs.** Every candidate is applied to a copy of the model, with the touched lumens drawn again. J is then evaluated over the whole frame, which on frames of this size is what a window with its margin covers (step 5). The candidates are taken in order of their gain. Once a move has been taken, each later candidate is evaluated again on the model as it then stands, and is taken only if J still falls. The rounds end when a round takes nothing, or after `ROUNDS_MOST` = 5.
+#
+# **Not built:**
+#
+# - step 2 (re-reading the partitions to merge arms through a junction);
+# - step 3's centerline shifts;
+# - step 3b's vertex merges and splits;
+# - step 5's linking of a crossing vessel's two tails through a spline;
+# - step 6, the flux network's closing round.
+#
+# Their places in the plan stay as written.
+#
+# **The numbers** (Part III, step 7) come from three runs:
+#
+# - one synthetic burst made to need each move;
+# - the held-out trees: found-and-typed-right per round, and the edge confidence's `told_apart` after the rounds;
+# - a central crop of the real burst, where λ is swept.
+#
+# **The gate:**
+#
+# - J falls at every taken move;
+# - found-and-typed-right does not fall from one round to the next;
+# - the first principle's number (`told_apart` ≥ 0.75) holds after the rounds.
+#
+# **Films:** `vessel_pictures/fit/round_<r>.gif`.
+
+# %%
+ROUNDS_MOST = 5            # rounds of the recursion at the most (section 39)
+CHANNEL_AREA = 2.5         # width^2; a rectified channel's correlation area (section 38a, measured within 10 to 40%): a
+                           # channel-pixel counts as 1 / (CHANNEL_AREA width^2) of an independent sample in chi^2_topo
+EVIDENCE_LEAST = 10        # pixels; the shortest positive ridge of the topology residual proposed as a new spline
+REMOVE_SHARE = 0.5         # a drawn spline is proposed for removal when its negative residual is above T_HIGH along this share
+CANDIDATES_MOST = 30       # candidates evaluated per round at the most: a third removals, a sixth compositions, the rest additions
+BRIDGE_WIDTHS = 10         # BRIDGE_REACH: two free ends are a bridge's candidates within this many times the larger width
+CORE_REGION = 3            # the core filter of a move reads the density within this many core radii of the vertex
+LAMBDA_TRIES = (0.25, 1.0, 4.0, 16.0)  # the multipliers of the price swept on the real burst
+WATCH_EVERY = 5            # the recorder keeps one candidate in this many, every taken one and the last
+
+
+# ---------------------------------------------------------------- the objective
+
+def recursion_scene(density, valid, frame, threads=None):
+    """What every evaluation of J compares a render with (section 39): the data's contrast and its channels at every
+    width before the competition (channel_answers with the data's constants), each width's weight (the share of an
+    independent sample a channel-pixel is: 1 / (CHANNEL_AREA width^2)), ln n with n the frame's independent samples,
+    and the data's ridges (the competition and ridge_crests on its channels, as ridges_of)."""
+    contrast = to_contrast(density, frame)
+    channels = [channel_answers(contrast, valid, frame["levels"], place, threads) for place in range(len(HYPER_WIDTHS))]
+    weights = 1 / (CHANNEL_AREA * np.asarray(HYPER_WIDTHS, dtype=float) ** 2)
+    best = np.zeros_like(channels[0])
+    for answers in channels:
+        np.maximum(best, answers, out=best)
+    orientation = np.argmax(best, axis=0).astype(np.uint8)
+    strength = np.take_along_axis(best, orientation[None], axis=0)[0]
+    ridges = ridge_crests(strength, orientation, apply_hysteresis_threshold(strength, T_LOW, T_HIGH) & valid)
+    return {"density": np.nan_to_num(density).astype(np.float32), "valid": valid, "frame": frame, "contrast": contrast,
+            "channels": channels, "weights": weights, "ln n": float(np.log(N_ORIENT * valid.sum() * weights.sum())),
+            "ridges": ridges, "threads": threads}
+
+
+def own_channels(state):
+    """Every point of the drawn splines with the channel of its own line: the orientation of its tangent (the nearest
+    of N_ORIENT) and the width nearest its half-width, as zero_points reads them. Returns (piece, row, column,
+    orientation, width) arrays."""
+    shown = np.flatnonzero(state["drawn"])
+    if not len(shown):
+        return tuple(np.zeros(0, int) for _ in range(5))
+    rows, columns = state["render"].shape
+    pieces = [state["pieces"][p] for p in shown]
+    owner = np.concatenate([np.full(len(piece["x"]), p) for p, piece in zip(shown, pieces)])
+    x, y = np.concatenate([piece["x"] for piece in pieces]), np.concatenate([piece["y"] for piece in pieces])
+    theta = np.concatenate([np.arctan2(np.gradient(piece["y"]), np.gradient(piece["x"])) if len(piece["x"]) > 1 else np.zeros(1) for piece in pieces])
+    radius = np.concatenate([piece["radius"] for piece in pieces]).astype(float)
+    k = np.rint((theta % np.pi) / (np.pi / N_ORIENT)).astype(int) % N_ORIENT
+    w = np.argmin(np.abs(np.log(np.maximum(radius, 1e-3)[:, None] / np.asarray(HYPER_WIDTHS)[None])), axis=1)
+    return owner, np.clip(np.rint(y).astype(int), 0, rows - 1), np.clip(np.rint(x).astype(int), 0, columns - 1), k, w
+
+
+def chi_topo(scene, render, zero, maps=False, points=None):
+    """chi^2_topo of J (section 39): per channel (16 orientations x 8 widths, before the competition) the data's answer
+    minus the render's, less the channel's zero point where the render answers above T_LOW (the zero point is measured
+    on right lines, section 38a), squared, each width's channel-pixels weighted by the scene's weights. With `maps`
+    also the residual's strongest positive and negative channel per pixel (value, orientation, width) and the render's
+    ridges (the competition and ridge_crests on its channels, as ridges_of); with `points` (own_channels) also the
+    residual at every point in its own channel. Returns chi^2 and the maps (or None)."""
+    contrast = to_contrast(render, scene["frame"])
+    valid, levels = scene["valid"], scene["frame"]["levels"]
+    shape = render.shape
+    total = 0.0
+    out = None
+    if maps:
+        out = {name: np.zeros(shape, np.float32) for name in ("positive", "negative")}
+        out.update({name: np.zeros(shape, np.uint8) for name in ("positive k", "positive w", "negative k", "negative w")})
+        best = np.zeros((N_ORIENT, *shape), np.float32)
+        if points is not None:
+            out["own"], out["points"] = np.zeros(len(points[0]), np.float32), points
+    for place, weight in enumerate(scene["weights"]):
+        answers = channel_answers(contrast, valid, levels, place, scene["threads"])
+        residual = scene["channels"][place] - answers
+        shift = np.nan_to_num(np.asarray(zero, dtype=float)[:, place], nan=0.0).astype(np.float32)[:, None, None]
+        residual -= np.where(answers >= T_LOW, shift, np.float32(0))
+        total += weight * float(np.sum(np.square(residual), dtype=np.float64))
+        if maps:
+            for sign, name in ((1, "positive"), (-1, "negative")):
+                signed = residual if sign > 0 else -residual
+                top = signed.max(axis=0)
+                better = top > out[name]
+                out[name][better] = top[better]
+                out[name + " k"][better] = np.argmax(signed, axis=0)[better]
+                out[name + " w"][better] = place
+            np.maximum(best, answers, out=best)
+            if points is not None:
+                mine = points[4] == place
+                out["own"][mine] = residual[points[3][mine], points[1][mine], points[2][mine]]
+    if maps:
+        orientation = np.argmax(best, axis=0).astype(np.uint8)
+        strength = np.take_along_axis(best, orientation[None], axis=0)[0]
+        out["ridges"] = ridge_crests(strength, orientation, apply_hysteresis_threshold(strength, T_LOW, T_HIGH) & valid)
+        out["render strength"] = strength
+    return total, out
+
+
+def spline_parameters(piece):
+    """k of a spline in J's price: the knots of its place (x and y each) and of its half-width, as spline_vessel fits
+    them (KNOT_SPACING, or the spacing section 37's refinement settled on; RADIUS_KNOTS times farther for the width)."""
+    length = float(piece.get("length", chain_length(piece)))
+    spacing = float(piece.get("knot spacing", KNOT_SPACING))
+    return 2 * (int(np.ceil(length / spacing)) + 1) + int(np.ceil(length / (RADIUS_KNOTS * KNOT_SPACING))) + 1
+
+
+def objective(scene, state, zero, lam, chi=None):
+    """J = chi^2_topo + lambda sum over the drawn splines of k ln n (section 39's principle). A spline that is not
+    drawn has no say in the render and pays nothing. Returns J, chi^2_topo and the price."""
+    chi = chi_topo(scene, state["render"], zero)[0] if chi is None else chi
+    price = lam * scene["ln n"] * sum(spline_parameters(piece) for piece, shown in zip(state["pieces"], state["drawn"]) if shown)
+    return chi + price, chi, price
+
+
+def round_zero(scene, state):
+    """The zero point per channel at round 0 (zero_points on the model's drawn splines)."""
+    render_contrast = to_contrast(state["render"], scene["frame"])
+    return zero_points(scene["contrast"], render_contrast, scene["valid"], scene["frame"]["levels"], state["pieces"],
+                       state["drawn"], scene["threads"])[0]
+
+
+def quiet_of(front, valid, away=8):
+    """The quiet pixels of a fixation from section 29's saved maps, as step 5's cell takes them: where there is data
+    and no neuron of the static score answers above T_LOW within `away` px."""
+    lines = (front["strength"] > T_LOW).astype(np.uint8)
+    return valid & (cv2.distanceTransform(1 - lines, cv2.DIST_L2, 5) > away)
+
+
+# ---------------------------------------------------------------- the model as the recursion edits it
+
+def fresh_render(scene, state):
+    """The state with its render drawn from nothing (render_graph): every drawn lumen's canvas."""
+    render, canvases = render_graph(state["pieces"], state["lumens"], state["kappa"], state["blur"], scene["density"].shape,
+                                    state["drawn"], state["radii"])
+    return dict(state, render=render, canvases=canvases)
+
+
+def fresh_state(pieces, scene, blur_sigma, lumens=None, drawn=None):
+    """A model of splines alone (for the checks): every piece its own lumen unless `lumens` says otherwise, its
+    darkness from kappa_passes (no cores), rendered."""
+    lumens = np.arange(len(pieces)) if lumens is None else np.asarray(lumens)
+    drawn = np.ones(len(pieces), dtype=bool) if drawn is None else np.asarray(drawn, dtype=bool)
+    pieces = [dict(piece, key=("initial", number)) for number, piece in enumerate(pieces)]
+    kappa, radii, _, _ = kappa_passes(pieces, lumens, scene["density"], blur_sigma, [(0.0, 0.0)] * len(pieces), drawn)
+    state = {"pieces": pieces, "kappa": list(kappa), "radii": list(radii), "drawn": drawn.copy(), "lumens": lumens.copy(),
+             "origin": ["initial"] * len(pieces), "blur": float(blur_sigma)}
+    return fresh_render(scene, state)
+
+
+def piece_state(model, scene):
+    """Section 38's initial model (initial_model) as the recursion edits it: per piece of section 37 (the splines), its
+    darkness and radius per point from the edges cut from it (each edge's span on its piece), its lumen (the union of
+    its edges' lumens) and whether it is drawn (most of its points on drawn edges: a twin is not). A piece no edge
+    was cut from lies inside a core and is not drawn. Rendered (fresh_render)."""
+    pieces = [dict(piece, key=("initial", number)) for number, piece in enumerate(model["pieces"])]
+    kappa = [np.full(len(piece["x"]), np.nan) for piece in pieces]
+    radii = [np.full(len(piece["x"]), np.nan) for piece in pieces]
+    shown = [np.zeros(len(piece["x"]), dtype=bool) for piece in pieces]
+    parent = list(range(len(pieces)))
+
+    def root(p):
+        while parent[p] != p:
+            parent[p] = parent[parent[p]]
+            p = parent[p]
+        return p
+
+    first = {}
+    for e, edge in enumerate(model["edges"]):
+        p, (a, b) = edge["chain"], edge["span"]
+        if b - a + 1 != len(edge["x"]):
+            continue
+        kappa[p][a:b + 1], radii[p][a:b + 1] = model["kappa"][e], model["radii"][e]
+        shown[p][a:b + 1] |= bool(model["drawn"][e])
+        lumen = int(model["lumens"][e])
+        if lumen in first:
+            parent[root(p)] = root(first[lumen])
+        else:
+            first[lumen] = p
+    known = [float(np.nanmedian(k)) for k in kappa if np.isfinite(k).any()]
+    for p, piece in enumerate(pieces):
+        good = np.isfinite(kappa[p])
+        along = np.arange(len(good))
+        if good.any():
+            kappa[p] = np.interp(along, along[good], kappa[p][good])
+            radii[p] = np.interp(along, along[good], radii[p][good])
+        else:
+            kappa[p] = np.full(len(good), float(np.median(known)) if known else SYNTH_ABSORB)
+            radii[p] = sharp_radius(piece["radius"], model["blur"])
+    roots = [root(p) for p in range(len(pieces))]
+    names = {value: number for number, value in enumerate(sorted(set(roots)))}
+    state = {"pieces": pieces, "kappa": kappa, "radii": radii, "drawn": np.array([s.mean() > 0.5 for s in shown], dtype=bool),
+             "lumens": np.array([names[value] for value in roots]), "origin": ["initial"] * len(pieces), "blur": float(model["blur"])}
+    return fresh_render(scene, state)
+
+
+def without_pieces(scene, state, gone):
+    """The state with some pieces taken out of the model altogether (not merely undrawn), rendered again."""
+    keep = [p for p in range(len(state["pieces"])) if p not in set(gone)]
+    lumens = state["lumens"][keep]
+    names = {value: number for number, value in enumerate(sorted(set(lumens.tolist())))}
+    return fresh_render(scene, dict(state, pieces=[state["pieces"][p] for p in keep], kappa=[state["kappa"][p] for p in keep],
+                                    radii=[state["radii"][p] for p in keep], drawn=state["drawn"][keep].copy(),
+                                    lumens=np.array([names[value] for value in lumens.tolist()]),
+                                    origin=[state["origin"][p] for p in keep]))
+
+
+def redraw_lumens(state, lumens):
+    """The state's render (changed in place) with the canvases of `lumens` drawn again (draw_lumen; densities add
+    across lumens, so a lumen's canvas is taken off and its new one put on)."""
+    render, canvases = state["render"], state["canvases"]
+    for lumen in sorted(lumens):
+        if lumen in canvases:
+            box, values = canvases.pop(lumen)
+            render[box[0]:box[2], box[1]:box[3]] -= values
+        members = [p for p in np.flatnonzero(state["lumens"] == lumen) if state["drawn"][p]]
+        if members:
+            box, values = draw_lumen([state["pieces"][p] for p in members], [state["kappa"][p] for p in members], state["blur"],
+                                     render.shape, [state["radii"][p] for p in members])
+            if values.size:
+                render[box[0]:box[2], box[1]:box[3]] += values
+                canvases[lumen] = (box, values)
+
+
+def piece_darkness(rest, piece, blur_sigma):
+    """A new spline's darkness and radius per point: window_kappa at its windows (no cores) on the density the render
+    does not explain, as kappa_passes reads an edge; a spline too short for two windows has one, at its middle."""
+    places = edge_windows(piece, (0.0, 0.0))
+    if len(places) < 2:
+        places = np.array([len(piece["x"]) // 2])
+    found = [window_kappa(rest, piece, place, blur_sigma) for place in places]
+    values = np.maximum([value for value, _, _ in found], 0.0)
+    fitted = np.array([radius for _, _, radius in found])
+    along = np.arange(len(piece["x"]))
+    if len(places) > 1:
+        return (np.interp(along, places, scipy.ndimage.median_filter(values, size=3, mode="nearest")),
+                np.interp(along, places, scipy.ndimage.median_filter(fitted, size=3, mode="nearest")))
+    return np.full(len(along), float(values[0])), np.full(len(along), float(fitted[0]))
+
+
+def applied_move(scene, state, move):
+    """A move applied to a copy of the state, the touched lumens drawn again:
+
+      remove       a spline taken out of the rendering (it stays in the model, not drawn: section 39, step 3b)
+      add, extend  a new spline (its darkness read on the density the render does not explain); an extension joins
+                   the lumen of the spline whose end it continues, an addition is a lumen of its own
+      one lumen    two vessels at a core made one lumen (their lumens united: section 39, step 4)
+      two vessels  one lumen at a core made two: one vessel's pieces given a lumen of their own
+    """
+    new = dict(state, pieces=list(state["pieces"]), kappa=list(state["kappa"]), radii=list(state["radii"]),
+               drawn=state["drawn"].copy(), lumens=state["lumens"].copy(), origin=list(state["origin"]),
+               render=state["render"].copy(), canvases=dict(state["canvases"]))
+    kind = move["kind"]
+    if kind == "remove":
+        new["drawn"][move["piece"]] = False
+        touched = {int(new["lumens"][move["piece"]])}
+    elif kind in ("add", "extend"):
+        piece = move["new"]
+        piece.setdefault("key", ("added", len(piece["x"]), float(piece["x"][0]), float(piece["y"][0]), float(piece["x"][-1]), float(piece["y"][-1])))
+        kappa, radii = piece_darkness(scene["density"] - state["render"], piece, state["blur"])
+        lumen = int(new["lumens"].max()) + 1 if move.get("lumen") is None else int(move["lumen"])
+        new["pieces"].append(piece)
+        new["kappa"].append(kappa)
+        new["radii"].append(radii)
+        new["drawn"] = np.r_[new["drawn"], True]
+        new["lumens"] = np.r_[new["lumens"], lumen]
+        new["origin"].append(kind)
+        touched = {lumen}
+    elif kind == "one lumen":
+        a, b = int(new["lumens"][move["first"][0]]), int(new["lumens"][move["second"][0]])
+        new["lumens"][new["lumens"] == b] = a
+        touched = {a, b}
+    elif kind == "two vessels":
+        fresh = int(new["lumens"].max()) + 1
+        touched = {int(new["lumens"][p]) for p in move["second"]} | {fresh}
+        new["lumens"][list(move["second"])] = fresh
+    else:
+        raise ValueError(kind)
+    redraw_lumens(new, touched)
+    return new
+
+
+# ---------------------------------------------------------------- the candidates of a round
+
+def removal_candidates(state, residual):
+    """Section 39, step 3b: every drawn spline along which the topology residual in its own channel (own_channels:
+    the orientation and width of its line) lies below -T_HIGH on REMOVE_SHARE of its points (a line the render has
+    and the data lacks), with its evidence (the sum of the squares there); and every drawn spline the render itself
+    shows no line along (its strongest channel below T_LOW on REMOVE_SHARE of its points: its darkness was read as
+    about zero), where only the price speaks, evidence 0. `residual` is chi_topo's maps with `points` given."""
+    owner, rows, columns, _, _ = residual["points"]
+    own, shown = residual["own"], residual["render strength"]
+    out = []
+    for p in np.flatnonzero(state["drawn"]):
+        piece = state["pieces"][p]
+        mine = owner == p
+        if not mine.any():
+            continue
+        values = -own[mine]
+        if np.mean(values >= T_HIGH) >= REMOVE_SHARE:
+            out.append({"kind": "remove", "piece": int(p), "evidence": float(np.sum(values[values > 0] ** 2)), "x": piece["x"], "y": piece["y"]})
+        elif np.mean(shown[rows[mine], columns[mine]] < T_LOW) >= REMOVE_SHARE:
+            out.append({"kind": "remove", "piece": int(p), "evidence": 0.0, "x": piece["x"], "y": piece["y"]})
+    return out
+
+
+def addition_candidates(scene, state, residual, maps=None):
+    """Section 39, steps 1, 3 and 5: the positive ridges of the topology residual off the drawn splines (outside their
+    tubes), joined and cut as section 37 cuts the data's ridges (joined_ridges, ridge_lines to the forks), each piece
+    of EVIDENCE_LEAST px or more a new spline (spline_vessel). An end that lies within its tube's reach (plus
+    RIDGE_JOIN) of a drawn spline is joined to it: to its end (an extension, in its lumen) or to its body (a branch,
+    a lumen of its own). `maps` may hold the fixation's `has_flow` and `flow_strength` and the data's `strength`
+    (the static score the initial pieces carry), else the residual's own is kept. Returns the candidates with their
+    evidence (the sum of the squared residual along them)."""
+    positive = residual["positive"]
+    shape = positive.shape
+    maps = maps or {}
+    has_flow = maps.get("has_flow", np.zeros(shape, dtype=bool))
+    flow_strength = maps.get("flow_strength", np.zeros(shape, dtype=np.float32))
+    tubes = tube_mask(state["pieces"], state["blur"], shape, state["drawn"])
+    region = apply_hysteresis_threshold(positive, T_LOW, T_HIGH) & scene["valid"] & ~tubes
+    if not region.any():
+        return []
+    joined = joined_ridges(positive, residual["positive k"], region)
+    if skeleton_parts(joined["skeleton"])[3] <= 1:
+        return []  # no piece between forks: ridge_lines needs one
+    half_width = np.asarray(HYPER_WIDTHS, dtype=np.float32)[residual["positive w"]]
+    lines = ridge_lines(joined["skeleton"], positive, residual["positive k"], half_width, least=0, to_forks=True)
+    shown = np.flatnonzero(state["drawn"])
+    owner = np.concatenate([np.full(len(state["pieces"][p]["x"]), p) for p in shown]) if len(shown) else np.zeros(0, int)
+    spot = np.concatenate([np.arange(len(state["pieces"][p]["x"])) for p in shown]) if len(shown) else np.zeros(0, int)
+    xy = np.column_stack([np.concatenate([state["pieces"][p]["x"] for p in shown]),
+                          np.concatenate([state["pieces"][p]["y"] for p in shown])]) if len(shown) else np.zeros((0, 2))
+    reach = (np.concatenate([tube_reach(np.asarray(state["pieces"][p]["radius"], dtype=np.float32), state["blur"]) for p in shown])
+             + RIDGE_JOIN + 1) if len(shown) else np.zeros(0)
+    tree = scipy.spatial.cKDTree(xy) if len(xy) else None
+    rows, columns = shape
+    out = []
+    for line in lines:
+        if chain_length(line) < EVIDENCE_LEAST:
+            continue
+        line, kind, lumen = dict(line), "add", None
+        loose = list(line.get("loose", (True, True)))
+        for side in (0, 1):
+            size = len(line["x"])
+            here = 0 if side == 0 else size - 1
+            if tree is None:
+                break
+            distance, nearest = tree.query((line["x"][here], line["y"][here]))
+            if not np.isfinite(distance) or distance > reach[nearest]:
+                continue
+            p, place = int(owner[nearest]), int(spot[nearest])
+            last = len(state["pieces"][p]["x"]) - 1
+            at_end = place <= 2 or place >= last - 2
+            target = (state["pieces"][p]["x"][0 if place <= 2 else last], state["pieces"][p]["y"][0 if place <= 2 else last]) \
+                if at_end else (state["pieces"][p]["x"][place], state["pieces"][p]["y"][place])
+            for name, value in list(line.items()):  # the joining point put before the line's first or after its last
+                if isinstance(value, np.ndarray) and len(value) == size:
+                    extra = np.asarray([target[0] if name == "x" else target[1] if name == "y" else value[here]], dtype=value.dtype)
+                    line[name] = np.concatenate([extra, value]) if side == 0 else np.concatenate([value, extra])
+            loose[side] = False
+            if at_end and lumen is None:
+                kind, lumen = "extend", int(state["lumens"][p])
+        line["loose"] = tuple(loose)
+        if "strength" in maps:
+            line["strength"] = maps["strength"][np.clip(np.rint(line["y"]).astype(int), 0, rows - 1),
+                                                np.clip(np.rint(line["x"]).astype(int), 0, columns - 1)].astype(np.float32)
+        line["flow share"] = flow_share(line, has_flow)
+        vessel = spline_vessel(line, flow_strength)
+        vessel.update({"loose": line["loose"], "knot spacing": KNOT_SPACING, "split": False})
+        values = positive[np.clip(np.rint(vessel["y"]).astype(int), 0, rows - 1), np.clip(np.rint(vessel["x"]).astype(int), 0, columns - 1)]
+        out.append({"kind": kind, "new": vessel, "lumen": lumen, "evidence": float(np.sum(values ** 2)),
+                    "x": vessel["x"], "y": vessel["y"]})
+    return out
+
+
+def residual_spectrum(scene, state, quiet):
+    """The noise's power spectrum for the core filter (section 38b) where no generator made the noise: the density less
+    the render on the quiet pixels (the rest set to 0, the power divided by their share), smoothed over neighbouring
+    frequencies (a single picture's power at one frequency scatters by its own size)."""
+    quiet = quiet & scene["valid"]
+    rest = (scene["density"] - state["render"]).astype(float)
+    field = np.where(quiet, rest - np.median(rest[quiet]), 0.0)
+    power = np.abs(np.fft.fft2(field)) ** 2 / max(float(quiet.mean()), 1e-6)
+    return np.fft.ifftshift(scipy.ndimage.gaussian_filter(np.fft.fftshift(power), 2.0))
+
+
+def composition_candidates(scene, state, quiet, spectrum=None):
+    """Section 39, step 4: at every vertex of four arms of the drawn splines' graph (spline_to_graph), the arms paired
+    into the two straightest vessels, and the core filter (core_z, section 38b) read on the density less the other
+    lumens' render, within CORE_REGION core radii, with the arms' darkness and radius. Where it contradicts the
+    composition by more than Z_PASS the other composition is proposed: two vessels whose z falls Z_PASS below what two
+    vessels give, and below Z_PASS, become one lumen; one lumen with z above Z_PASS becomes two vessels. Returns a
+    reading per vertex with its `kind` (the proposed move, or None) and z."""
+    shown = np.flatnonzero(state["drawn"])
+    if len(shown) < 2:
+        return []
+    view = spline_to_graph([state["pieces"][p] for p in shown])
+    spectrum = residual_spectrum(scene, state, quiet) if spectrum is None else spectrum
+    rows, columns = scene["density"].shape
+    blur_sigma = state["blur"]
+    out = []
+    for vertex in view["vertices"]:
+        if len(vertex["ends"]) != 4:
+            continue
+        centre = np.array([vertex["x"], vertex["y"]])
+        arms = []
+        for e, end in vertex["ends"]:
+            edge = view["edges"][e]
+            points = np.column_stack([edge["x"], edge["y"]]).astype(float)
+            first, last = edge["span"]
+            places = np.arange(first, last + 1)
+            if end == 1:
+                points, places = points[::-1], places[::-1]
+            p = int(shown[edge["spline"]])
+            arms.append({"points": points, "places": places, "piece": p,
+                         "direction": (points[min(10, len(points) - 1)] - points[0]) / max(np.hypot(*(points[min(10, len(points) - 1)] - points[0])), 1e-9)})
+        if any(len(arm["points"]) < 4 for arm in arms):
+            continue
+        pairing = min((((0, 1), (2, 3)), ((0, 2), (1, 3)), ((0, 3), (1, 2))),
+                      key=lambda pairs: sum(float(np.dot(arms[a]["direction"], arms[b]["direction"])) for a, b in pairs))
+        vessels = []
+        for a, b in pairing:
+            kappa = float(np.median(np.concatenate([state["kappa"][arms[i]["piece"]][arms[i]["places"]] for i in (a, b)])))
+            radius = float(np.median(np.concatenate([state["radii"][arms[i]["piece"]][arms[i]["places"]] for i in (a, b)])))
+            vessels.append({"arms": (a, b), "pieces": sorted({arms[a]["piece"], arms[b]["piece"]}), "kappa": kappa, "radius": radius})
+        core = max(vessel["radius"] for vessel in vessels) + 2 * blur_sigma + RING_MARGIN
+        reach = CORE_REGION * core + 10
+        for vessel in vessels:
+            a, b = vessel["arms"]
+            near = lambda arm: arm["points"][np.hypot(*(arm["points"] - centre).T) <= reach]
+            line = np.vstack([near(arms[a])[::-1], near(arms[b])[1:]])
+            half = float(np.sqrt((CYLINDER * vessel["radius"]) ** 2 + blur_sigma ** 2))
+            vessel["edge"] = {"x": line[:, 0], "y": line[:, 1], "radius": np.full(len(line), half)}
+        lumen_sets = [{int(state["lumens"][p]) for p in vessel["pieces"]} for vessel in vessels]
+        if any(len(lumens) != 1 for lumens in lumen_sets):
+            continue
+        composition = "two vessels" if lumen_sets[0] != lumen_sets[1] else "one lumen"
+        others = state["render"].copy()
+        for lumen in set().union(*lumen_sets):
+            if lumen in state["canvases"]:
+                box, values = state["canvases"][lumen]
+                others[box[0]:box[2], box[1]:box[3]] -= values
+        y, x = np.mgrid[:rows, :columns]
+        region = (np.hypot(x - centre[0], y - centre[1]) <= CORE_REGION * core).astype(float)
+        z, expected = core_z(scene["density"] - others, [(vessel["edge"], vessel["kappa"], vessel["radius"]) for vessel in vessels],
+                             blur_sigma, spectrum, region)
+        kind = None
+        if composition == "two vessels" and z < Z_PASS and expected - z > Z_PASS:
+            kind = "one lumen"
+        elif composition == "one lumen" and z > Z_PASS:
+            kind = "two vessels"
+        out.append({"kind": kind, "composition": composition, "z": z, "expected": expected, "x": float(centre[0]), "y": float(centre[1]),
+                    "first": vessels[0]["pieces"], "second": vessels[1]["pieces"], "evidence": abs(z - (expected if composition == "two vessels" else 0.0))})
+    return out
+
+
+def bridge_candidates(scene, state, positive):
+    """Section 39, step 1, reported and never drawn: pairs of free ends of drawn splines (no other spline within
+    RIDGE_JOIN + 1 px, farther than FIELD_EDGE from where the data ends) within BRIDGE_REACH (BRIDGE_WIDTHS times the
+    larger width, at least RIDGE_REACH), each end's outward direction within SIGMA_BRANCH of the line to the other.
+    Per bridge: the similarity of the line masses (pi kappa R^2 over the last 12 points of each end, exp(-t^2 / 2)
+    with t their log ratio over SIGMA_DENSITY) and whether a positive ridge of the topology residual continues
+    across the gap (its median along the chord at least T_LOW)."""
+    shown = np.flatnonzero(state["drawn"])
+    if len(shown) < 2:
+        return []
+    owner = np.concatenate([np.full(len(state["pieces"][p]["x"]), p) for p in shown])
+    xy = np.column_stack([np.concatenate([state["pieces"][p]["x"] for p in shown]), np.concatenate([state["pieces"][p]["y"] for p in shown])])
+    tree = scipy.spatial.cKDTree(xy)
+    rows, columns = scene["valid"].shape
+    border = cv2.distanceTransform(scene["valid"].astype(np.uint8), cv2.DIST_L2, 5)
+    ends = []
+    for p in shown:
+        piece = state["pieces"][p]
+        size = len(piece["x"])
+        for end, step in ((0, 1), (size - 1, -1)):
+            spot = np.array([piece["x"][end], piece["y"][end]], dtype=float)
+            if any(owner[i] != p for i in tree.query_ball_point(spot, RIDGE_JOIN + 1)):
+                continue
+            if border[int(np.clip(round(spot[1]), 0, rows - 1)), int(np.clip(round(spot[0]), 0, columns - 1))] <= FIELD_EDGE:
+                continue
+            back = int(np.clip(end + 5 * step, 0, size - 1))
+            direction = spot - np.array([piece["x"][back], piece["y"][back]], dtype=float)
+            if np.hypot(*direction) < 1e-6:
+                continue
+            last = slice(0, 12) if end == 0 else slice(max(size - 12, 0), size)
+            mass = float(np.median(np.pi * state["kappa"][p][last] * state["radii"][p][last] ** 2))
+            ends.append({"piece": int(p), "end": int(end), "xy": spot, "direction": direction / np.hypot(*direction),
+                         "width": 2 * float(piece["radius"][end]) / CYLINDER, "mass": max(mass, 1e-9)})
+    bridges = []
+    for a, b in itertools.combinations(ends, 2):
+        if a["piece"] == b["piece"]:
+            continue
+        gap = b["xy"] - a["xy"]
+        distance = float(np.hypot(*gap))
+        if distance < 1e-6 or distance > max(BRIDGE_WIDTHS * max(a["width"], b["width"]), RIDGE_REACH):
+            continue
+        turn = lambda direction, towards: np.degrees(np.arccos(np.clip(float(np.dot(direction, towards / distance)), -1, 1)))
+        if max(turn(a["direction"], gap), turn(b["direction"], -gap)) > SIGMA_BRANCH:
+            continue
+        chord = line_points(a["xy"], b["xy"])
+        along = positive[np.clip(np.rint(chord[:, 1]).astype(int), 0, rows - 1), np.clip(np.rint(chord[:, 0]).astype(int), 0, columns - 1)]
+        t = np.log(a["mass"] / b["mass"]) / SIGMA_DENSITY
+        bridges.append({"ends": ((a["piece"], a["end"]), (b["piece"], b["end"])), "x": float((a["xy"][0] + b["xy"][0]) / 2),
+                        "y": float((a["xy"][1] + b["xy"][1]) / 2), "distance": distance, "similarity": float(np.exp(-t ** 2 / 2)),
+                        "continued": bool(np.median(along) >= T_LOW), "chord": chord})
+    return bridges
+
+
+# ---------------------------------------------------------------- the rounds
+
+def round_candidates(scene, state, residual, quiet=None, maps=None, most=CANDIDATES_MOST):
+    """A round's candidates, the strongest evidence first within each kind: at most a third removals and a sixth
+    compositions (the core filter needs the quiet pixels), the rest additions and extensions."""
+    removals = sorted(removal_candidates(state, residual), key=lambda c: -c["evidence"])[:most // 3]
+    compositions = []
+    if quiet is not None:
+        compositions = sorted([c for c in composition_candidates(scene, state, quiet) if c["kind"]], key=lambda c: -c["evidence"])[:most // 6]
+    additions = sorted(addition_candidates(scene, state, residual, maps), key=lambda c: -c["evidence"])
+    return removals + compositions + additions[:most - len(removals) - len(compositions)]
+
+
+def still_applies(state, move):
+    """Whether a move proposed at the start of a round still means something after other moves were taken."""
+    if move["kind"] == "remove":
+        return bool(state["drawn"][move["piece"]])
+    if move["kind"] == "one lumen":
+        return state["lumens"][move["first"][0]] != state["lumens"][move["second"][0]]
+    if move["kind"] == "two vessels":
+        return state["lumens"][move["first"][0]] == state["lumens"][move["second"][0]]
+    return True
+
+
+def recursion_rounds(scene, state, zero, lam, rounds=ROUNDS_MOST, quiet=None, maps=None, score=None, watch=None,
+                     most=CANDIDATES_MOST):
+    """Section 39's rounds, at most `rounds`: per round the topology residual of the current model (chi_topo with its
+    maps) gives the candidates (round_candidates); each is applied to a copy and J evaluated on the whole frame; then
+    the candidates are taken in the order of their gain, each re-evaluated on the model as it is by then once a move
+    has been taken, and taken only when J falls. The rounds end when a round takes nothing. Bridges are reported at
+    the end and never drawn. `score` (state -> anything) is called on the model of every round; `watch` (a
+    vascnet.watch.Recorder) is handed every candidate. Returns the final state and the history: J, chi^2, price,
+    self-consistency (render in data, data in render, above chance) and score per round (round 0 first), every move
+    (proposed and taken, with its gain and the J after it), and the bridges."""
+    total, chi, price = objective(scene, state, zero, lam)
+    _, residual = chi_topo(scene, state["render"], zero, maps=True, points=own_channels(state))
+    agreement = lambda maps: tuple(self_consistency(maps["ridges"], scene["ridges"], scene["valid"])[name][2]
+                                   for name in ("render in data", "data in render"))
+    history = {"lambda": lam, "J": [total], "chi": [chi], "price": [price], "self": [agreement(residual)],
+               "scores": [score(state) if score else None], "moves": [], "proposed": [0], "taken": [0]}
+    shown = lambda s: [(s["pieces"][p]["x"], s["pieces"][p]["y"]) for p in np.flatnonzero(s["drawn"])]
+    for number in range(1, rounds + 1):
+        candidates = round_candidates(scene, state, residual, quiet, maps, most)
+        evaluated = []
+        for move in candidates:
+            changed = applied_move(scene, state, move)
+            value = objective(scene, changed, zero, lam)[0]
+            evaluated.append((value - total, move, changed))
+        taken = 0
+        for gain, move, changed in sorted(evaluated, key=lambda item: item[0]):
+            record = {"round": number, "kind": move["kind"], "proposed gain": gain, "taken": False, "x": move.get("x"), "y": move.get("y")}
+            if gain < 0 and still_applies(state, move):
+                if taken:
+                    changed = applied_move(scene, state, move)
+                    gain = objective(scene, changed, zero, lam)[0] - total
+                if gain < 0:
+                    state, total = changed, total + gain
+                    taken += 1
+                    record["taken"] = True
+            record.update({"gain": gain, "J": total})
+            history["moves"].append(record)
+            if watch is not None:
+                watch({"round": number, "kind": move["kind"], "taken": record["taken"], "gain": gain, "J": total,
+                       "shown": shown(state), "x": move.get("x"), "y": move.get("y")})
+        total, chi, price = objective(scene, state, zero, lam)
+        _, residual = chi_topo(scene, state["render"], zero, maps=True, points=own_channels(state))
+        for name, value in (("J", total), ("chi", chi), ("price", price), ("self", agreement(residual)),
+                            ("scores", score(state) if score else None), ("proposed", len(candidates)), ("taken", taken)):
+            history[name].append(value)
+        if not taken:
+            break
+    history["bridges"] = bridge_candidates(scene, state, residual["positive"])
+    history["residual"] = residual
+    return state, history
+
+
+def model_score(burst, front, state, cache, threads=None):
+    """found-and-typed-right of a model on a synthetic burst: its drawn pieces read as section 37's pieces are read
+    (confidence_curve: a kymograph per piece, cached by the piece's key; the graph; the junctions with flow as tests)
+    and scored against the truth (score_reading)."""
+    shown = [int(p) for p in np.flatnonzero(state["drawn"])]
+    new = [p for p in shown if state["pieces"][p]["key"] not in cache]
+    if new:
+        readings, _ = segment_readings([state["pieces"][p] for p in new], lambda position: burst["frames"][position],
+                                       burst["times"], burst["pairs"], burst["fps"], threads=threads)
+        for p, reading in zip(new, readings):
+            cache[state["pieces"][p]["key"]] = reading
+    if len(shown) < 2:
+        return score_reading(burst, {"chains": [], "graph": {"nodes": []}, "junctions": []})
+    readings = [dict(cache[state["pieces"][p]["key"]]) for p in shown]
+    vessels = [downstream(dict(state["pieces"][p]), reading) for p, reading in zip(shown, readings)]
+    graph = vessel_graph(vessels, burst["valid"], burst["mean"], readings, burst["pairs"], burst["fps"])
+    count = len(burst["times"])
+    halves = (np.arange(0, count, 2), np.arange(1, count, 2)) if count >= SPLIT_FRAMES else None
+    found = read_junctions(graph, burst["mean"], front["scores"], halves)[0]
+    return score_reading(burst, {"chains": vessels, "readings": readings, "graph": graph, "junctions": found})
+
+
+def bridge_right(bridge, lines):
+    """A bridge is right when its chord lies on a true centerline (`lines`, a picture): most of its points within
+    TRUE_WITHIN, as true_pieces judges a piece."""
+    distance = distance_to(lines)
+    rows, columns = lines.shape
+    chord = bridge["chord"]
+    return bool(np.mean(distance[np.clip(np.rint(chord[:, 1]).astype(int), 0, rows - 1),
+                                 np.clip(np.rint(chord[:, 0]).astype(int), 0, columns - 1)] <= TRUE_WITHIN) > 0.5)
+
+
+def round_frame(state, density, box=None, size=(7.0, 5.4), dpi=80):
+    """A frame of a round's film: the density, the drawn splines (blue), and the candidate: green an addition or
+    extension, red a removal, orange a composition; full when taken, faded and dashed when refused; J in the caption."""
+    import matplotlib
+    matplotlib.use("Agg")
+    top, left, bottom, right = box if box is not None else (0, 0, *density.shape)
+    figure, axis = plt.subplots(figsize=size, dpi=dpi)
+    axis.imshow(np.nan_to_num(density[top:bottom, left:right]), cmap="gray_r", vmin=0,
+                vmax=float(np.nanpercentile(density[top:bottom, left:right], 99.5)))
+    for x, y in state["shown"]:
+        axis.plot(np.asarray(x) - left, np.asarray(y) - top, color="tab:blue", lw=0.7, alpha=0.8)
+    color = {"remove": "red", "add": "lime", "extend": "lime", "one lumen": "orange", "two vessels": "orange"}[state["kind"]]
+    style = {"alpha": 1.0 if state["taken"] else 0.4, "ls": "-" if state["taken"] else "--"}
+    if np.ndim(state["x"]) == 0:
+        axis.plot([state["x"] - left], [state["y"] - top], "o", color=color, ms=12, mfc="none", mew=2, alpha=style["alpha"])
+    else:
+        axis.plot(np.asarray(state["x"]) - left, np.asarray(state["y"]) - top, color=color, lw=2.2, **style)
+    axis.set_xlim(0, right - left)
+    axis.set_ylim(bottom - top, 0)
+    axis.axis("off")
+    axis.set_title(f"round {state['round']}: {state['kind']} {'taken' if state['taken'] else 'refused'}, gain {state['gain']:+.0f} | "
+                   f"J {state['J']:.0f}", fontsize=9)
+    frame = vascnet.watch.frame_of(figure)
+    plt.close(figure)
+    return frame
+
+# %%
+# acceptance step 7 on one synthetic burst made to need each move: section 35's first tree burst for developing, its
+# initial model (section 38) with the longest drawn true piece taken out of the model (the additions have to find that
+# vessel again) and a false spline drawn across empty background as dark as the model's median (the removals have to
+# take it out); its gaps, crossings and loops are the generator's. The rounds at lambda = 1, filmed; per round J, the
+# self-consistency number and found-and-typed-right; the bridges reported.
+import time
+
+started = time.time()
+recursion_burst = synthetic_burst_35(TREE_SEEDS[0], **SYNTH_THINGS)
+recursion_front = ridge_front(recursion_burst, workers)
+recursion_model = initial_model(recursion_front, recursion_burst["mean"], recursion_burst["valid"], workers)
+recursion_frame = scoring_frame(recursion_burst["mean"], recursion_burst["valid"], recursion_burst["quiet"],
+                                noise=robust_sd(recursion_burst["mean"][recursion_burst["quiet"]]))
+recursion_space = recursion_scene(recursion_burst["mean"], recursion_burst["valid"], recursion_frame, workers)
+start_state = piece_state(recursion_model, recursion_space)
+truth = true_pieces(start_state["pieces"], recursion_burst["lines"])
+missing = max((p for p in np.flatnonzero(start_state["drawn"]) if truth[p]), key=lambda p: start_state["pieces"][p]["length"])
+missing_line = np.column_stack([start_state["pieces"][missing]["x"], start_state["pieces"][missing]["y"]])
+missing_length = float(start_state["pieces"][missing]["length"])
+start_state = without_pieces(recursion_space, start_state, [missing])
+# the false spline: a straight 60 px line where every point lies 20 px or more from every true centerline and piece
+occupied = recursion_burst["lines"].copy()
+for piece in start_state["pieces"]:
+    occupied[np.clip(np.rint(piece["y"]).astype(int), 0, occupied.shape[0] - 1), np.clip(np.rint(piece["x"]).astype(int), 0, occupied.shape[1] - 1)] = True
+away = distance_to(occupied)
+away[~cv2.erode(recursion_burst["valid"].astype(np.uint8), np.ones((41, 41), np.uint8)).astype(bool)] = 0
+rows, columns = away.shape
+places = [(x, y, angle) for y in range(30, rows - 30, 10) for x in range(30, columns - 30, 10) for angle in (0, 45, 90, 135)]
+reach = lambda x, y, angle: line_points((x - 30 * np.cos(np.radians(angle)), y - 30 * np.sin(np.radians(angle))),
+                                        (x + 30 * np.cos(np.radians(angle)), y + 30 * np.sin(np.radians(angle))))
+clearance = lambda place: float(away[np.rint(reach(*place)[:, 1]).astype(int), np.rint(reach(*place)[:, 0]).astype(int)].min())
+best = max(places, key=clearance)
+points = reach(*best)
+drawn_half = float(np.median(np.concatenate([p["radius"] for p, shown in zip(start_state["pieces"], start_state["drawn"]) if shown])))
+false_chain = {"x": points[:, 0].astype(np.float32), "y": points[:, 1].astype(np.float32),
+               "theta": np.full(len(points), np.radians(best[2]) % np.pi, np.float32), "radius": np.full(len(points), drawn_half, np.float32),
+               "strength": np.full(len(points), T_HIGH, np.float32), "bridge": np.zeros(len(points), bool), "closed": False,
+               "loose": (True, True)}
+false_chain["flow share"] = flow_share(false_chain, recursion_front["has_flow"])
+false_piece = spline_vessel(false_chain, recursion_front["flow_strength"])
+false_piece.update({"loose": (True, True), "knot spacing": KNOT_SPACING, "split": False, "key": ("false", 0)})
+median_kappa = float(np.median([np.median(k) for k, shown in zip(start_state["kappa"], start_state["drawn"]) if shown]))
+median_radius = float(np.median([np.median(r) for r, shown in zip(start_state["radii"], start_state["drawn"]) if shown]))
+start_state = fresh_render(recursion_space, dict(
+    start_state, pieces=start_state["pieces"] + [false_piece], kappa=start_state["kappa"] + [np.full(len(false_piece["x"]), median_kappa)],
+    radii=start_state["radii"] + [np.full(len(false_piece["x"]), median_radius)], drawn=np.r_[start_state["drawn"], True],
+    lumens=np.r_[start_state["lumens"], start_state["lumens"].max() + 1], origin=start_state["origin"] + ["false"]))
+false_number = len(start_state["pieces"]) - 1
+recursion_zero = round_zero(recursion_space, start_state)
+round_recorder = vascnet.watch.Recorder(every=WATCH_EVERY)
+reading_cache = {}
+recursion_maps = {"has_flow": recursion_front["has_flow"], "flow_strength": recursion_front["flow_strength"], "strength": recursion_front["strength"]}
+final_state, recursion_history = recursion_rounds(
+    recursion_space, start_state, recursion_zero, 1.0, quiet=recursion_burst["quiet"], maps=recursion_maps,
+    score=lambda state: model_score(recursion_burst, recursion_front, state, reading_cache, workers), watch=round_recorder)
+spent = time.time() - started
+
+print(f"Tree burst {TREE_SEEDS[0]}: {len(start_state['pieces'])} pieces in the model ({start_state['drawn'].sum()} drawn), blur "
+      f"{start_state['blur']:.2f} px | taken out: the longest drawn true piece ({missing_length:.0f} px "
+      f"from ({missing_line[0, 0]:.0f}, {missing_line[0, 1]:.0f}) to ({missing_line[-1, 0]:.0f}, {missing_line[-1, 1]:.0f})) | put in: a false spline "
+      f"of 60 px at ({best[0]}, {best[1]}), {best[2]} degrees, {clearance(best):.0f} px from anything, kappa {median_kappa:.4f} | {spent / 60:.1f} min")
+print(f"   {'round':>5s} {'proposed':>9s} {'taken':>6s} {'J':>12s} {'chi2_topo':>12s} {'price':>9s} {'render in data':>15s} {'data in render':>15s} "
+      f"{'centerline P/R':>16s} {'junction P/R':>14s} {'found and typed right':>22s}")
+for number, value in enumerate(recursion_history["J"]):
+    row = ablation_row([recursion_history["scores"][number]])
+    print(f"   {number:5d} {recursion_history['proposed'][number]:9d} {recursion_history['taken'][number]:6d} {value:12.0f} "
+          f"{recursion_history['chi'][number]:12.0f} {recursion_history['price'][number]:9.0f} {recursion_history['self'][number][0] * 100:14.1f}% "
+          f"{recursion_history['self'][number][1] * 100:14.1f}% {row['centerline precision'][0] * 100:7.1f}/{row['centerline recall'][0] * 100:5.1f}% "
+          f"{row['junction precision'][0] * 100:6.1f}/{row['junction recall'][0] * 100:5.1f}% {row['found and typed right'][0] * 100:21.1f}%")
+moves = recursion_history["moves"]
+kinds = sorted({move["kind"] for move in moves})
+print("   moves proposed / taken by kind: " + ", ".join(f"{kind} {sum(m['kind'] == kind for m in moves)} / "
+                                                     f"{sum(m['kind'] == kind and m['taken'] for m in moves)}" for kind in kinds))
+taken_values = [recursion_history["J"][0]] + [move["J"] for move in moves if move["taken"]]
+falls = all(b < a for a, b in zip(taken_values[:-1], taken_values[1:]))
+again = objective(recursion_space, fresh_render(recursion_space, final_state), recursion_zero, 1.0)[0]
+print(f"   J at every taken move falls: {'yes' if falls else 'NO'} ({len(taken_values) - 1} moves, from {taken_values[0]:.0f} to {taken_values[-1]:.0f}); "
+      f"the final model drawn afresh gives J {again:.0f} (the moves' sum {taken_values[-1]:.0f}, off by {abs(again - taken_values[-1]) / max(abs(again), 1) * 100:.3f}%)")
+added = [p for p, origin in enumerate(final_state["origin"]) if origin in ("add", "extend") and final_state["drawn"][p]]
+taken_out = [p for p in range(len(start_state["pieces"])) if start_state["drawn"][p] and not final_state["drawn"][p]]
+start_truth = true_pieces(start_state["pieces"], recursion_burst["lines"])
+tree_of_missing = scipy.spatial.cKDTree(missing_line)
+covered = np.zeros(len(missing_line), bool)
+for p in added:
+    distance, nearest = tree_of_missing.query(np.column_stack([final_state["pieces"][p]["x"], final_state["pieces"][p]["y"]]))
+    covered[nearest[distance <= TRUE_WITHIN]] = True
+added_truth = true_pieces([final_state["pieces"][p] for p in added], recursion_burst["lines"]) if added else np.array([], bool)
+print(f"   the vessel taken out: {covered.mean() * 100:.0f}% of its points have an added spline within {TRUE_WITHIN:.0f} px | the false spline: "
+      f"{'taken out of the rendering' if not final_state['drawn'][false_number] else 'STILL DRAWN'} | added splines drawn at the end: {len(added)}, "
+      f"{added_truth.sum()} of them true | splines taken out of the rendering: {len(taken_out)} ("
+      + ", ".join("the false one" if p == false_number else "a true piece" if start_truth[p] else "a false piece" for p in taken_out) + ")")
+junction_places = np.array([(junction["x"], junction["y"]) for junction in recursion_burst["junctions"]]).reshape(-1, 2)
+for move in moves:
+    if move["kind"] in ("one lumen", "two vessels"):
+        distance = np.hypot(*(junction_places - (move["x"], move["y"])).T)
+        nearest = int(np.argmin(distance)) if len(distance) else None
+        print(f"   composition move {move['kind']} at ({move['x']:.0f}, {move['y']:.0f}), {'taken' if move['taken'] else 'refused'} (gain "
+              f"{move['gain']:+.0f}): the nearest true junction is a {recursion_burst['junctions'][nearest]['type']} {distance[nearest]:.0f} px away"
+              if nearest is not None else "")
+bridges = recursion_history["bridges"]
+print(f"   bridges (reported, never drawn): {len(bridges)}, of which {sum(bridge_right(b, recursion_burst['lines']) for b in bridges)} right; "
+      f"{sum(b['continued'] for b in bridges)} with a positive ridge across the gap | the generator's gaps: "
+      f"{sum(1 for s in recursion_burst['segments'] if s.get('gap'))}")
+os.makedirs("vessel_pictures/fit", exist_ok=True)
+for number in sorted({state["round"] for state in round_recorder.states}):
+    states = [state for state in round_recorder.states if state["round"] == number]
+    vascnet.watch.animate(states, lambda state: round_frame(state, recursion_burst["mean"]), f"vessel_pictures/fit/round_{number}.gif", fps=2.0)
+print(f"   the rounds are filmed in vessel_pictures/fit/round_<r>.gif ({len(round_recorder.states)} frames of {round_recorder.count} candidates)")
+memory_note("section 39, one burst")
+
+# %%
+# acceptance step 7 on the harness: section 35's held-out trees (TREE_HELD_OUT), each with its initial model (section 38)
+# and the rounds at lambda = 1 (the real burst's sweep is the next cell; the plan's rule for lambda needs the flux
+# network on every model, which is not run); found-and-typed-right per round over the bursts, and the first principle's
+# number after the rounds: the edge confidence (section 37's five terms, calibrated on the trees for developing as
+# acceptance step 2 calibrated it) told apart between true and false pieces at round 0 and after the rounds. After the
+# rounds the terms are read on the model's pieces less the ones the rounds took out of the rendering (an added piece
+# that takes the place of one taken out would otherwise make both twins), and those are counted once left out and once
+# with their confidence down to 0, as the plan has them.
+import time
+
+started = time.time()
+calibration_rows, calibration_truth = [], []
+for seed in TREE_SEEDS:
+    table = edge_table(synthetic_burst_35(seed, **{**SYNTH_THINGS, "second": True}), workers)
+    calibration_rows += table["terms"]
+    calibration_truth += list(table["truth"])
+    del table
+tree_edge_model = calibrate_terms(calibration_rows, calibration_truth)
+calibration_time = time.time() - started
+recursion_runs = []
+for seed in TREE_HELD_OUT:
+    burst = synthetic_burst_35(seed, **{**SYNTH_THINGS, "second": True})
+    front = ridge_front(burst, workers)
+    model = initial_model(front, burst["mean"], burst["valid"], workers)
+    frame = scoring_frame(burst["mean"], burst["valid"], burst["quiet"], noise=robust_sd(burst["mean"][burst["quiet"]]))
+    space = recursion_scene(burst["mean"], burst["valid"], frame, workers)
+    state = piece_state(model, space)
+    zero = round_zero(space, state)
+    cache = {}
+    maps = {"has_flow": front["has_flow"], "flow_strength": front["flow_strength"], "strength": front["strength"]}
+    final, history = recursion_rounds(space, state, zero, 1.0, quiet=burst["quiet"], maps=maps,
+                                      score=lambda candidate: model_score(burst, front, candidate, cache, workers))
+    history.pop("residual")
+    second = burst["second"]
+    other = ridge_front(second, workers)
+    other_lines = joined_ridges(other["strength"], other["orientation"], other["mask"])["skeleton"]
+    ridge_blur = picture_blur(front["half_width"], model["joined"]["ridges"])
+    confidence_of = lambda pieces: edge_confidence(edge_terms(pieces, burst["valid"], ridge_blur, edge_repeatability(
+        pieces, burst["valid"], other_lines, second["valid"], second["to second"])[2]), tree_edge_model)[0]
+    removed = np.array([p < len(state["pieces"]) and bool(state["drawn"][p]) and not final["drawn"][p] for p in range(len(final["pieces"]))])
+    kept = [p for p in range(len(final["pieces"])) if not removed[p]]
+    after = confidence_of([final["pieces"][p] for p in kept])
+    truth_after = true_pieces(final["pieces"], burst["lines"])
+    taken = [history["J"][0]] + [move["J"] for move in history["moves"] if move["taken"]]
+    recursion_runs.append({
+        "seed": seed, "history": history, "J falls": all(b < a for a, b in zip(taken[:-1], taken[1:])),
+        "J again": objective(space, fresh_render(space, final), zero, 1.0)[0], "J tracked": taken[-1],
+        "before": confidence_of(state["pieces"]), "truth before": true_pieces(state["pieces"], burst["lines"]),
+        "after": after, "truth after": truth_after[kept], "after down": np.r_[after, np.zeros(removed.sum())],
+        "truth after down": np.r_[truth_after[kept], truth_after[removed]], "truth final": truth_after,
+        "origin after": list(final["origin"]), "drawn after": final["drawn"].copy(), "drawn before": state["drawn"].copy(),
+        "bridges": [(b["similarity"], b["continued"], bridge_right(b, burst["lines"])) for b in history["bridges"]],
+        "compositions": [(m["kind"], m["taken"], *min(((j["type"], float(np.hypot(j["x"] - m["x"], j["y"] - m["y"]))) for j in burst["junctions"]),
+                                                      key=lambda pair: pair[1], default=("none", np.inf)))
+                         for m in history["moves"] if m["kind"] in ("one lumen", "two vessels")]})
+    del burst, front, model, frame, space, state, final, cache, second, other, other_lines
+    print(f"   tree burst {seed}: {len(recursion_runs[-1]['history']['J']) - 1} rounds, {sum(m['taken'] for m in recursion_runs[-1]['history']['moves'])} "
+          f"moves taken | {(time.time() - started) / 60:.1f} min since the start", flush=True)
+
+rounds_run = max(len(run["history"]["scores"]) for run in recursion_runs)
+at_round = lambda run, number: run["history"]["scores"][min(number, len(run["history"]["scores"]) - 1)]
+per_round = [ablation_row([at_round(run, number) for run in recursion_runs]) for number in range(rounds_run)]
+print(f"\nThe rounds on section 35's {len(recursion_runs)} held-out trees at lambda = 1 (the calibration on {len(TREE_SEEDS)} trees for developing "
+      f"took {calibration_time / 60:.1f} min; all {(time.time() - started) / 60:.1f} min). A burst whose rounds ended keeps its last model.")
+shown = ("centerline precision", "centerline recall", "junction precision", "junction recall", "found and typed right")
+print(f"   {'round':>5s} {'bursts moving':>14s} " + "".join(f"{column:>24s}" for column in shown))
+for number, row in enumerate(per_round):
+    moving = sum(len(run["history"]["J"]) > number for run in recursion_runs)
+    print(f"   {number:5d} {moving:14d} " + "".join(f"{row[c][0] * 100:7.1f} ({row[c][1] * 100:4.1f}-{row[c][2] * 100:5.1f})".rjust(24) for c in shown))
+moves = [move for run in recursion_runs for move in run["history"]["moves"]]
+print("   moves proposed / taken by kind: " + ", ".join(f"{kind} {sum(m['kind'] == kind for m in moves)} / {sum(m['kind'] == kind and m['taken'] for m in moves)}"
+                                                     for kind in sorted({m["kind"] for m in moves})))
+off = max(abs(run["J again"] - run["J tracked"]) / max(abs(run["J again"]), 1) for run in recursion_runs)
+print(f"   J falls at every taken move in {sum(run['J falls'] for run in recursion_runs)} of {len(recursion_runs)} bursts; the final models drawn afresh "
+      f"give the J the moves summed to within {off * 100:.3f}%")
+
+
+def told_with_interval(confidences, truths):
+    told = told_apart(np.concatenate([c[t] for c, t in zip(confidences, truths)]), np.concatenate([c[~t] for c, t in zip(confidences, truths)]))
+    picks = np.random.default_rng(0).integers(len(confidences), size=(500, len(confidences)))
+    resampled = [told_apart(np.concatenate([confidences[b][truths[b]] for b in pick]), np.concatenate([confidences[b][~truths[b]] for b in pick]))
+                 for pick in picks]
+    return (told, *np.percentile(resampled, [2.5, 97.5]))
+
+
+principle = {name: told_with_interval([run[key] for run in recursion_runs], [run[truth] for run in recursion_runs])
+             for name, key, truth in (("round 0", "before", "truth before"), ("after the rounds, pieces taken out left out", "after", "truth after"),
+                                      ("after the rounds, pieces taken out at 0", "after down", "truth after down"))}
+for name, (told, low, high) in principle.items():
+    print(f"   the edge confidence told apart, {name}: {told:.3f} ({low:.3f} to {high:.3f}, 95% over bursts)")
+added = [(run["truth final"][p], run["drawn after"][p]) for run in recursion_runs for p, origin in enumerate(run["origin after"]) if origin in ("add", "extend")]
+taken_out = [(run["truth before"][p]) for run in recursion_runs for p in range(len(run["drawn before"])) if run["drawn before"][p] and not run["drawn after"][p]]
+print(f"   pieces added and drawn at the end: {sum(d for _, d in added)}, {sum(t and d for t, d in added)} of them true | pieces taken out of the "
+      f"rendering: {len(taken_out)}, {sum(taken_out)} of them true")
+bridges = [bridge for run in recursion_runs for bridge in run["bridges"]]
+right = np.array([r for _, _, r in bridges], bool)
+similarity = np.array([s for s, _, _ in bridges])
+print(f"   bridges (reported, never drawn): {len(bridges)}, {right.sum()} right | the line-mass similarity told apart between right and wrong "
+      f"{told_apart(similarity[right], similarity[~right]):.2f} | a positive ridge across the gap: {sum(c for _, c, r in bridges if r)} of the right, "
+      f"{sum(c for _, c, r in bridges if not r)} of the wrong")
+compositions = [c for run in recursion_runs for c in run["compositions"]]
+for kind in ("one lumen", "two vessels"):
+    mine = [c for c in compositions if c[0] == kind]
+    near = lambda c: c[2] if c[3] <= 10 else "no true junction within 10 px"
+    print(f"   composition moves to {kind}: {len(mine)} proposed, {sum(c[1] for c in mine)} taken | the taken ones at: "
+          + (", ".join(f"{name} {sum(near(c) == name for c in mine if c[1])}" for name in sorted({near(c) for c in mine if c[1]})) or "none"))
+shares = [row["found and typed right"][0] for row in per_round]
+holds = all(b >= a for a, b in zip(shares[:-1], shares[1:]))
+falls = all(run["J falls"] for run in recursion_runs)
+kept = min(told for told, _, _ in list(principle.values())[1:]) >= 0.75
+print(f"\nThe gate: J falls at every taken move ({'yes' if falls else 'no'}); found-and-typed-right does not fall from one round to the next "
+      f"({'yes' if holds else 'no'}: " + " -> ".join(f"{share * 100:.1f}" for share in shares) + f"); the first principle's number after the rounds "
+      f"at least 0.75 ({'yes' if kept else 'no'}: " + ", ".join(f"{told:.3f}" for told, _, _ in list(principle.values())[1:]) + ") -> "
+      + ("PASSED" if falls and holds and kept else "FAILED"))
+os.makedirs("vessel_pictures/recursion", exist_ok=True)
+save_table([{"seed": run["seed"], "round": number, "J": run["history"]["J"][number], "chi2": run["history"]["chi"][number],
+             "price": run["history"]["price"][number], "render in data": run["history"]["self"][number][0],
+             "data in render": run["history"]["self"][number][1], "proposed": run["history"]["proposed"][number],
+             "taken": run["history"]["taken"][number], "true junctions": run["history"]["scores"][number]["junctions"]["n_gt"],
+             "found and typed right": sum(run["history"]["scores"][number]["junctions"]["per_type"][kind]["type_correct"] for kind in TRUE_TYPES),
+             "centerline precision": run["history"]["scores"][number]["centerline"]["precision"],
+             "centerline recall": run["history"]["scores"][number]["centerline"]["recall"]}
+            for run in recursion_runs for number in range(len(run["history"]["J"]))], "vessel_pictures/recursion/held_out_rounds.csv")
+memory_note("section 39, harness")
+
+# %%
+# acceptance step 7 on the real burst: the rounds on a central 640 x 640 crop of the anchor's fixation (an evaluation of
+# J over the whole frame takes about a minute here, step 5), lambda swept over LAMBDA_TRIES; per lambda and round J,
+# the moves taken by kind and the self-consistency number. The plan chooses lambda as the largest at which the flux
+# network's shares of impossible junctions and directed cycles on the model stay within the consolidated graph's
+# (step 3); the network is not run on these models (section 39's closing round is not built), so lambda is not chosen.
+import time
+
+rows, columns = saved["valid"][anchor].shape
+crop_top, crop_left = (rows // 2 - 320) // WINDOW_ALIGN * WINDOW_ALIGN, (columns // 2 - 320) // WINDOW_ALIGN * WINDOW_ALIGN
+crop = (slice(crop_top, crop_top + 640), slice(crop_left, crop_left + 640))
+whole_front = saved_front(saved, anchor)
+crop_front = {name: np.ascontiguousarray(value[:, crop[0], crop[1]] if name == "scores" else value[crop]) for name, value in whole_front.items()}
+crop_density = np.ascontiguousarray(saved["density"][anchor][crop])
+crop_valid = np.ascontiguousarray(saved["valid"][anchor][crop])
+crop_quiet = quiet_of(crop_front, crop_valid)
+started = time.time()
+crop_model = initial_model(crop_front, crop_density, crop_valid, workers)
+crop_frame = scoring_frame(crop_density, crop_valid, crop_quiet)
+crop_space = recursion_scene(crop_density, crop_valid, crop_frame, workers)
+crop_state = piece_state(crop_model, crop_space)
+crop_zero = round_zero(crop_space, crop_state)
+crop_maps = {"has_flow": crop_front["has_flow"], "flow_strength": crop_front["flow_strength"], "strength": crop_front["strength"]}
+model_time = time.time() - started
+lambda_runs = {}
+crop_recorder = vascnet.watch.Recorder(every=WATCH_EVERY)
+for lam in LAMBDA_TRIES:
+    started = time.time()
+    final, history = recursion_rounds(crop_space, crop_state, crop_zero, lam, quiet=crop_quiet, maps=crop_maps,
+                                      watch=crop_recorder if lam == 1.0 else None)
+    history.pop("residual")
+    taken = [history["J"][0]] + [move["J"] for move in history["moves"] if move["taken"]]
+    lambda_runs[lam] = {"final": final, "history": history, "time": time.time() - started,
+                        "J falls": all(b < a for a, b in zip(taken[:-1], taken[1:])), "J tracked": taken[-1],
+                        "J again": objective(crop_space, fresh_render(crop_space, final), crop_zero, lam)[0]}
+
+print(f"Real burst, fixation {anchor}, the crop rows {crop_top}-{crop_top + 640}, columns {crop_left}-{crop_left + 640}: the initial model in "
+      f"{model_time / 60:.1f} min, {len(crop_state['pieces'])} pieces ({crop_state['drawn'].sum()} drawn) in {crop_state['lumens'].max() + 1} lumens, "
+      f"blur fitted {crop_state['blur']:.2f} px | ln n {crop_space['ln n']:.1f}")
+print("   zero point per width (median over the orientations measured): " + ", ".join(
+    f"{HYPER_WIDTHS[w]}: {np.nanmedian(crop_zero[:, w]):+.2f}" for w in range(len(HYPER_WIDTHS)) if np.isfinite(crop_zero[:, w]).any()))
+print(f"   {'lambda':>6s} {'round':>5s} {'proposed':>9s} {'taken':>6s} {'J':>12s} {'chi2_topo':>12s} {'price':>10s} {'render in data':>15s} {'data in render':>15s}")
+for lam, run in lambda_runs.items():
+    history = run["history"]
+    for number, value in enumerate(history["J"]):
+        print(f"   {lam:6.2f} {number:5d} {history['proposed'][number]:9d} {history['taken'][number]:6d} {value:12.0f} {history['chi'][number]:12.0f} "
+              f"{history['price'][number]:10.0f} {history['self'][number][0] * 100:14.1f}% {history['self'][number][1] * 100:14.1f}%")
+for lam, run in lambda_runs.items():
+    moves = run["history"]["moves"]
+    final = run["final"]
+    print(f"   lambda {lam:g}: moves proposed / taken: " + ", ".join(
+        f"{kind} {sum(m['kind'] == kind for m in moves)} / {sum(m['kind'] == kind and m['taken'] for m in moves)}" for kind in sorted({m['kind'] for m in moves}))
+          + f" | drawn pieces {crop_state['drawn'].sum()} -> {final['drawn'].sum()} | bridges reported {len(run['history']['bridges'])}, "
+          f"{sum(b['continued'] for b in run['history']['bridges'])} with a positive ridge across the gap | J falls at every taken move: "
+          f"{'yes' if run['J falls'] else 'NO'}; drawn afresh {run['J again']:.0f} against {run['J tracked']:.0f} | {run['time'] / 60:.1f} min")
+print(f"   the data's own repeatability (whole frame, step 5): 74.8% above chance | lambda is not chosen: the flux network is not run on these models")
+os.makedirs("vessel_pictures/fit", exist_ok=True)
+for number in sorted({state["round"] for state in crop_recorder.states}):
+    states = [state for state in crop_recorder.states if state["round"] == number]
+    vascnet.watch.animate(states, lambda state: round_frame(state, crop_density), f"vessel_pictures/fit/real_round_{number}.gif", fps=2.0)
+print(f"   the rounds at lambda 1 are filmed in vessel_pictures/fit/real_round_<r>.gif ({len(crop_recorder.states)} frames)")
+memory_note("section 39, real burst")
