@@ -131,7 +131,8 @@ def _flip_sets(items, most=6):
 def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lumen], sigma_flux: float = 0.45,
                        p: float = 0.85, robust_rounds: int = 5, huber: float = 3.0, flips: bool = True,
                        measurement: np.ndarray | None = None, edge_confidence: np.ndarray | None = None,
-                       lumen_confidence: np.ndarray | float | None = None) -> FluxSolution:
+                       edge_scale: np.ndarray | None = None, lumen_confidence: np.ndarray | float | None = None,
+                       lumen_group: np.ndarray | None = None, flip_margin: float = 0.0) -> FluxSolution:
     """Solve the flux network.
 
     q_hat, sigma_hat  per edge: the measured flux and its sigma; NaN where no speed was read.
@@ -145,16 +146,26 @@ def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lu
     measurement       per edge, which measurement its direction belongs to (the whole vessel of section 32); -1
                       or absent where not measured. By default every measured edge is its own measurement.
     edge_confidence   per edge, a confidence in (0, 1] that the edge exists (a bridge's); below 1 the edge gets
-                      a prior of zero flux with sigma c / (1 - c) times the graph's typical flux.
-    lumen_confidence  per lumen (or one number), the confidence of the reading that made it: setting the lumen
-                      aside costs ln(c / (1 - c)) against the flips that would balance it. In the notebook this
-                      is section 27's reading confidence, and a join made by a bridge or by extending a free end
-                      into a line carries that bridge's confidence. By default a lumen of two arms (two pieces
-                      meeting end to end) gets 0.99 and a lumen of three or more 0.999: a vertex of three arms
-                      has no other reading, so there an impossible pattern is a wrong direction, as section 33
-                      says. The cost of setting a lumen aside must stay above the cost of one flip (2 ln(p/(1-p)),
-                      3.5 at p = 0.85), or the sign step sacrifices a cheap lumen to every wrong direction instead
-                      of turning it round (measured: at 0.9 it did).
+                      a prior of zero flux with sigma c / (1 - c) times `edge_scale`.
+    edge_scale        per edge, the flux the prior is scaled by: the flux of the free end the bridge continues
+                      (its arm's measurement, else its lumen's other arm). The graph's mean measured flux is the
+                      default and is wrong at both ends of the range (measured: a right thick bridge at c = 0.2
+                      carried a sixth of its flux, a wrong capillary bridge was barely held back).
+    lumen_confidence  per lumen (or one number): the probability that the *structure* that made the lumen is
+                      right, never a goodness of fit. Setting the lumen aside costs ln(c / (1 - c)), against
+                      2 ln(p / (1 - p)) per measurement turned round (3.5 at p = 0.85). Section 27's
+                      `reading_confidence` is a goodness of fit (its median is about 0.65 under calibrated tests,
+                      a fifth of it below 0.5) and must not be passed here; what belongs here is: 1 - 1e-6 for a
+                      vertex that has one structure (three arms; two pieces meeting end to end in the skeleton),
+                      the margin of the best partition over the second best for a vertex of four or more arms
+                      (cost = that margin in log units), a bridge's or an extension's confidence for a join it
+                      made, and 0.5 (cost 0: no balance) for a join section 32 undid because its sides ran
+                      against each other. By default 1 - 1e-6 everywhere: nothing is set aside unless the caller
+                      says the structure is in doubt.
+    lumen_group       per lumen, an id: lumens with the same id are set aside together at one cost (the two
+                      through-lumens of a crossing are one reading, not two).
+    flip_margin       a move to turn measurements round is taken only when it lowers the total by more than this
+                      (0: whenever it lowers it). A precision knob for the harness to sweep.
     """
     q_hat = np.array(q_hat, dtype=float)
     sigma_hat = np.asarray(sigma_hat, dtype=float)
@@ -171,8 +182,9 @@ def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lu
     prior_precision = np.zeros(count)
     if edge_confidence is not None:
         confidence = np.clip(np.asarray(edge_confidence, dtype=float), 1e-6, 1.0)
+        unit = np.full(count, floor) if edge_scale is None else np.maximum(np.asarray(edge_scale, dtype=float), floor * 1e-6)
         doubtful = confidence < 1
-        prior_precision[doubtful] = 1 / (floor * confidence[doubtful] / (1 - confidence[doubtful])) ** 2
+        prior_precision[doubtful] = 1 / (unit[doubtful] * confidence[doubtful] / (1 - confidence[doubtful])) ** 2
     reached = measured | (np.abs(balance).sum(axis=0) > 0) | (prior_precision > 0)
     log_odds = np.log(max(p, 1e-9) / max(1 - p, 1e-9))  # that a direction is right, before the network speaks
     precision_base = np.where(measured, 1 / np.maximum(sigma_hat, 1e-12) ** 2, 0.0)
@@ -181,9 +193,11 @@ def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lu
     flipped = np.zeros(count, dtype=bool)
     disabled = np.zeros(len(lumens), dtype=bool)
     if lumen_confidence is None:
-        lumen_confidence = np.array([0.99 if len(lumen) <= 2 else 0.999 for lumen in lumens])
+        lumen_confidence = 1 - 1e-6
     reading = np.clip(np.broadcast_to(np.asarray(lumen_confidence, dtype=float), len(lumens)), 1e-6, 1 - 1e-6)
-    aside_cost = np.log(reading / (1 - reading))  # what setting a lumen aside costs: its reading's log odds
+    aside_cost = np.log(reading / (1 - reading))  # what setting a lumen aside costs: its structure's log odds
+    group = np.arange(len(lumens)) if lumen_group is None else np.asarray(lumen_group)
+    members = {g: np.flatnonzero(group == g) for g in set(group.tolist())}  # the lumens set aside together
     edges_of = {}  # measurement -> its edges
     for edge in np.flatnonzero(measured):
         edges_of.setdefault(int(measurement[edge]), []).append(int(edge))
@@ -234,18 +248,25 @@ def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lu
                     delta = 4 * float(r @ q[S]) - 4 * float(r @ cov[np.ix_(S, S)] @ r)
                     cost = 2 * log_odds * sum(-1 if flipped[edges_of[item][0]] else 1 for item in subset)
                     gain = delta + cost
-                    if gain < best_gain - 1e-9:
+                    if gain < best_gain - 1e-9 and gain < -flip_margin:
                         best, best_gain = S, gain
             rows = balance * (np.sqrt(balance_weight) / scale)[:, None]
-            row_leverage = np.einsum("ij,jk,ik->i", rows, cov, rows) if len(lumens) else np.zeros(0)
-            row_residual = rows @ q
             aside = None
-            for number in range(len(lumens)):
-                left = 1 - row_leverage[number]
-                if not disabled[number] and left > 1e-6:
-                    gain = -float(row_residual[number] ** 2 / left) + aside_cost[number]
-                    if gain < best_gain - 1e-9:
-                        aside, best_gain = number, gain
+            for g, these in members.items():
+                these = [number for number in these if not disabled[number]]
+                if not these:
+                    continue
+                # the fall of the minimised chi-square when these rows are deleted together: r^T (I - H)^-1 r
+                # over the rows' block, the identity for deleting a set of observations
+                X = rows[these]
+                hat = X @ cov @ X.T
+                residual = X @ q
+                inner = np.eye(len(these)) - hat
+                if np.linalg.cond(inner) > 1e8:
+                    continue
+                gain = -float(residual @ np.linalg.solve(inner, residual)) + float(aside_cost[these].max())
+                if gain < best_gain - 1e-9:
+                    aside, best_gain = these, gain
             if aside is not None:
                 disabled[aside], balance_weight[aside] = True, 0.0
                 q, covariance, precision = solve(scale)
@@ -296,7 +317,7 @@ def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lu
     chi2 = float(np.sum(np.where(measured, _huber_loss((q - np.nan_to_num(q_hat)) / np.maximum(sigma_hat, 1e-12), huber), 0.0))
                  + np.sum(np.where(disabled, 0.0, _huber_loss((balance @ q) / scale, huber))) + np.sum(prior_precision * q ** 2)
                  + len({int(measurement[edge]) for edge in np.flatnonzero(flipped)}) * 2 * log_odds
-                 + float(np.sum(aside_cost[disabled])))
+                 + float(sum(aside_cost[these].max() for these in members.values() if disabled[these].all())))
     return FluxSolution(q=q, sigma=sigma, covariance=covariance, measured=measured, measurement=measurement,
                         q_hat=q_hat, weight=weight, flipped=flipped, studentised=studentised, scale=scale,
                         balance_weight=balance_weight, imbalance=imbalance, impossible=impossible, disabled=disabled,
@@ -363,6 +384,40 @@ def lumens_of(partitions: dict[int, list[list[int]]], arms: dict[int, list[tuple
                 continue
             lumens.append(tuple((arms[vertex][arm][0], 1 if arms[vertex][arm][1] == 0 else -1) for arm in group))
     return lumens
+
+
+def blame(solution: FluxSolution, threshold: float = 3.0) -> dict:
+    """A missing arm, a wrong join and a wrong speed are one signal, an imbalance, and the rule for which it is:
+
+    - a lumen of two arms that is imbalanced (or set aside, or impossible) is a wrong join or a missing arm there:
+      it goes to the graph (section 39, step 3), never to the speeds;
+    - a measurement is a wrong-speed candidate only when its studentised residual is beyond `threshold` AND the
+      edge sits in lumens of three or more arms at both of its ends that are imbalanced beyond `threshold`
+      (a wrong speed shows at both ends of its edge; a missing arm shows at one lumen only).
+    Returns {"lumens": [lumen numbers to send to the graph], "speeds": [edges whose speed is in doubt]}; a
+    measurement whose residual is large but which the rule does not blame is left to the lumens around it
+    (measured: a trunk with one daughter missing from the graph had its right speed weighted down to 0.61 and
+    reported at 5 sigma; this rule sends that to the lumen instead)."""
+    lumens_of_edge: dict[int, list[int]] = {}
+    for number, lumen in enumerate(solution.lumens):
+        for edge, _ in lumen:
+            lumens_of_edge.setdefault(edge, []).append(number)
+    off = np.zeros(len(solution.lumens), dtype=bool)
+    for number, lumen in enumerate(solution.lumens):
+        z = solution.imbalance[number]
+        off[number] = solution.disabled[number] or solution.impossible[number] or (np.isfinite(z) and abs(z) > threshold)
+    to_graph = [number for number, lumen in enumerate(solution.lumens) if off[number] and len(lumen) <= 2]
+    speeds = []
+    for edge in np.flatnonzero(solution.measured):
+        if abs(solution.studentised[edge]) <= threshold:
+            continue
+        mine = lumens_of_edge.get(int(edge), [])
+        wide = [number for number in mine if len(solution.lumens[number]) >= 3]
+        if len(wide) >= 2 and all(off[number] for number in wide):
+            speeds.append(int(edge))
+        else:
+            to_graph += [number for number in mine if off[number] and number not in to_graph]
+    return {"lumens": sorted(to_graph), "speeds": speeds}
 
 
 def flux_at_free_ends(solution: FluxSolution, ends: list[tuple[int, int]]) -> list[tuple[float, float]]:

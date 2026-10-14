@@ -12,8 +12,8 @@ Vertices and edges (first vertex -> last vertex; the flux runs along the edge's 
 import numpy as np
 import pytest
 
-from vascnet.fluxnet import (compare_readings, directed_cycles, flux_at_free_ends, lumens_of, solve_flux_network,
-                             vertex_tests)
+from vascnet.fluxnet import (blame, compare_readings, directed_cycles, flux_at_free_ends, lumens_of,
+                             solve_flux_network, vertex_tests)
 
 EDGES = [(0, 1), (1, 2), (1, 3), (4, 2), (2, 5), (2, 6), (3, 5), (5, 7)]
 TRUE = np.array([10.0, 6.0, 4.0, 2.0, 6.0, 2.0, 4.0, 10.0])
@@ -132,7 +132,8 @@ def test_two_wrong_directions_or_a_wrong_join_is_the_models_arithmetic():
     # reading's confidence; what the test guarantees is that the outcome is reported and nothing cascades
     q_hat, sigma_hat = measured(0, 1, 2, 3, 4, 5, 7, flip=(0, 1))
     lumens = lumens_of(READING, ARMS)
-    solution = solve_flux_network(q_hat, sigma_hat, lumens, sigma_flux=0.3)
+    confidence = np.array([0.99 if len(lumen) <= 2 else 1 - 1e-6 for lumen in lumens])  # joins slightly in doubt
+    solution = solve_flux_network(q_hat, sigma_hat, lumens, sigma_flux=0.3, lumen_confidence=confidence)
     turned = set(np.flatnonzero(solution.flipped))
     assert turned <= {0, 1}, "no right measurement is turned"
     if turned != {0, 1}:
@@ -168,14 +169,15 @@ def test_an_impossible_lumen_is_reported_and_no_right_measurement_is_turned_for_
     lumens = lumens_of(READING, ARMS)
     here = lumens.index(((2, -1), (6, 1)))
     # the join at vertex 3 was made by extending a free end into a line: it carries that extension's confidence
-    confidence = np.array([0.999 if len(lumen) >= 3 else 0.99 for lumen in lumens])
+    confidence = np.full(len(lumens), 1 - 1e-6)
     confidence[here] = 0.8
     solution = solve_flux_network(q_hat, sigma_hat, lumens, lumen_confidence=confidence)
     assert not solution.flipped.any()
     assert solution.disabled[here] and solution.impossible[here]
     assert np.abs(solution.imbalance[here]) > 2
-    # a join held with more confidence than one direction is not set aside: then the cheaper explanation is a
-    # wrong direction, and the network says which
+    assert blame(solution) == {"lumens": [here], "speeds": []}, "it goes to the graph, not to a speed"
+    # a join whose structure is not in doubt is not set aside: then the cheaper explanation is a wrong
+    # direction, and the network says which
     sure = solve_flux_network(q_hat, sigma_hat, lumens)
     assert not sure.disabled.any() and sure.flipped.sum() == 1
 
@@ -203,11 +205,90 @@ def test_a_doubtful_edge_carries_little_and_exposes_the_imbalance_it_would_hide(
     q_hat = np.array([4.0, np.nan, 1.0])
     sigma_hat = np.array([0.3, np.nan, 0.3])
     sure = solve_flux_network(q_hat, sigma_hat, lumens)
-    doubt = solve_flux_network(q_hat, sigma_hat, lumens, edge_confidence=np.array([1.0, 0.02, 1.0]))
+    doubt = solve_flux_network(q_hat, sigma_hat, lumens, edge_confidence=np.array([1.0, 0.02, 1.0]),
+                               edge_scale=np.array([4.0, 4.0, 1.0]))
     assert 2.0 < sure.q[1] < 3.0, "trusted, the bridge carries the mean of the two sides"
     assert abs(doubt.q[1]) < 0.5, "doubted, it carries almost nothing"
     assert np.nanmin(np.abs(doubt.imbalance)) > np.nanmax(np.abs(sure.imbalance)), "and the mismatch is exposed, not divided away"
     assert np.nanmax(np.abs(doubt.imbalance)) > 2.0
+
+
+def test_the_bridge_prior_is_in_the_free_ends_own_unit():
+    # one thick vessel (10) bridged to its continuation, and a capillary (0.1) bridged to a wrong one (0.01), on
+    # one graph: scaled by the graph's mean flux the thick bridge is held back and the capillary one is not;
+    # scaled by each end's own flux a right bridge at c = 0.5 carries nearly all and a wrong one at c = 0.05 almost none
+    edges = [(0, 1), (1, 2), (2, 3), (4, 5), (5, 6), (6, 7)]
+    lumens = [((0, -1), (1, 1)), ((1, -1), (2, 1)), ((3, -1), (4, 1)), ((4, -1), (5, 1))]
+    q_hat = np.array([10.0, np.nan, 10.0, 0.1, np.nan, 0.01])
+    sigma_hat = np.array([1.0, np.nan, 1.0, 0.01, np.nan, 0.01])
+    confidence = np.array([1.0, 0.5, 1.0, 1.0, 0.05, 1.0])
+    own = solve_flux_network(q_hat, sigma_hat, lumens, edge_confidence=confidence,
+                             edge_scale=np.array([10.0, 10.0, 10.0, 0.1, 0.1, 0.1]))
+    assert own.q[1] > 8.0, "a right thick bridge at c = 0.5 carries nearly all of its flux"
+    assert abs(own.q[4]) < 0.02, "a wrong capillary bridge at c = 0.05 carries almost nothing"
+    graph_unit = solve_flux_network(q_hat, sigma_hat, lumens, edge_confidence=confidence)
+    assert graph_unit.q[1] < own.q[1] and abs(graph_unit.q[4]) > abs(own.q[4]), "the graph's mean gets both wrong"
+
+
+def test_a_crossing_is_set_aside_as_one_reading():
+    # the crossing at vertex 2 read with both pairings in doubt (margin 1.0 log unit): its two lumens are one
+    # group and go together at one cost
+    q_hat, sigma_hat = measured(1, 3, 4, 5, sigma=0.5)
+    q_hat[5] = 6.0  # e5 reads 6 where the pairing (e3 -> e5) carries 2: the reading does not balance
+    lumens = lumens_of({2: [[0, 1], [2, 3]]}, ARMS)
+    margin = 1.0
+    c = 1 / (1 + np.exp(-margin))
+    solution = solve_flux_network(q_hat, sigma_hat, lumens, lumen_confidence=c, lumen_group=np.array([0, 0]))
+    assert solution.disabled.all() or not solution.disabled.any(), "both or neither"
+    assert solution.disabled.all(), "a reading in doubt against a 4-against-2 imbalance is set aside"
+
+
+def test_a_missing_arm_is_blamed_on_the_lumen_not_on_the_trunks_speed():
+    # the bifurcation at vertex 1 with one daughter (e2) missing from the graph: a through-lumen of trunk in 10
+    # and daughter out 6; at a tight balance the trunk's right speed would be weighted down and reported, and the
+    # rule sends the signal to the lumen instead
+    lumens = [((0, -1), (1, 1)), ((1, -1), (4, 1)), ((4, -1), (6, -1), (7, 1))]
+    q_hat, sigma_hat = measured(0, 1, 4, 6, 7, sigma=0.5)
+    q_hat[1] = q_hat[4] = 2.0  # the daughter in the graph carries 2; the missing one carried 8
+    solution = solve_flux_network(q_hat, sigma_hat, lumens, sigma_flux=0.15)
+    assert abs(solution.imbalance[0]) > 3, "the lumen with the missing daughter is off"
+    verdict = blame(solution)
+    assert 0 in verdict["lumens"], "the two-arm lumen with the missing daughter goes to the graph"
+    assert verdict["speeds"] == [], "the trunk's speed is not blamed: its edge is off at one lumen only"
+
+
+def test_the_sign_step_does_not_reach_through_a_crossing_plexus():
+    # a plexus of projected crossings: six horizontal and six vertical vessels, each one measurement, crossing
+    # readings (through-lumens pair the arms of one vessel) everywhere. The balances then pair arms of the same
+    # measurement, which balance whatever their common sign: a reversed vessel contradicts nothing, and the
+    # network can neither find nor make a wrong direction here. The sign step's reach is lumens that join
+    # different measurements
+    n = 6
+    edges, measurement, lumens = [], [], []
+    vertex = lambda i, j: i * n + j
+    for i in range(n):
+        for j in range(n - 1):
+            edges.append((vertex(i, j), vertex(i, j + 1)))
+            measurement.append(i)
+    for j in range(n):
+        for i in range(n - 1):
+            edges.append((vertex(i, j), vertex(i + 1, j)))
+            measurement.append(n + j)
+    for i in range(1, n - 1):
+        for j in range(1, n - 1):
+            left = edges.index((vertex(i, j - 1), vertex(i, j)))
+            right = edges.index((vertex(i, j), vertex(i, j + 1)))
+            up = edges.index((vertex(i - 1, j), vertex(i, j)))
+            down = edges.index((vertex(i, j), vertex(i + 1, j)))
+            lumens += [((left, -1), (right, 1)), ((up, -1), (down, 1))]
+    rng = np.random.default_rng(0)
+    true = np.array([1.0 + 0.2 * (m % 3) for m in measurement])
+    wrong_vessels = {2, 8}
+    q_hat = np.array([t * (-1 if m in wrong_vessels else 1) for t, m in zip(true, measurement)])
+    sigma_hat = np.full(len(edges), 0.15)
+    solution = solve_flux_network(q_hat, sigma_hat, lumens, measurement=np.array(measurement))
+    assert not solution.flipped.any()
+    assert np.nanmax(np.abs(solution.imbalance)) < 1e-6
 
 
 def test_rival_bridges_share_one_lumen_and_the_flux_is_not_counted_twice():
