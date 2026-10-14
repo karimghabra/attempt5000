@@ -148,9 +148,11 @@ def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lu
     edge_confidence   per edge, a confidence in (0, 1] that the edge exists (a bridge's); below 1 the edge gets
                       a prior of zero flux with sigma c / (1 - c) times `edge_scale`.
     edge_scale        per edge, the flux the prior is scaled by: the flux of the free end the bridge continues
-                      (its arm's measurement, else its lumen's other arm). The graph's mean measured flux is the
-                      default and is wrong at both ends of the range (measured: a right thick bridge at c = 0.2
-                      carried a sixth of its flux, a wrong capillary bridge was barely held back).
+                      (its arm's measurement). Where none is given for a doubtful edge (NaN, 0, or no array), the
+                      flux of the vessel it continues stands in (the other arms of its lumens, from a first solve
+                      without priors), else its own, else the graph's mean measured flux; the graph's mean alone
+                      is wrong at both ends of the range (measured: a right thick bridge at c = 0.2 carried a sixth
+                      of its flux, a wrong capillary bridge was barely held back).
     lumen_confidence  per lumen (or one number): the probability that the *structure* that made the lumen is
                       right, never a goodness of fit. Setting the lumen aside costs ln(c / (1 - c)), against
                       2 ln(p / (1 - p)) per measurement turned round (3.5 at p = 0.85). Section 27's
@@ -180,12 +182,25 @@ def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lu
             balance[row, edge] += sign
     floor = float(np.mean(np.abs(q_hat[measured]))) if measured.any() else 1.0
     prior_precision = np.zeros(count)
+    reached = measured | (np.abs(balance).sum(axis=0) > 0)
     if edge_confidence is not None:
         confidence = np.clip(np.asarray(edge_confidence, dtype=float), 1e-6, 1.0)
-        unit = np.full(count, floor) if edge_scale is None else np.maximum(np.asarray(edge_scale, dtype=float), floor * 1e-6)
         doubtful = confidence < 1
-        prior_precision[doubtful] = 1 / (unit[doubtful] * confidence[doubtful] / (1 - confidence[doubtful])) ** 2
-    reached = measured | (np.abs(balance).sum(axis=0) > 0) | (prior_precision > 0)
+        unit = np.full(count, np.nan) if edge_scale is None else np.asarray(edge_scale, dtype=float).copy()
+        unknown = doubtful & ~(np.isfinite(unit) & (unit > 0))
+        if unknown.any():
+            # no scale given for a doubtful edge (a free end whose arm is unmeasured): what the network makes it
+            # carry without any prior, from a first solve, else the graph's mean measured flux
+            first_precision = np.where(measured, 1 / np.maximum(sigma_hat, 1e-12) ** 2, 0.0)
+            first_rows = balance / (sigma_flux * np.maximum(np.abs(balance) @ np.where(measured, np.abs(np.nan_to_num(q_hat)), floor), 1e-9))[:, None]
+            first_q, _ = _solve_linear(first_precision * np.nan_to_num(q_hat), first_precision, first_rows, reached)
+            for edge in np.flatnonzero(unknown):
+                # the flux of the vessel the doubtful edge continues: the other arms of the lumens it is in
+                others = [other for lumen in lumens if any(e == edge for e, _ in lumen) for other, _ in lumen if other != edge]
+                carried = [abs(first_q[other]) for other in others if abs(first_q[other]) > floor * 1e-3]
+                unit[edge] = max(carried) if carried else (abs(first_q[edge]) if abs(first_q[edge]) > floor * 1e-3 else floor)
+        prior_precision[doubtful] = 1 / (np.maximum(unit[doubtful], floor * 1e-6) * confidence[doubtful] / (1 - confidence[doubtful])) ** 2
+    reached = reached | (prior_precision > 0)
     log_odds = np.log(max(p, 1e-9) / max(1 - p, 1e-9))  # that a direction is right, before the network speaks
     precision_base = np.where(measured, 1 / np.maximum(sigma_hat, 1e-12) ** 2, 0.0)
     weight = measured.astype(float)
@@ -262,9 +277,9 @@ def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lu
                 hat = X @ cov @ X.T
                 residual = X @ q
                 inner = np.eye(len(these)) - hat
-                if np.linalg.cond(inner) > 1e8:
-                    continue
-                gain = -float(residual @ np.linalg.solve(inner, residual)) + float(aside_cost[these].max())
+                # a row of leverage 1 (a lumen with an arm nothing else reaches) makes I - H singular; that row
+                # holds no residual and nothing is gained or lost by deleting it, so the pseudo-inverse is exact
+                gain = -float(residual @ np.linalg.pinv(inner, rcond=1e-10) @ residual) + float(aside_cost[these].max())
                 if gain < best_gain - 1e-9:
                     aside, best_gain = these, gain
             if aside is not None:
@@ -397,7 +412,9 @@ def blame(solution: FluxSolution, threshold: float = 3.0) -> dict:
     Returns {"lumens": [lumen numbers to send to the graph], "speeds": [edges whose speed is in doubt]}; a
     measurement whose residual is large but which the rule does not blame is left to the lumens around it
     (measured: a trunk with one daughter missing from the graph had its right speed weighted down to 0.61 and
-    reported at 5 sigma; this rule sends that to the lumen instead)."""
+    reported at 5 sigma; this rule sends that to the lumen instead). The speeds list is a report, not a
+    finding: on trees with a tenth of the speeds three times too fast it stays empty at every softness the plan
+    uses (measured by the fifth review), and the plan does not claim to detect wrong speeds."""
     lumens_of_edge: dict[int, list[int]] = {}
     for number, lumen in enumerate(solution.lumens):
         for edge, _ in lumen:

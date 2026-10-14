@@ -226,8 +226,12 @@ def test_the_bridge_prior_is_in_the_free_ends_own_unit():
                              edge_scale=np.array([10.0, 10.0, 10.0, 0.1, 0.1, 0.1]))
     assert own.q[1] > 8.0, "a right thick bridge at c = 0.5 carries nearly all of its flux"
     assert abs(own.q[4]) < 0.02, "a wrong capillary bridge at c = 0.05 carries almost nothing"
-    graph_unit = solve_flux_network(q_hat, sigma_hat, lumens, edge_confidence=confidence)
+    mean = np.nanmean(np.abs(q_hat))
+    graph_unit = solve_flux_network(q_hat, sigma_hat, lumens, edge_confidence=confidence, edge_scale=np.full(6, mean))
     assert graph_unit.q[1] < own.q[1] and abs(graph_unit.q[4]) > abs(own.q[4]), "the graph's mean gets both wrong"
+    # with no scale given, the vessel each bridge continues sets it
+    guessed = solve_flux_network(q_hat, sigma_hat, lumens, edge_confidence=confidence)
+    assert abs(guessed.q[1] - own.q[1]) < 0.5 and abs(guessed.q[4] - own.q[4]) < 0.01
 
 
 def test_a_crossing_is_set_aside_as_one_reading():
@@ -417,3 +421,26 @@ def test_on_a_plexus_the_network_does_not_make_the_directions_worse(n, seed):
     assert case["after"] >= case["as read"] - 1e-9, "the measured directions are at least as right as read"
     assert case["flips right"] >= case["flips wrong"], "the flips are at least as often right as wrong"
     assert case["all after"] > 0.75
+
+
+def test_a_crossing_with_a_free_only_arm_can_still_be_set_aside():
+    # e5 unmeasured and in no other balance: its lumen's row has leverage 1 and I - H is singular for the
+    # reading's two rows together; the singular row holds no residual, and the reading is set aside on the other
+    q_hat, sigma_hat = measured(1, 3, 4, sigma=0.5)
+    q_hat[4] = 2.0  # the pairing (e1 -> e4) reads 6 against 2
+    lumens = lumens_of({2: [[0, 1], [2, 3]]}, ARMS)
+    c = 1 / (1 + np.exp(-1.0))
+    solution = solve_flux_network(q_hat, sigma_hat, lumens, lumen_confidence=c, lumen_group=np.array([0, 0]))
+    assert solution.disabled.all()
+
+
+def test_a_bridge_from_an_unmeasured_free_end_takes_its_scale_from_the_network():
+    # vessel A (edge 0) is unmeasured at its free end; the bridge (edge 1) continues it to B (edge 2, reads 4);
+    # no scale is given: the first solve's flux through the bridge (4) stands in, and nothing crashes or pins
+    edges = [(0, 1), (1, 2), (2, 3)]
+    lumens = [((0, -1), (1, 1)), ((1, -1), (2, 1))]
+    q_hat = np.array([np.nan, np.nan, 4.0])
+    sigma_hat = np.array([np.nan, np.nan, 0.3])
+    for scale in (None, np.array([np.nan, np.nan, 4.0]), np.array([0.0, 0.0, 4.0])):
+        solution = solve_flux_network(q_hat, sigma_hat, lumens, edge_confidence=np.array([1.0, 0.5, 1.0]), edge_scale=scale)
+        assert 2.0 < solution.q[1] <= 4.0, "a half-trusted bridge carries a good part of the flux, not pinned to zero"
