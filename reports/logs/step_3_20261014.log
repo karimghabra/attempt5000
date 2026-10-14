@@ -1,0 +1,104 @@
+Run of development copy 2.ipynb started 2026-10-14 01:05:32: 9 code cells (only 4b1e8e10, 14db3b8e, 13a450d7, 87ce2c9a, e826b76b, flux-network-functions, section-40-one-burst, section-40-harness, section-40-real)
+
+===== cell 0 id=4b1e8e10 | started at 01:05:34 | # In a fresh kernel, start here: nothing above this cell has to be run. The cells that only define f
+A fresh kernel: the definitions were run from the notebook file. Opened 2 fixations of 1920 x 1200 px: 113 frames, 18 frames
+[memory] inputs opened: 1.00 GB now, 1.00 GB at the most so far
+----- cell 0 took 2.4 s | 0.1 min since the start
+
+===== cell 1 id=14db3b8e | started at 01:05:36 | flow_masks = []  # per fixation: the mask, where there is flow data, and where both are (boolean pic
+Fixation 0: the mask (static score) covers 26% of the field; 50% of it has flow data, 50% has none | flow data outside the mask: 6% of the field
+   inside the intersection the flow field's winning orientation is the static one's on 46% of the pixels, within one step on 75%, within two on 83%, at right angles (7 or 8 steps) on 3.8% (chance: 6%, 19%, 31%, 19%)
+Fixation 1: the mask (static score) covers 25% of the field; 47% of it has flow data, 53% has none | flow data outside the mask: 6% of the field
+   inside the intersection the flow field's winning orientation is the static one's on 40% of the pixels, within one step on 71%, within two on 80%, at right angles (7 or 8 steps) on 4.5% (chance: 6%, 19%, 31%, 19%)
+[memory] mask and flow: 1.07 GB now, 1.19 GB at the most so far
+----- cell 1 took 1.9 s | 0.1 min since the start
+
+===== cell 2 id=13a450d7 | started at 01:05:38 | # four ways to centerlines, in every fixation. No vessel is dropped for want of flow data: every cen
+centerlines                                 length  lines loose ends per 1000 px found again by chance above chance with flow data
+ridges of the static score                   60240    860       1013        16.8         79%       18%          74%            55%
+the same, consolidated                       59882   1459        185         3.1         78%       18%          73%            54%
+section 22's chains                         112583    784        593         5.3         78%       26%          71%            55%
+ridges of the flow score inside the mask     24702    304        582        23.6         64%        5%          62%           100%
+Going on with: the same, consolidated
+[memory] centerlines: 1.13 GB now, 1.24 GB at the most so far
+----- cell 2 took 8.0 s | 0.2 min since the start
+
+===== cell 3 id=87ce2c9a | started at 01:05:46 | spline_vessels = []   # per fixation: every vessel as splines, with its flow (see spline_vessel and 
+Fixation 0: 1318 vessels fitted, 55033 px of centerline described by 22524 numbers | the centerlines' points lie 0.26 px from their spline (median of the rms)
+   flow data on 709 vessels with 54% of the length; a clear direction of flow on 391 with 58% of the length (median speed 111 px/s) | a clear direction on 67% of the length with flow data and on 46% of the length without
+Fixation 1: 1145 vessels fitted, 50958 px of centerline described by 20140 numbers | the centerlines' points lie 0.26 px from their spline (median of the rms)
+   flow data on 545 vessels with 51% of the length; a clear direction of flow on 389 with 64% of the length (median speed 143 px/s) | a clear direction on 72% of the length with flow data and on 57% of the length without
+[memory] splines and kymographs: 1.23 GB now, 1.41 GB at the most so far
+----- cell 3 took 18.5 s | 0.5 min since the start
+
+===== cell 4 id=e826b76b | started at 01:06:04 | SPEED_LIMIT = fps * saved["pattern length"] / 2  # pixels per second; section 23's limit for a patte
+The pattern along a vessel is 7.0 px long (section 23): speeds above 113 px/s cannot be followed at 32.2 frames per second
+Fixation 0: 1327 pieces are 836 whole vessels; 13 joins were undone because their two sides ran against each other
+   a clear speed on 220 whole vessels with 40% of the length: median 51 px/s, median sigma 36 px/s (91% of the speed) | 145 more with 32% of the length are above the limit and flagged
+   the sigmas were widened 4.4 times, from 54 pairs of neighbouring windows | after that 83% of the 54 pairs agree within 2 sigmas | along one vessel the windows' speeds span 100% of their median (median over 34 vessels)
+Fixation 1: 1166 pieces are 757 whole vessels; 10 joins were undone because their two sides ran against each other
+   a clear speed on 156 whole vessels with 32% of the length: median 64 px/s, median sigma 19 px/s (36% of the speed) | 248 more with 53% of the length are above the limit and flagged
+   the sigmas were widened 1.2 times, from 42 pairs of neighbouring windows | after that 69% of the 42 pairs agree within 2 sigmas | along one vessel the windows' speeds span 96% of their median (median over 30 vessels)
+[memory] whole vessels: 1.27 GB now, 1.55 GB at the most so far
+----- cell 4 took 52.2 s | 1.4 min since the start
+
+===== cell 5 id=flux-network-functions | started at 01:06:57 | import vascnet.fluxnet as fluxnet
+----- cell 5 took 0.1 s | 1.4 min since the start
+
+===== cell 6 id=section-40-one-burst | started at 01:06:57 | # section 40 on one synthetic tree burst first: its whole-vessel graph (section 32 on the consolidat
+Tree burst 2001: 32 edges, 25 with a measured flux, in 16 whole vessels | joins: skeleton 6, extension 3, junction 1, undone 1 | p = 0.85 from the burst's own counts
+   balances: 1 through, 6 bifurcation, 6 join, skeleton, 3 join, extension, 1 unresolved | 14 constrain a sign | flips 0, set aside 0, impossible 0, directed cycles 0, blamed lumens 2
+   against the truth: of 6 edges without a measured direction the network infers 0 (0 right), propagate_directions 0 (0 right) | measured: 21 of 25 right as read, flips right 0, wrong 0
+   the sign step handed 67 candidates to the recorder; 23 are filmed in vessel_pictures/fit/flux.gif (green right against the truth, red wrong, orange the move, purple a reading set aside)
+----- cell 6 took 19.0 s | 1.7 min since the start
+
+===== cell 7 id=section-40-harness | started at 01:07:16 | # acceptance step 3 on the harness. Per set, on its bursts for developing: without truth, p (section
+On the bursts for developing: p and SIGMA_FLUX per lumen kind without truth (robust sd of section 27's flux test over the lumens with every arm measured and possible, and their count); the structural confidences with truth
+   section 35's trees   p = 0.94 (three-arm junctions 0.94 of 24, sides 0.96 of 5) | through 0.38 (126, measured), bifurcation 0.30 (23, measured), crossing 0.19 (16, measured)
+                        two-arm joins: 45 of 141 right, told apart by P(join right) 0.97 | T-shaped bifurcations: 0 of 8 right | crossings: 26 of 26 are two vessels, by overlap z 0.93, 0.93, 0.93, 0.94, 0.50
+   section 30's bursts  p = 0.82 (three-arm junctions 0.82 of 29, sides 0.98 of 12) | through 0.18 (99, measured), bifurcation 0.24 (25, measured), crossing 0.14 (20, measured)
+                        two-arm joins: 54 of 98 right, told apart by P(join right) 0.97 | T-shaped bifurcations: 0 of 0 right | crossings: 22 of 22 are two vessels, by overlap z 0.93, 0.90, 0.93, 0.93, 0.50
+   crossing plexus      p = 0.98 (three-arm junctions 0.79 of 2, sides 0.98 of 13) | through 0.37 (97, measured), bifurcation 0.45 (2, stands in), crossing 0.18 (24, measured)
+                        two-arm joins: 16 of 103 right, told apart by P(join right) 0.96 | T-shaped bifurcations: 0 of 2 right | crossings: 30 of 30 are two vessels, by overlap z 0.94, 0.93, 0.94, 0.94, 0.50
+   anastomotic plexus   p = 0.95 (three-arm junctions 0.50 of 2, sides 0.95 of 4) | through 0.36 (43, measured), bifurcation 0.45 (1, stands in), crossing 0.14 (10, measured)
+                        two-arm joins: 77 of 81 right, told apart by P(join right) 0.82 | T-shaped bifurcations: 6 of 6 right | crossings: 0 of 12 are two vessels, by overlap z 0.17, 0.10, 0.17, 0.10, 0.50
+[memory] section 40, section 35's trees: 1.23 GB now, 1.55 GB at the most so far
+[memory] section 40, section 30's bursts: 1.22 GB now, 1.55 GB at the most so far
+[memory] section 40, crossing plexus: 1.25 GB now, 1.55 GB at the most so far
+[memory] section 40, anastomotic plexus: 1.20 GB now, 1.59 GB at the most so far
+
+Held out: directions among the edges without a measured one (the truth known), the network against propagate_directions; shares with their 95% interval over bursts
+   section 35's trees   16 bursts, 270 edges without a measured direction | network: 4 inferred, 4 right (100%, 100 to 100) | junctions: 19 inferred, 18 right (95%, 85 to 100)
+                        measured: 330 of 358 right as read | flips right 1, wrong 1 | lumens 381, constraining a sign 264, set aside 125, impossible 0, directed cycles 5, blamed 112, speeds in doubt 0
+   section 30's bursts  16 bursts, 101 edges without a measured direction | network: 14 inferred, 9 right (64%, 30 to 93) | junctions: 16 inferred, 11 right (69%, 38 to 100)
+                        measured: 252 of 269 right as read | flips right 0, wrong 13 | lumens 231, constraining a sign 201, set aside 79, impossible 0, directed cycles 4, blamed 77, speeds in doubt 0
+   crossing plexus      8 bursts, 65 edges without a measured direction | network: 0 inferred, 0 right (0%, 0 to 0) | junctions: 1 inferred, 1 right (100%, 0 to 100)
+                        measured: 138 of 164 right as read | flips right 0, wrong 0 | lumens 140, constraining a sign 124, set aside 83, impossible 0, directed cycles 0, blamed 81, speeds in doubt 0
+   anastomotic plexus   7 bursts, 124 edges without a measured direction | network: 0 inferred, 0 right (0%, 0 to 0) | junctions: 4 inferred, 4 right (100%, 0 to 100)
+                        measured: 73 of 81 right as read | flips right 0, wrong 0 | lumens 105, constraining a sign 60, set aside 18, impossible 0, directed cycles 2, blamed 18, speeds in doubt 0
+
+As description, the network's directions of the edges without a measured one at other cutoffs of |q| / sigma (inferred, right):
+   section 35's trees   >= 0.5: 42, 33 | >= 1.0: 27, 24 | >= 1.5: 18, 17 | >= 2.0: 4, 4 | >= 3.0: 1, 1 | propagate_directions: 19, 18
+   section 30's bursts  >= 0.5: 20, 13 | >= 1.0: 19, 12 | >= 1.5: 18, 12 | >= 2.0: 14, 9 | >= 3.0: 1, 1 | propagate_directions: 16, 11
+   crossing plexus      >= 0.5: 3, 3 | >= 1.0: 1, 1 | >= 1.5: 0, 0 | >= 2.0: 0, 0 | >= 3.0: 0, 0 | propagate_directions: 1, 1
+   anastomotic plexus   >= 0.5: 9, 7 | >= 1.0: 2, 2 | >= 1.5: 0, 0 | >= 2.0: 0, 0 | >= 3.0: 0, 0 | propagate_directions: 4, 4
+
+The gate, on section 35's held-out trees: the network gives the right direction to 4 edges without a measured one, propagate_directions to 18; shares right 100% and 95% -> does not improve: FAILED | the plexus is reported above (expected: no change)
+[memory] section 40, harness: 1.20 GB now, 1.59 GB at the most so far
+----- cell 7 took 1668.5 s | 29.5 min since the start
+
+===== cell 8 id=section-40-real | started at 01:35:04 | # section 40 on the real burst: the whole-vessel graphs of section 32 (whole_graphs), their junction
+Real burst: p = 0.65 (chosen_p) from section 33's counts over both fixations (three-arm junctions 0.65: 2 of 10 all in or all out; sides 0.98)
+   SIGMA_FLUX per lumen kind: through 0.23 (294 lumens, measured), bifurcation 0.30 (8 lumens, stands in), crossing 0.20 (72 lumens, measured)
+Fixation 0: 1327 edges, 436 with a measured flux | joins: skeleton 355, extension 40, junction 96, undone 13
+   balances: 3 through, 282 bifurcation, 29 bifurcation, T, 355 join, skeleton, 40 join, extension, 102 crossing, 48 unresolved | constraining a sign 478, set aside 287, impossible 2, directed cycles 1, flips 1, blamed lumens 258, speeds in doubt 0
+   free ends: 243, of which 21 lose or gain a flux of 2 sigma or more | edges without a measured direction: 891, the network infers 2; propagate_directions agrees on 0 of them (agreement between two inferences, not a score)
+   lambda's reference, the consolidated graph: impossible lumens 2 of 859 (0.2%), directed cycles 1 per 1327 edges
+Fixation 1: 1166 edges, 305 with a measured flux | joins: skeleton 309, extension 26, junction 74, undone 10
+   balances: 5 through, 255 bifurcation, 34 bifurcation, T, 309 join, skeleton, 26 join, extension, 74 crossing, 35 unresolved | constraining a sign 414, set aside 250, impossible 1, directed cycles 3, flips 2, blamed lumens 216, speeds in doubt 0
+   free ends: 257, of which 32 lose or gain a flux of 2 sigma or more | edges without a measured direction: 861, the network infers 2; propagate_directions agrees on 0 of them (agreement between two inferences, not a score)
+   lambda's reference, the consolidated graph: impossible lumens 1 of 738 (0.1%), directed cycles 3 per 1166 edges
+[memory] section 40, real burst: 1.25 GB now, 1.59 GB at the most so far
+----- cell 8 took 631.0 s | 40.0 min since the start
+
+DONE: 9 code cells in 40.1 min (2404 s), finished 2026-10-14 01:45:36

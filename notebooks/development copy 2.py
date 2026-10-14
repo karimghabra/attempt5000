@@ -7209,7 +7209,7 @@ DEFINITION_CELLS = ("setup", "background-functions", "graph-functions", "shared-
                     "hypercolumn-functions", "lateral-functions", "chain-functions", "signal-functions", "flow-functions",
                     "segment-functions", "graph-builder", "junction-functions", "synthetic-functions",
                     "flow-vessel-functions", "harness-functions", "whole-vessel-functions", "flow-evidence-functions",
-                    "generator-functions", "cyclic-graph-functions")
+                    "generator-functions", "cyclic-graph-functions", "flux-network-functions")
 fresh_kernel = "load_saved" not in globals()
 if fresh_kernel:
     import contextlib
@@ -10097,3 +10097,552 @@ print(f"   the knot refinement made {knot_recorder.count} candidate moves, {sum(
       f"taken; {len(film)} of them are filmed in vessel_pictures/fit/initialisation.gif")
 del picture, density, gray, front, other_front
 memory_note("section 37, real burst")
+
+# %% [markdown]
+# ## 40. Net flux = 0 on the whole-vessel graphs (acceptance step 3)
+#
+# `vascnet/fluxnet.py` is the flux network of the plan's section 40. Here it runs on the graphs section 32 makes: whole vessels read along the consolidated lines, with one direction and one speed per whole vessel.
+#
+# **What it takes from a graph:**
+#
+# - **Fluxes** (`edge_flux`): per edge, line mass × velocity where the speed is clear and trackable, with its sigma from the widened sigma of the speed. An edge's measurement is its whole vessel, so all of a vessel's edges turn round together.
+# - **Balances** (`flux_lumens`): every group of a junction's reading. A crossing gives two through-lumens, set aside together. Two pieces joined end to end give one through-lumen. A join that section 32 undid gives none.
+# - **Provenance of each join** (`join_provenance`): skeleton, extension, junction or undone. The pixels the consolidation's `extend_ends` added are found by making its steps once more (`consolidated_extensions`).
+# - **Softness** (`sigma_flux_by_kind`): `SIGMA_FLUX` per lumen kind, measured as section 27 measures it. It is the robust sd of the flux test at lumens whose every arm is measured and whose directions are possible. Through-lumens of one vessel (with the joins) are one kind, bifurcations another and crossings a third. Where a kind has fewer than `FLUX_LEAST` lumens, the harness's value stands in.
+# - **p**: section 33's `reliability`, from the counts of the bursts for developing, without truth (`chosen_p`). It uses the three-arm junctions where there are at least `FLUX_LEAST` of them, else the sides of whole vessels. Section 34 takes the first whenever it is defined; on a plexus that rests on one or two junctions and gives 0.5, at which a flip costs nothing.
+# - **Structural confidences** (`lumen_confidences`, section 41), calibrated per set on its own bursts for developing, since the prior differs by tissue (a crossing read as two vessels is always right on trees and never on the anastomotic plexus):
+#   - a two-arm join: P(join right | the pair's turn, width ratio, density ratio and provenance), each binned and taken as a log-likelihood ratio (`join_features`, `calibrate_terms`). On the consolidated graph, a two-arm node is often a crossing whose other two arms were absorbed, so it joins two trees' vessels at a turn;
+#   - a crossing: P(two vessels, not one lumen), by section 27's overlap z, binned;
+#   - a bifurcation whose rival "through pair + free end" has evidence (`bifurcation, T`: section 27's baseline saw the thin stem again beyond the through vessel's far wall): the share right of such readings. The rival is not added to section 27's partitions, because that would change its readings, and section 34's numbers depend on them.
+#   - Any other bifurcation, a through group inside a larger reading, or an unresolved junction is `SURE`.
+#
+# **Scoring** (`direction_scores`), on the held-out bursts against the truth (`edge_truth`):
+#
+# - among the edges without a measured direction, those the network infers (|q| / σ ≥ `FLUX_INFERRED`) and those `propagate_directions` does, each with how many are right;
+# - among the measured ones, the flips right and wrong.
+#
+# **The gate**, stated before the held-out run: on section 35's held-out trees, where the velocity profile is in, the network gives the right direction to more edges without a measured direction than `propagate_directions` does, at a share right no lower. An edge counts as inferred by the network at |q| / σ ≥ `FLUX_INFERRED` = 2, which was set before any run. On the 16 bursts for developing, 2 is the only cutoff at which the network's share right reaches `propagate_directions`' (3 of 3, against 19 of 21). At 1, the network gives more edges the right direction (26 of 33) but at a lower share. A balance allowed to miss by `SIGMA_FLUX` × the flux through it caps the confidence of a direction inferred through one junction at about 1 / (2 `SIGMA_FLUX`). The held-out curve over cutoffs is printed as description. The plexus bursts (both kinds) are reported; the plan expects no change there. Section 30's held-out bursts are reported as well.
+#
+# On the real burst, the counts the plan names are printed: sign-constraining lumens, set-asides, impossible lumens, directed cycles and the flux at free ends. So are `SIGMA_FLUX` per kind with counts, and the consolidated graph's shares of impossible junctions and directed cycles. Those shares are the reference of λ's rule. λ prices structural moves only, and none exists before the recursion (step 7), so there is nothing to sweep yet.
+#
+# **Result:** `flux_setup` (p and `SIGMA_FLUX` per set), `calibration`, `flux_results` (`vessel_pictures/flux/held_out.csv`), `real_runs`, and the film `vessel_pictures/fit/flux.gif`.
+
+# %%
+import vascnet.fluxnet as fluxnet
+
+FLUX_INFERRED = 2.0    # |q| / sigma at which the network's direction of an edge without a measured one counts as
+                       # inferred (set before any run; see the section's text for how it held on the bursts for developing)
+FLUX_CYCLE = 3.0       # |q| / sigma of the edges a directed cycle is looked for over (section 40)
+FLUX_LEAST = 10        # lumens of a kind with every arm measured: below this the harness's SIGMA_FLUX stands in
+OVERLAP_BINS = 4       # bins of section 27's overlap z at a crossing, for P(two vessels, not one lumen)
+LUMEN_KINDS = ("through", "bifurcation", "bifurcation, T", "join, skeleton", "join, extension", "crossing", "unresolved")
+SURE = 1 - 1e-6        # the structural confidence of a structure the network is not to set aside
+JOIN_REACH = 10        # points; an arm of a two-arm join is read over this much of its edge from the node
+JOIN_TERMS = ("turn", "width", "density", "provenance")  # what P(join right) is calibrated on (section 37)
+JOIN_BINS = 4          # bins of each of them on the bursts for developing
+
+
+def chosen_p(counts):
+    """p for the sign step, from section 33's counts: from the three-arm junctions where there are FLUX_LEAST of
+    them with every arm measured, else from the sides of whole vessels (section 34 takes the first whenever it is
+    defined; on a plexus it rests on one or two junctions), else 0.85."""
+    p_three, p_sides = reliability(counts)
+    if counts["three arms"] >= FLUX_LEAST and np.isfinite(p_three):
+        return p_three
+    return p_sides if np.isfinite(p_sides) else 0.85
+
+
+def join_features(graph, join, density):
+    """What section 37 calibrates a two-arm join's confidence on: how far the pair turns from running straight
+    through (degrees), the ratio of their widths and of their densities (|log|), each arm read over its first
+    JOIN_REACH points from the node; and the join's provenance."""
+    rows, columns = density.shape
+    arms = []
+    for edge, end in join["ends"]:
+        piece = graph["edges"][edge]
+        order = np.arange(len(piece["x"]))[:JOIN_REACH] if end == 0 else np.arange(len(piece["x"]))[::-1][:JOIN_REACH]
+        away = np.array([piece["x"][order[-1]] - piece["x"][order[0]], piece["y"][order[-1]] - piece["y"][order[0]]])
+        row = np.clip(np.rint(piece["y"][order]).astype(int), 0, rows - 1)
+        column = np.clip(np.rint(piece["x"][order]).astype(int), 0, columns - 1)
+        arms.append((away / max(np.hypot(*away), 1e-9), float(np.median(piece["radius"][order])),
+                     float(np.nanmean(density[row, column]))))
+    (a, wa, da), (b, wb, db) = arms
+    turn = float(np.degrees(np.arccos(np.clip(-np.dot(a, b), -1, 1))))
+    ratio = lambda first, second: float(abs(np.log(max(first, 1e-6) / max(second, 1e-6)))) if first > 0 and second > 0 else np.nan
+    return {"turn": turn, "width": ratio(wa, wb), "density": ratio(da, db), "provenance": join["provenance"]}
+
+
+def consolidated_extensions(strength, orientation, region):
+    """The pixels extend_ends added in section 29's consolidation (consolidate_lines), found by making its steps
+    once more: the lines before the extension, and extended & ~lines. Returns (added, the consolidated lines)."""
+    lines = ridge_crests(strength, orientation, region)
+    disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * RIDGE_JOIN + 1,) * 2)
+    joined = cv2.morphologyEx(lines.astype(np.uint8), cv2.MORPH_CLOSE, disc) > 0
+    skeleton = without_short_branches(skeletonize(joined), RIDGE_CHILD)
+    count, labels = cv2.connectedComponents(skeleton.astype(np.uint8), connectivity=8)
+    keep = np.bincount(labels.ravel(), minlength=count) >= RIDGE_NETWORK
+    keep[0] = False
+    before = keep[labels]
+    extended = extend_ends(before, strength)
+    return extended & ~before, without_short_branches(skeletonize(extended), RIDGE_CHILD)
+
+
+def end_nodes(graph):
+    """Per (edge, end) the node it lies in, among the nodes that are not gone."""
+    out = {}
+    for number, node in enumerate(graph["nodes"]):
+        if node.get("gone"):
+            continue
+        for edge, end in node["ends"]:
+            out[(edge, end)] = number
+    return out
+
+
+def join_provenance(graph, added=None):
+    """Section 37's provenance of the joins of a whole-vessel graph (section 32): every pair of edge ends that
+    join_pieces joins into one vessel, before any join is undone. Each is "undone" where section 32 undid it (the
+    two sides carry different vessel numbers in graph["readings"]), "junction" where it is a through group of a
+    junction's reading, "extension" where its node lies on pixels extend_ends added (`added`, a picture), and
+    "skeleton" otherwise (two pieces of one ridge, meeting end to end). Returns one dict per join: its two (edge,
+    end), node, place and provenance."""
+    nodes = end_nodes(graph)
+    near_added = None if added is None else cv2.dilate(added.astype(np.uint8), np.ones((3, 3), np.uint8)) > 0
+    joins = []
+    for path in join_pieces(graph):
+        for edge, way, joined, junction in path:
+            if joined is None:
+                continue
+            first, second = sorted(joined)
+            node = nodes.get(first, nodes.get(second))
+            place = graph["nodes"][node]
+            vessels = [graph["readings"][first[0]].get("vessel", -1), graph["readings"][second[0]].get("vessel", -1)]
+            if vessels[0] != vessels[1]:
+                kind = "undone"
+            elif junction:
+                kind = "junction"
+            elif near_added is not None and near_added[int(np.clip(round(place["y"]), 0, near_added.shape[0] - 1)),
+                                                       int(np.clip(round(place["x"]), 0, near_added.shape[1] - 1))]:
+                kind = "extension"
+            else:
+                kind = "skeleton"
+            joins.append({"ends": (first, second), "node": node, "x": place["x"], "y": place["y"], "provenance": kind})
+    return joins
+
+
+def edge_flux(graph):
+    """Per edge of a whole-vessel graph what the network takes from it: the measured flux (line mass x velocity,
+    signed along the edge's points; NaN where no clear, trackable speed was read), its sigma (line mass x the
+    widened sigma of the speed), and the measurement it belongs to (the whole vessel's number)."""
+    count = len(graph["edges"])
+    q_hat, sigma, vessel = np.full(count, np.nan), np.full(count, np.nan), np.full(count, -1)
+    for number, reading in enumerate(graph["readings"]):
+        if reading is None:
+            continue
+        vessel[number] = int(reading.get("vessel", -1))
+        if reading["direction"] != 0 and np.isfinite(reading["velocity"]) and reading["mass"] > 0:
+            q_hat[number] = reading["mass"] * reading["velocity"]
+            sigma[number] = reading["mass"] * max(float(reading.get("velocity_sigma", np.nan)), 1e-6)
+    return q_hat, sigma, vessel
+
+
+def flux_lumens(graph, junctions, provenance):
+    """The balances of a whole-vessel graph, as section 40 takes them: per junction its reading's groups (a crossing:
+    two through-lumens set aside together), and per two pieces joined end to end one through-lumen (a join section
+    32 undid has none). Returns the lumens ((edge, sign), ...), their kind (LUMEN_KINDS), their group (the lumens set
+    aside together), the overlap z of the crossings, and per lumen its node (for a join: the join itself, as a dict)."""
+    by_node = {junction["node"]: junction for junction in junctions}
+    lumens, kinds, groups, overlaps, places = [], [], [], [], []
+    for number, node in enumerate(graph["nodes"]):
+        if node.get("gone") or len(node.get("arms", [])) < 3:
+            continue
+        partition = node.get("partition", [])
+        crossing = len(node["arms"]) == 4 and sorted(len(group) for group in partition) == [2, 2]
+        # a bifurcation of three arms whose rival "through pair + free end" has evidence: section 27's baseline saw
+        # a thin stem again beyond the through vessel's far wall (a T whose stem dives)
+        dives = len(node["arms"]) == 3 and by_node.get(number, {}).get("baseline") == "crossing"
+        together = len(set(groups))  # a crossing's two lumens are one reading, set aside together
+        for group in partition:
+            if len(group) < 2:
+                continue
+            lumens.append(tuple((node["arms"][arm]["edge"], 1 if node["arms"][arm]["end"] == 0 else -1) for arm in group))
+            kinds.append("crossing" if crossing else "bifurcation, T" if dives and len(group) == 3
+                         else {2: "through", 3: "bifurcation"}.get(len(group), "unresolved"))
+            groups.append(together if crossing else len(set(groups)))
+            overlaps.append(float(by_node.get(number, {}).get("tests", {}).get("overlap", np.nan)) if crossing else np.nan)
+            places.append(number)
+    for join in provenance:
+        if join["provenance"] in ("skeleton", "extension"):
+            lumens.append(tuple((edge, 1 if end == 0 else -1) for edge, end in join["ends"]))
+            kinds.append(f"join, {join['provenance']}")
+            groups.append(len(set(groups)))
+            overlaps.append(np.nan)
+            places.append(join)
+    return lumens, kinds, np.array(groups, dtype=int), np.array(overlaps), places
+
+
+def edge_truth(graph, segments):
+    """Per edge of a graph, the true direction of the flow along its points (+1, -1; 0 where most of its points lie
+    on no single true segment within TRUE_WITHIN), and the true segment."""
+    points = np.concatenate([segment["points"] for segment in segments])
+    owner = np.concatenate([np.full(len(segment["points"]), number) for number, segment in enumerate(segments)])
+    place = np.concatenate([np.arange(len(segment["points"])) for segment in segments])
+    tree = scipy.spatial.cKDTree(points)
+    way, which = np.zeros(len(graph["edges"]), dtype=int), np.full(len(graph["edges"]), -1)
+    for number, edge in enumerate(graph["edges"]):
+        distance, nearest = tree.query(np.column_stack([edge["x"], edge["y"]]))
+        on = distance <= TRUE_WITHIN
+        if on.mean() <= 0.5:
+            continue
+        segment = np.bincount(owner[nearest[on]]).argmax()
+        mine = nearest[on][owner[nearest[on]] == segment]
+        if len(mine) < 2 or place[mine[-1]] == place[mine[0]]:
+            continue
+        way[number] = int(np.sign(place[mine[-1]] - place[mine[0]]) * np.sign(segments[segment]["speed"]))
+        which[number] = segment
+    return way, which
+
+
+def join_right(graph, ends, truth_segment, segments):
+    """Whether two edge ends joined into one vessel lie on one true segment, or on two that meet in a node of one
+    lumen. None where either edge lies on no segment."""
+    a, b = truth_segment[ends[0][0]], truth_segment[ends[1][0]]
+    if a < 0 or b < 0:
+        return None
+    nodes = lambda number: {segments[number]["start"], segments[number]["end"]}
+    return bool(a == b or (segments[a]["tree"] == segments[b]["tree"] and nodes(a) & nodes(b)))
+
+
+def two_vessels_truth(burst, place, radius):
+    """At a junction read as a crossing: whether the nearest true junction within junction_metrics' gate is two
+    vessels (a projected crossing) or one lumen (an anastomosis, a split, a loop). None where there is none."""
+    best, kind = np.inf, None
+    for junction in burst["junctions"]:
+        distance = np.hypot(junction["x"] - place[0], junction["y"] - place[1])
+        if distance <= max(6.0, 2 * junction["radius"] + 2) and distance < best:
+            best, kind = distance, junction["lumens"] == 2
+    return kind
+
+
+def lumen_confidences(kinds, overlaps, places, graph, density, calibration):
+    """The structural confidence of every lumen (section 37), as section 40 takes it, from the bursts for
+    developing (calibration): a two-arm join P(join right | its turn, width ratio, density ratio and provenance), each
+    a calibrated log-likelihood ratio (calibrate_terms over JOIN_TERMS); a bifurcation whose rival "through pair +
+    free end" has evidence ("bifurcation, T") the share of such readings that are right; a crossing P(two vessels,
+    not one lumen) from its overlap z, binned; any other bifurcation, a through group inside a larger reading and an
+    unresolved junction SURE. Without a calibration every lumen is SURE."""
+    out = []
+    for kind, overlap, place in zip(kinds, overlaps, places):
+        if kind.startswith("join") and "join model" in calibration:
+            row = join_features(graph, place, density)
+            out.append(edge_confidence([row], calibration["join model"], terms=JOIN_TERMS)[0][0])
+        elif kind in calibration.get("joins", {}):
+            out.append(calibration["joins"][kind])
+        elif kind == "crossing" and "crossing" in calibration:
+            cuts, shares = calibration["crossing"]
+            out.append(shares[bin_of(overlap, cuts)])
+        else:
+            out.append(SURE)
+    return np.clip(np.array(out, dtype=float), 1e-3, SURE)
+
+
+def lumen_imbalances(lumens, kinds, q_hat, all_arms_needed=True):
+    """Section 27's flux test, per lumen whose arms all carry a measured flux and whose directions are possible (not
+    all in, not all out): what flows in minus what flows out over the flux through it. Returns {kind: [ratios]}."""
+    out = {}
+    for lumen, kind in zip(lumens, kinds):
+        flows = np.array([sign * q_hat[edge] for edge, sign in lumen])
+        if not np.isfinite(flows).all():
+            continue
+        if abs(np.sign(flows).sum()) == len(flows):
+            continue  # all in or all out: impossible, a direction is wrong; not a measure of the softness
+        out.setdefault(kind, []).append(float(flows.sum() / max(np.abs(flows).sum(), 1e-12)))
+    return out
+
+
+def sigma_flux_by_kind(imbalances, fallback=None, least=FLUX_LEAST):
+    """SIGMA_FLUX per lumen kind (section 40): the robust sd of section 27's flux test (lumen_imbalances) over the
+    lumens of that kind, with their counts. Where a kind has fewer than `least`, `fallback` (the harness's value for
+    that kind, or section 27's one SIGMA_FLUX) stands in. Through-lumens of one vessel and joins share one value."""
+    pooled = {"through": [], "bifurcation": [], "crossing": []}
+    for kind, values in imbalances.items():
+        target = "bifurcation" if kind.startswith("bifurcation") else "crossing" if kind == "crossing" else "through"
+        pooled[target] += values
+    out = {}
+    for kind, values in pooled.items():
+        given = (fallback or {}).get(kind, (SIGMA_FLUX, 0, "section 27"))[0]
+        out[kind] = (float(robust_sd(np.array(values))), len(values), "measured") if len(values) >= least else (given, len(values), "stands in")
+    return out
+
+
+def sigma_of_kind(kind, by_kind):
+    """The SIGMA_FLUX a lumen of a kind is solved with."""
+    return by_kind["bifurcation" if kind.startswith("bifurcation") else "crossing" if kind == "crossing" else "through"][0]
+
+
+def run_flux_network(graph, junctions, provenance, by_kind, p, calibration, density, watch=None):
+    """Section 40 on a whole-vessel graph: its measured fluxes and measurements (edge_flux), its balances
+    (flux_lumens) with their structural confidences (lumen_confidences) and SIGMA_FLUX per kind, solved once with
+    the sign step (solve_flux_network). Returns the solution, the lumens with their kinds, groups and confidences,
+    and what section 40 reports: blame, the flux at the free ends, the directed cycles, the lumens that constrain a
+    sign (their imbalance has a value: the rest of the network says what their arms carry)."""
+    q_hat, sigma_hat, vessel = edge_flux(graph)
+    lumens, kinds, groups, overlaps, places = flux_lumens(graph, junctions, provenance)
+    if not lumens or not np.isfinite(q_hat).any():
+        return None
+    softness = np.array([sigma_of_kind(kind, by_kind) for kind in kinds])
+    confidence = lumen_confidences(kinds, overlaps, places, graph, density, calibration)
+    solution = fluxnet.solve_flux_network(q_hat, sigma_hat, lumens, sigma_flux=softness, p=p, measurement=vessel,
+                                          lumen_confidence=confidence, lumen_group=groups, watch=watch)
+    free = [(edge, end) for node in graph["nodes"] if not node.get("gone") and len(node["ends"]) == 1 for edge, end in node["ends"]]
+    edges = [edge["nodes"] for edge in graph["edges"]]
+    return {"solution": solution, "lumens": lumens, "kinds": kinds, "groups": groups, "places": places, "confidence": confidence,
+            "q_hat": q_hat, "measured": np.isfinite(q_hat), "blame": fluxnet.blame(solution),
+            "free ends": fluxnet.flux_at_free_ends(solution, free),
+            "cycles": fluxnet.directed_cycles(edges, solution.direction, solution.direction_confidence, FLUX_CYCLE),
+            "constraining": int(np.isfinite(solution.imbalance).sum())}
+
+
+def propagated_directions(graph):
+    """Per edge the direction along its points that propagate_directions (section 27) gave it from the junctions,
+    where it had no measured one (0 elsewhere)."""
+    way = np.zeros(len(graph["edges"]), dtype=int)
+    for node in graph["nodes"]:
+        if node.get("gone"):
+            continue
+        for arm in node.get("arms", []):
+            if arm.get("inferred") and arm.get("direction_out", 0) != 0:
+                way[arm["edge"]] = int(arm["direction_out"] * (1 if arm["end"] == 0 else -1))
+    return way
+
+
+def direction_scores(run, graph, truth_way):
+    """What the network does to the directions, against the truth (0 in truth_way: unknown, left out): among the
+    edges without a measured direction, those the network infers (|q| / sigma >= FLUX_INFERRED) and those
+    propagate_directions does, and how many of each are right; among the measured ones, the flips right and wrong."""
+    solution, measured = run["solution"], run["measured"]
+    known = truth_way != 0
+    inferred = ~measured & known & (solution.direction_confidence >= FLUX_INFERRED) & (solution.direction != 0)
+    propagated = propagated_directions(graph)
+    by_junctions = ~measured & known & (propagated != 0)
+    as_read = np.sign(np.nan_to_num(run["q_hat"])).astype(int)
+    return {"unmeasured": int((~measured & known).sum()),
+            "network inferred": int(inferred.sum()), "network right": int((solution.direction[inferred] == truth_way[inferred]).sum()),
+            "junctions inferred": int(by_junctions.sum()), "junctions right": int((propagated[by_junctions] == truth_way[by_junctions]).sum()),
+            "measured": int((measured & known).sum()), "measured right": int((as_read[measured & known] == truth_way[measured & known]).sum()),
+            "flips right": int((solution.flipped & measured & known & (as_read != truth_way)).sum()),
+            "flips wrong": int((solution.flipped & measured & known & (as_read == truth_way)).sum()),
+            "curve": [(float(solution.direction_confidence[e]), bool(solution.direction[e] == truth_way[e]))
+                      for e in np.flatnonzero(~measured & known)]}
+
+# %%
+# section 40 on one synthetic tree burst first: its whole-vessel graph (section 32 on the consolidated lines), the
+# joins' provenance, the balances, one solve with the sign step, filmed
+burst = synthetic_burst_35(TREE_SEEDS[0], **SYNTH_THINGS)
+front = ridge_front(burst, workers)
+read = read_burst_ridges(burst, front, consolidate=True, speeds="whole vessels", threads=workers)
+graph = read["graph"]
+added, _ = consolidated_extensions(front["strength"], front["orientation"], front["mask"])
+provenance = join_provenance(graph, added)
+p = chosen_p(read["counts"])
+by_kind = {kind: (SIGMA_FLUX, 0, "section 27") for kind in ("through", "bifurcation", "crossing")}
+flux_recorder = vascnet.watch.Recorder(every=3)
+run = run_flux_network(graph, read["junctions"], provenance, by_kind, p, {}, burst["mean"], watch=flux_recorder)
+truth_way, _ = edge_truth(graph, burst["segments"])
+scores = direction_scores(run, graph, truth_way)
+solution = run["solution"]
+print(f"Tree burst {TREE_SEEDS[0]}: {len(graph['edges'])} edges, {run['measured'].sum()} with a measured flux, in "
+      f"{len(set(edge_flux(graph)[2][run['measured']]))} whole vessels | joins: "
+      + ", ".join(f"{kind} {sum(j['provenance'] == kind for j in provenance)}" for kind in ("skeleton", "extension", "junction", "undone"))
+      + f" | p = {p:.2f} from the burst's own counts")
+print("   balances: " + ", ".join(f"{run['kinds'].count(kind)} {kind}" for kind in LUMEN_KINDS if kind in run["kinds"])
+      + f" | {run['constraining']} constrain a sign | flips {solution.flipped.sum()}, set aside {solution.disabled.sum()}, "
+      f"impossible {solution.impossible.sum()}, directed cycles {len(run['cycles'])}, blamed lumens {len(run['blame']['lumens'])}")
+print(f"   against the truth: of {scores['unmeasured']} edges without a measured direction the network infers {scores['network inferred']} "
+      f"({scores['network right']} right), propagate_directions {scores['junctions inferred']} ({scores['junctions right']} right) | "
+      f"measured: {scores['measured right']} of {scores['measured']} right as read, flips right {scores['flips right']}, wrong {scores['flips wrong']}")
+os.makedirs("vessel_pictures/fit", exist_ok=True)
+positions = {number: (node["x"], -node["y"]) for number, node in enumerate(graph["nodes"])}
+true_flux = truth_way * np.nan_to_num(np.abs(run["q_hat"]), nan=1.0)
+vascnet.watch.animate(flux_recorder.states, lambda state: vascnet.watch.flux_frame(
+    state, positions, [edge["nodes"] for edge in graph["edges"]], true_flux, size=(7.0, 5.5)), "vessel_pictures/fit/flux.gif", fps=2.0)
+print(f"   the sign step handed {flux_recorder.count} candidates to the recorder; {len(flux_recorder.states)} are filmed in "
+      "vessel_pictures/fit/flux.gif (green right against the truth, red wrong, orange the move, purple a reading set aside)")
+del burst, front, read, graph
+
+# %%
+# acceptance step 3 on the harness. Per set, on its bursts for developing: without truth, p (section 33's counts) and
+# SIGMA_FLUX per lumen kind; with truth, the structural confidences (section 41: P(join right) from the pair's turn,
+# width and density ratios and provenance; the share right of T-shaped bifurcations; P(two vessels) at crossings by
+# overlap z). On the held-out bursts: the network against propagate_directions. The gate is read on section 35's trees.
+FLUX_SETS = (("section 35's trees", "trees", TREE_SEEDS, TREE_HELD_OUT, SYNTH_THINGS),
+             ("section 30's bursts", "trees", HARNESS_SEEDS, HELD_OUT_SEEDS, {}),
+             ("crossing plexus", "crossing plexus", PLEXUS_SEEDS, PLEXUS_HELD_OUT, SYNTH_THINGS),
+             ("anastomotic plexus", "anastomotic plexus", PLEXUS_SEEDS, PLEXUS_HELD_OUT, SYNTH_THINGS))
+
+
+def flux_reading(burst):
+    """Section 32's whole-vessel graph of a burst's consolidated lines, read with flow as tests, and its joins'
+    provenance."""
+    front = ridge_front(burst, workers)
+    read = read_burst_ridges(burst, front, consolidate=True, speeds="whole vessels", threads=workers)
+    added, _ = consolidated_extensions(front["strength"], front["orientation"], front["mask"])
+    return read, join_provenance(read["graph"], added)
+
+
+flux_setup = {}  # per set: p, SIGMA_FLUX per kind, the structural calibration, and what they came from
+for name, kind, developing, _, things in FLUX_SETS:
+    counts, imbalances, join_rows, join_truth, tees, crossings = [], {}, [], [], [], []
+    for seed in developing:
+        burst = synthetic_burst_35(seed, kind, **things)
+        read, provenance = flux_reading(burst)
+        graph = read["graph"]
+        counts.append(read["counts"])
+        lumens, kinds, _, overlaps, places = flux_lumens(graph, read["junctions"], provenance)
+        for lumen_kind, values in lumen_imbalances(lumens, kinds, edge_flux(graph)[0]).items():
+            imbalances.setdefault(lumen_kind, []).extend(values)
+        _, on_segment = edge_truth(graph, burst["segments"])
+        for join in provenance:
+            if join["provenance"] in ("skeleton", "extension"):
+                right = join_right(graph, join["ends"], on_segment, burst["segments"])
+                if right is not None:
+                    join_rows.append(join_features(graph, join, burst["mean"]))
+                    join_truth.append(right)
+        for lumen_kind, overlap, place in zip(kinds, overlaps, places):
+            if lumen_kind in ("crossing", "bifurcation, T"):
+                node = graph["nodes"][place]
+                two = two_vessels_truth(burst, (node["x"], node["y"]), node.get("thick", 0) / 2)
+                if two is not None and lumen_kind == "crossing" and np.isfinite(overlap):
+                    crossings.append((overlap, two))
+                elif two is not None and lumen_kind == "bifurcation, T":
+                    tees.append(not two)  # right: the junction there is one lumen
+        del burst, read
+    total = add_counts(counts)
+    calibration = {"joins": {"bifurcation, T": (sum(tees) + 0.5) / (len(tees) + 1)}}
+    if join_truth:
+        calibration["join model"] = calibrate_terms(join_rows, join_truth, terms=JOIN_TERMS, bins=JOIN_BINS)
+    values = np.array([value for value, _ in crossings])
+    two = np.array([right for _, right in crossings], dtype=bool)
+    cuts = np.unique(np.quantile(values, np.linspace(0, 1, OVERLAP_BINS + 1)[1:-1])) if len(values) else np.array([])
+    spots = np.array([bin_of(value, cuts) for value in values], dtype=int)
+    calibration["crossing"] = (cuts, np.array([(two[spots == spot].sum() + 0.5) / ((spots == spot).sum() + 1)
+                                               for spot in range(len(cuts) + 2)]))
+    join_confidence = edge_confidence(join_rows, calibration["join model"], terms=JOIN_TERMS)[0] if join_truth else np.array([])
+    flux_setup[name] = {"p": chosen_p(total), "p from": reliability(total), "counts": total, "sigma": sigma_flux_by_kind(imbalances),
+                        "calibration": calibration, "joins": (len(join_truth), int(np.sum(join_truth))),
+                        "joins told apart": told_apart(join_confidence[np.array(join_truth, dtype=bool)],
+                                                       join_confidence[~np.array(join_truth, dtype=bool)]) if join_truth else np.nan,
+                        "tees": (len(tees), int(sum(tees))), "crossings": (len(two), int(two.sum()))}
+
+print("On the bursts for developing: p and SIGMA_FLUX per lumen kind without truth (robust sd of section 27's flux test over the "
+      "lumens with every arm measured and possible, and their count); the structural confidences with truth")
+for name, setup in flux_setup.items():
+    joins, tees, crossings = setup["joins"], setup["tees"], setup["crossings"]
+    print(f"   {name:20s} p = {setup['p']:.2f} (three-arm junctions {setup['p from'][0]:.2f} of {setup['counts']['three arms']}, sides "
+          f"{setup['p from'][1]:.2f} of {setup['counts']['sides']}) | " + ", ".join(
+              f"{kind} {value:.2f} ({count}, {source})" for kind, (value, count, source) in setup["sigma"].items()))
+    print(f"   {'':20s} two-arm joins: {joins[1]} of {joins[0]} right, told apart by P(join right) {setup['joins told apart']:.2f} | "
+          f"T-shaped bifurcations: {tees[1]} of {tees[0]} right | crossings: {crossings[1]} of {crossings[0]} are two vessels, by "
+          f"overlap z " + ", ".join(f"{share:.2f}" for share in setup["calibration"]["crossing"][1]))
+
+flux_results = {}  # per set: per held-out burst the network's numbers and its direction scores
+for name, kind, _, held_out, things in FLUX_SETS:
+    setup, rows = flux_setup[name], []
+    for seed in held_out:
+        burst = synthetic_burst_35(seed, kind, **things)
+        read, provenance = flux_reading(burst)
+        graph = read["graph"]
+        run = run_flux_network(graph, read["junctions"], provenance, setup["sigma"], setup["p"], setup["calibration"], burst["mean"])
+        if run is None:
+            continue
+        truth_way, _ = edge_truth(graph, burst["segments"])
+        solution = run["solution"]
+        rows.append({"seed": seed, **direction_scores(run, graph, truth_way), "lumens": len(run["lumens"]),
+                     "constraining": run["constraining"], "set aside": int(solution.disabled.sum()),
+                     "impossible": int(solution.impossible.sum()), "cycles": len(run["cycles"]),
+                     "blamed": len(run["blame"]["lumens"]), "speeds in doubt": len(run["blame"]["speeds"]),
+                     "free ends": len(run["free ends"]), "edges": len(graph["edges"])})
+        del burst, read
+    flux_results[name] = rows
+    memory_note(f"section 40, {name}")
+
+print("\nHeld out: directions among the edges without a measured one (the truth known), the network against "
+      "propagate_directions; shares with their 95% interval over bursts")
+for name, rows in flux_results.items():
+    network = with_interval([row["network right"] for row in rows], [row["network inferred"] for row in rows])
+    junctions = with_interval([row["junctions right"] for row in rows], [row["junctions inferred"] for row in rows])
+    unmeasured = sum(row["unmeasured"] for row in rows)
+    print(f"   {name:20s} {len(rows)} bursts, {unmeasured} edges without a measured direction | network: {sum(r['network inferred'] for r in rows)} inferred, "
+          f"{sum(r['network right'] for r in rows)} right ({network[0] * 100:.0f}%, {network[1] * 100:.0f} to {network[2] * 100:.0f}) | junctions: "
+          f"{sum(r['junctions inferred'] for r in rows)} inferred, {sum(r['junctions right'] for r in rows)} right ({junctions[0] * 100:.0f}%, "
+          f"{junctions[1] * 100:.0f} to {junctions[2] * 100:.0f})")
+    print(f"   {'':20s} measured: {sum(r['measured right'] for r in rows)} of {sum(r['measured'] for r in rows)} right as read | flips "
+          f"right {sum(r['flips right'] for r in rows)}, wrong {sum(r['flips wrong'] for r in rows)} | lumens {sum(r['lumens'] for r in rows)}, "
+          f"constraining a sign {sum(r['constraining'] for r in rows)}, set aside {sum(r['set aside'] for r in rows)}, impossible "
+          f"{sum(r['impossible'] for r in rows)}, directed cycles {sum(r['cycles'] for r in rows)}, blamed {sum(r['blamed'] for r in rows)}, "
+          f"speeds in doubt {sum(r['speeds in doubt'] for r in rows)}")
+print("\nAs description, the network's directions of the edges without a measured one at other cutoffs of |q| / sigma (inferred, right):")
+for name, rows in flux_results.items():
+    curve = np.array([point for row in rows for point in row["curve"]]).reshape(-1, 2)
+    print(f"   {name:20s} " + " | ".join(f">= {cut}: {(curve[:, 0] >= cut).sum()}, {int(curve[curve[:, 0] >= cut, 1].sum())}"
+                                         for cut in (0.5, 1.0, 1.5, 2.0, 3.0))
+          + f" | propagate_directions: {sum(r['junctions inferred'] for r in rows)}, {sum(r['junctions right'] for r in rows)}")
+rows = flux_results["section 35's trees"]
+right = (sum(r["network right"] for r in rows), sum(r["junctions right"] for r in rows))
+shares = (right[0] / max(sum(r["network inferred"] for r in rows), 1), right[1] / max(sum(r["junctions inferred"] for r in rows), 1))
+verdict = right[0] > right[1] and shares[0] >= shares[1]
+print(f"\nThe gate, on section 35's held-out trees: the network gives the right direction to {right[0]} edges without a measured one, "
+      f"propagate_directions to {right[1]}; shares right {shares[0] * 100:.0f}% and {shares[1] * 100:.0f}% -> "
+      f"{'IMPROVES: passed' if verdict else 'does not improve: FAILED'} | the plexus is reported above (expected: no change)")
+os.makedirs("vessel_pictures/flux", exist_ok=True)
+save_table([{"set": name, **{key: value for key, value in row.items() if key != "curve"}} for name, rows in flux_results.items()
+            for row in rows], "vessel_pictures/flux/held_out.csv")
+memory_note("section 40, harness")
+
+# %%
+# section 40 on the real burst: the whole-vessel graphs of section 32 (whole_graphs), their junctions read from the
+# geometry, p from section 33's counts pooled over the fixations (chosen_p), SIGMA_FLUX per kind measured here where
+# there are FLUX_LEAST lumens of a kind, else the harness's, and the structural confidences calibrated on section 35's
+# trees (the real burst has no truth to calibrate them on). Also the consolidated graph's shares of
+# impossible junctions and directed cycles: the reference of the rule by which lambda is chosen.
+real_runs = []
+counts = []
+real_junctions = []
+for number, graph in enumerate(whole_graphs):
+    found = read_junctions(graph, saved["density"][number], saved["static_scores"][number], flow=False)[0]
+    real_junctions.append(found)
+    counts.append(direction_counts(graph, found, whole_readings[number]))
+p_three, p_sides = reliability(add_counts(counts))
+real_p = chosen_p(add_counts(counts))
+imbalances = {}
+for number, graph in enumerate(whole_graphs):
+    lumens, kinds, _, _, _ = flux_lumens(graph, real_junctions[number], join_provenance(graph))
+    for kind, values in lumen_imbalances(lumens, kinds, edge_flux(graph)[0]).items():
+        imbalances.setdefault(kind, []).extend(values)
+real_sigma = sigma_flux_by_kind(imbalances, fallback=flux_setup["section 35's trees"]["sigma"])
+print(f"Real burst: p = {real_p:.2f} (chosen_p) from section 33's counts over both fixations (three-arm junctions {p_three:.2f}: "
+      f"{add_counts(counts)['all in or all out']} of {add_counts(counts)['three arms']} all in or all out; sides {p_sides:.2f})")
+print("   SIGMA_FLUX per lumen kind: " + ", ".join(f"{kind} {value:.2f} ({count} lumens, {source})" for kind, (value, count, source) in real_sigma.items()))
+for number, graph in enumerate(whole_graphs):
+    front = saved_front(saved, number)
+    added, _ = consolidated_extensions(front["strength"], front["orientation"], front["mask"])
+    provenance = join_provenance(graph, added)
+    run = run_flux_network(graph, real_junctions[number], provenance, real_sigma, real_p,
+                           flux_setup["section 35's trees"]["calibration"], saved["density"][number])
+    real_runs.append(run)
+    solution = run["solution"]
+    lost = np.array([flux for flux, sigma in run["free ends"] if np.isfinite(sigma) and sigma > 0 and abs(flux) >= FLUX_INFERRED * sigma])
+    unmeasured = ~run["measured"] & np.array([reading is not None for reading in graph["readings"]])
+    inferred = unmeasured & (solution.direction_confidence >= FLUX_INFERRED)
+    agree = (solution.direction[inferred] == propagated_directions(graph)[inferred]) & (propagated_directions(graph)[inferred] != 0)
+    print(f"Fixation {number}: {len(graph['edges'])} edges, {run['measured'].sum()} with a measured flux | joins: "
+          + ", ".join(f"{kind} {sum(j['provenance'] == kind for j in provenance)}" for kind in ("skeleton", "extension", "junction", "undone")))
+    print("   balances: " + ", ".join(f"{run['kinds'].count(kind)} {kind}" for kind in LUMEN_KINDS if kind in run["kinds"])
+          + f" | constraining a sign {run['constraining']}, set aside {solution.disabled.sum()}, impossible {solution.impossible.sum()}, "
+          f"directed cycles {len(run['cycles'])}, flips {solution.flipped.sum()}, blamed lumens {len(run['blame']['lumens'])}, speeds in doubt "
+          f"{len(run['blame']['speeds'])}")
+    print(f"   free ends: {len(run['free ends'])}, of which {len(lost)} lose or gain a flux of {FLUX_INFERRED:.0f} sigma or more | edges "
+          f"without a measured direction: {unmeasured.sum()}, the network infers {inferred.sum()}; propagate_directions agrees on "
+          f"{agree.sum()} of them (agreement between two inferences, not a score)")
+    print(f"   lambda's reference, the consolidated graph: impossible lumens {solution.impossible.sum()} of {len(run['lumens'])} "
+          f"({solution.impossible.mean() * 100:.1f}%), directed cycles {len(run['cycles'])} per {len(graph['edges'])} edges")
+memory_note("section 40, real burst")
