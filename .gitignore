@@ -4,3 +4,12 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+
+# what the notebook writes next to itself, and the burst itself: never committed
+burst_*/
+vessel_pictures/
+section_29_inputs/
+notebooks/*.gif
+notebooks/*.mp4
+notebooks/*.png
+.ipynb_checkpoints/
