@@ -4,13 +4,19 @@
 
 but with a log that is written as the run goes: every code cell's number, id, first line, printed text and
 wall-clock time. nbconvert writes nothing until the last cell is done, so a failure hours in loses every printed
-result; here they are on disk the moment a cell ends. The executed notebook is written in place at the end, and
-also when a cell fails (with what has run so far), before the error is raised again.
+result; here they are on disk the moment a cell ends. The executed notebook is written at the end, and also when a
+cell fails (with what has run so far), before the error is raised again.
 
     python scripts/run_notebook.py "notebooks/development copy 2.ipynb" reports/logs/reproduction.log
+    python scripts/run_notebook.py NOTEBOOK LOG --only 4b1e8e10,generator-functions,section-35 --out executed.ipynb
+
+--only runs just the code cells with these ids, in the notebook's order (section 29's fresh-kernel cell, 4b1e8e10,
+first, so that the definitions and the saved inputs are there); the others are left as they are. --out writes the
+executed notebook there instead of in place.
 
 The kernel's working directory is the notebook's folder, as when it is run from inside notebooks/.
 """
+import argparse
 import sys
 import time
 from pathlib import Path
@@ -36,10 +42,19 @@ def cell_text(cell):
     return "".join(parts)
 
 
-def main(notebook_path, log_path):
+def main(notebook_path, log_path, only=None, out=None):
     notebook_path, log_path = Path(notebook_path).resolve(), Path(log_path).resolve()
+    out = Path(out).resolve() if out else notebook_path
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    notebook = nbformat.read(notebook_path, as_version=4)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    full = nbformat.read(notebook_path, as_version=4)
+    notebook = full
+    if only:
+        missing = set(only) - {cell.get("id") for cell in full.cells}
+        if missing:
+            raise SystemExit(f"no cells with the ids {sorted(missing)}")
+        notebook = nbformat.v4.new_notebook(metadata=full.metadata)
+        notebook.cells = [cell for cell in full.cells if cell.cell_type == "code" and cell.get("id") in only]
     code_cells = sum(cell.cell_type == "code" for cell in notebook.cells)
     started, cell_started = time.time(), {}
 
@@ -61,8 +76,9 @@ def main(notebook_path, log_path):
         import ctypes
         ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001)  # ES_CONTINUOUS | ES_SYSTEM_REQUIRED
 
-    note(f"Run of {notebook_path.name} started {time.strftime('%Y-%m-%d %H:%M:%S')}: {code_cells} code cells\n")
-    client = NotebookClient(notebook, timeout=None, kernel_name=notebook.metadata.get("kernelspec", {}).get("name", "python3"),
+    note(f"Run of {notebook_path.name} started {time.strftime('%Y-%m-%d %H:%M:%S')}: {code_cells} code cells"
+         + (f" (only {', '.join(only)})" if only else "") + "\n")
+    client = NotebookClient(notebook, timeout=None, kernel_name=full.metadata.get("kernelspec", {}).get("name", "python3"),
                             resources={"metadata": {"path": str(notebook_path.parent)}},
                             on_cell_execute=on_cell_execute, on_cell_executed=on_cell_executed)
     try:
@@ -71,10 +87,16 @@ def main(notebook_path, log_path):
         note(f"\nFAILED after {(time.time() - started) / 60:.1f} min\n{error}\n")
         raise
     finally:
-        nbformat.write(notebook, notebook_path)
+        nbformat.write(notebook, out)
     note(f"\nDONE: {code_cells} code cells in {(time.time() - started) / 60:.1f} min "
          f"({time.time() - started:.0f} s), finished {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:3])
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("notebook")
+    parser.add_argument("log")
+    parser.add_argument("--only", help="comma-separated ids of the code cells to run, in the notebook's order")
+    parser.add_argument("--out", help="where to write the executed notebook (default: in place)")
+    arguments = parser.parse_args()
+    main(arguments.notebook, arguments.log, arguments.only.split(",") if arguments.only else None, arguments.out)

@@ -1,0 +1,21 @@
+bursts,way,centerline precision,centerline recall,junction precision,junction recall,"type right, of found",found and typed right,true junctions,junctions read
+development,chains of sections 19 to 27,0.705 (0.649 to 0.759),0.985 (0.975 to 0.993),0.207 (0.157 to 0.276),0.948 (0.908 to 0.980),0.511 (0.375 to 0.638),0.485 (0.355 to 0.610),97,445
+development,plain ridges,0.945 (0.918 to 0.968),0.942 (0.919 to 0.960),0.763 (0.667 to 0.854),0.732 (0.611 to 0.845),0.732 (0.604 to 0.833),0.536 (0.391 to 0.677),97,93
+development,"consolidated, keeping short pieces",0.941 (0.918 to 0.963),0.923 (0.899 to 0.943),0.747 (0.644 to 0.854),0.639 (0.576 to 0.702),0.645 (0.537 to 0.746),0.412 (0.333 to 0.486),97,83
+development,"consolidated, dropping short pieces",0.949 (0.927 to 0.968),0.890 (0.860 to 0.917),0.809 (0.680 to 0.917),0.392 (0.299 to 0.476),0.711 (0.550 to 0.853),0.278 (0.200 to 0.349),97,47
+development,tube rule on plain ridges,0.992 (0.990 to 0.994),0.809 (0.726 to 0.879),0.868 (0.738 to 0.964),0.474 (0.324 to 0.614),0.652 (0.457 to 0.806),0.309 (0.167 to 0.455),97,53
+development,"consolidated, tube rule",0.956 (0.938 to 0.973),0.879 (0.833 to 0.918),0.767 (0.674 to 0.860),0.711 (0.653 to 0.781),0.681 (0.565 to 0.773),0.485 (0.381 to 0.578),97,90
+development,"plain ridges, whole vessels",0.945 (0.918 to 0.968),0.942 (0.919 to 0.960),0.763 (0.667 to 0.854),0.732 (0.611 to 0.845),0.732 (0.604 to 0.833),0.536 (0.391 to 0.677),97,93
+development,"consolidated, whole vessels",0.941 (0.918 to 0.963),0.923 (0.899 to 0.943),0.747 (0.644 to 0.854),0.639 (0.576 to 0.702),0.645 (0.537 to 0.746),0.412 (0.333 to 0.486),97,83
+development,"plain ridges, whole vessels, likelihood ratio",0.945 (0.918 to 0.968),0.942 (0.919 to 0.960),0.763 (0.667 to 0.854),0.732 (0.611 to 0.845),0.732 (0.604 to 0.833),0.536 (0.391 to 0.677),97,93
+development,"consolidated, whole vessels, likelihood ratio",0.941 (0.918 to 0.963),0.923 (0.899 to 0.943),0.747 (0.644 to 0.854),0.639 (0.576 to 0.702),0.645 (0.537 to 0.746),0.412 (0.333 to 0.486),97,83
+held out,chains of sections 19 to 27,0.702 (0.655 to 0.750),0.985 (0.975 to 0.992),0.220 (0.170 to 0.281),0.924 (0.878 to 0.966),0.435 (0.329 to 0.556),0.402 (0.306 to 0.511),92,387
+held out,plain ridges,0.946 (0.921 to 0.969),0.930 (0.902 to 0.955),0.835 (0.721 to 0.929),0.772 (0.698 to 0.837),0.704 (0.581 to 0.816),0.543 (0.433 to 0.657),92,85
+held out,"consolidated, keeping short pieces",0.935 (0.908 to 0.957),0.918 (0.890 to 0.943),0.716 (0.568 to 0.868),0.630 (0.553 to 0.707),0.655 (0.500 to 0.786),0.413 (0.290 to 0.533),92,81
+held out,"consolidated, dropping short pieces",0.940 (0.915 to 0.961),0.876 (0.839 to 0.910),0.911 (0.822 to 0.979),0.446 (0.374 to 0.523),0.537 (0.341 to 0.721),0.239 (0.144 to 0.333),92,45
+held out,tube rule on plain ridges,0.992 (0.988 to 0.995),0.798 (0.712 to 0.874),0.938 (0.820 to 1.000),0.489 (0.326 to 0.634),0.578 (0.417 to 0.727),0.283 (0.160 to 0.407),92,48
+held out,"consolidated, tube rule",0.947 (0.917 to 0.970),0.854 (0.808 to 0.896),0.709 (0.566 to 0.851),0.663 (0.545 to 0.779),0.639 (0.525 to 0.763),0.424 (0.310 to 0.557),92,86
+held out,"plain ridges, whole vessels",0.946 (0.921 to 0.969),0.930 (0.902 to 0.955),0.835 (0.721 to 0.929),0.772 (0.698 to 0.837),0.704 (0.581 to 0.816),0.543 (0.433 to 0.657),92,85
+held out,"consolidated, whole vessels",0.935 (0.908 to 0.957),0.918 (0.890 to 0.943),0.716 (0.568 to 0.868),0.630 (0.553 to 0.707),0.655 (0.500 to 0.786),0.413 (0.290 to 0.533),92,81
+held out,"plain ridges, whole vessels, likelihood ratio",0.946 (0.921 to 0.969),0.930 (0.902 to 0.955),0.835 (0.721 to 0.929),0.772 (0.698 to 0.837),0.704 (0.581 to 0.816),0.543 (0.433 to 0.657),92,85
+held out,"consolidated, whole vessels, likelihood ratio",0.935 (0.908 to 0.957),0.918 (0.890 to 0.943),0.716 (0.568 to 0.868),0.630 (0.553 to 0.707),0.655 (0.500 to 0.786),0.413 (0.290 to 0.533),92,81

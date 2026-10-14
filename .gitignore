@@ -13,3 +13,4 @@ notebooks/*.gif
 notebooks/*.mp4
 notebooks/*.png
 .ipynb_checkpoints/
+notebooks/executed/

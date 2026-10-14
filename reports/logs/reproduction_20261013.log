@@ -1,0 +1,683 @@
+Run of development copy 2.ipynb started 2026-10-13 21:17:34: 77 code cells
+
+===== cell 2 id=setup | started at 21:17:38 | import csv
+----- cell 2 took 17.9 s | 0.4 min since the start
+
+===== cell 4 id=e9e453a9 | started at 21:17:56 | project_dir = Path.cwd()
+Loading 140 TIFF frames from G:\My Drive\segmentation\burst_2026-09-16_15-50-52...
+Loaded burst with shape (140, 1200, 1920) and dtype uint16.
+----- cell 4 took 251.8 s | 4.6 min since the start
+
+===== cell 6 id=bc2935e6 | started at 21:22:08 | manifest_path = target_folder / "manifest.json"
+Using 32.236 FPS from the capture manifest.
+----- cell 6 took 0.1 s | 4.6 min since the start
+
+===== cell 8 id=fb635069 | started at 21:22:08 | def create_animation(frames, output_filename="burst_animation.gif", fps=30.0, embed_html5=True, widt
+----- cell 8 took 0.0 s | 4.6 min since the start
+
+===== cell 10 id=688a4f6b | started at 21:22:08 | create_animation(raw_burst, output_filename="burst_preview.gif", fps=fps)
+Rendering 140 frames at 32.24 FPS...
+Saved animation to burst_preview_cd83369401871166.gif
+----- cell 10 took 11.5 s | 4.8 min since the start
+
+===== cell 12 id=5f7cf9b3 | started at 21:22:20 | def score_frame(frame, downsample=4, sigmas=(1, 2, 3)):
+----- cell 12 took 0.0 s | 4.8 min since the start
+
+===== cell 14 id=487ee603 | started at 21:22:20 | gated_frames, sharpness, vesselness, thresholds, gated_indices = gate_burst_frames(raw_burst)
+Scoring 140 frames for sharpness and vesselness on 6 threads...
+Original frames: 140 | Gated frames kept: 131 | dropped: [68, 79, 87, 92, 98, 101, 113, 120, 121]
+Sharpness threshold: 1.217e-03 | Vesselness threshold: 3.658e-03
+Rendering 131 frames at 32.24 FPS...
+Saved animation to gated_burst_preview_233ba37ab90e1aea.gif
+----- cell 14 took 20.6 s | 5.1 min since the start
+
+===== cell 16 id=5ddee5a0 | started at 21:22:40 | PEAK_SIGMA = 1.5  # pixels; width given to the correlation peak by low-passing the phase ramp
+----- cell 16 took 0.0 s | 5.1 min since the start
+
+===== cell 18 id=2072f58f | started at 21:22:40 | def step_shift(index):
+----- cell 18 took 5.1 s | 5.2 min since the start
+
+===== cell 20 id=8f137e15 | started at 21:22:46 | GREAT_SHIFT_FACTOR = 10.0  # a frame-to-frame shift this many times the burst's median shift is "gre
+Frame-to-frame shift: median 3.54 px, largest 112.90 px | great-shift limit 35.4 px -> 2 fixation(s)
+----- cell 20 took 0.0 s | 5.2 min since the start
+
+===== cell 22 id=2617e171 | started at 21:22:46 | # choose the reference frame according to the highest sharpness and vesselness score, or the median 
+Fixation 0: frames 0-112 (113 frames), reference 44, largest shift from reference 65.5 px
+Fixation 1: frames 113-130 (18 frames), reference 121, largest shift from reference 31.0 px
+----- cell 22 took 5.3 s | 5.3 min since the start
+
+===== cell 24 id=94593f3e | started at 21:22:51 | DETAIL_SIGMA = 2.0      # pixels; ECC fits the structure finer than this, i.e. the in-focus vessels
+Fixation 1 -> fixation 0: local misfit translation 3.98 px -> affine 0.74 px -> homography 0.66 px; kept the homography, still above the 0.5 px tolerance
+----- cell 24 took 3.8 s | 5.3 min since the start
+
+===== cell 26 id=dc97959e | started at 21:22:55 | # blink between the aligned fixation averages to check the alignment by eye
+Rendering 2 frames at 2.00 FPS...
+Saved animation to fixation_averages_e1260f0af2d1cdea.gif
+----- cell 26 took 0.1 s | 5.3 min since the start
+
+===== cell 28 id=5b207d1f | started at 21:22:55 | SATURATION_LEVEL = 0.95  # fraction of the burst's largest value; from here up a pixel counts as cli
+Glare: 321 pixels per frame are clipped or stand out above the tissue (211 to 448); grown by 12 px, 5126 pixels per frame are left out (0.22% of a frame)
+Stuck pixels (too bright in at least 90% of the frames): 1 at (x 829, y 1094)
+----- cell 28 took 4.0 s | 5.4 min since the start
+
+===== cell 30 id=aa5d6641 | started at 21:22:59 | DUST_DEPTH = 0.03    # a sensor pixel whose response is off by more than this is flawed
+Sensor map: 98 spots where the response is off by more than 3%; 6814 pixels are corrected and 1 left out as unusable
+  (x 1081, y 61): 306 px, response 0.34 at its darkest
+  (x 515, y 978): 146 px, response 0.78 at its darkest
+  (x 1653, y 282): 97 px, response 0.85 at its darkest
+  (x 1068, y 156): 21 px, response 0.95 at its darkest
+  (x 1199, y 366): 16 px, response 0.95 at its darkest
+  (x 1780, y 987): 12 px, response 0.95 at its darkest
+  (x 1070, y 65): 6 px, response 1.04 at its brightest
+  (x 942, y 610): 3 px, response 0.93 at its darkest
+----- cell 30 took 16.7 s | 5.7 min since the start
+
+===== cell 32 id=185fe299 | started at 21:23:16 | PANEL_WIDTH = 480           # pixels; width of each whole-frame panel
+Rendering 131 frames at 32.24 FPS...
+Saved animation to dust_and_glare_removed_preview_c693218c4b211939.gif
+----- cell 32 took 13.8 s | 5.9 min since the start
+
+===== cell 34 id=8195c14a | started at 21:23:29 | def anchor_to_reference(fixation):
+stabilized_frames: (131, 1200, 1920) | stabilized_fixations: [(113, 1200, 1920), (18, 1200, 1920)]
+----- cell 34 took 3.6 s | 6.0 min since the start
+
+===== cell 36 id=3086836b | started at 21:23:33 | VIEW_WIDTH = 800  # pixels; the preview is put together at the width it is shown at
+Rendering 131 frames at 32.24 FPS...
+Saved animation to stabilized_burst_preview_567b0b8338a46375.gif
+----- cell 36 took 5.9 s | 6.1 min since the start
+
+===== cell 38 id=e6f01ade | started at 21:23:39 | # after stabilization, within each fixation, subtract the per-pixel temporal mean. The mean holds th
+Fixation 0: mean subtracted from 113 frames, 97.4% of pixels have data, what is left has an RMS of 51.8 DN
+Fixation 1: mean subtracted from 18 frames, 98.2% of pixels have data, what is left has an RMS of 48.6 DN
+----- cell 38 took 6.7 s | 6.2 min since the start
+
+===== cell 40 id=92eb5f3d | started at 21:23:46 | # render the mean-subtracted frames as a GIF to visualize what changes over time
+Showing -198 to +198 DN (4 x the noise of 49.5 DN)
+Rendering 131 frames at 32.24 FPS...
+Saved animation to mean_subtracted_burst_preview_4244772ec258c09b.gif
+----- cell 40 took 13.2 s | 6.4 min since the start
+
+===== cell 42 id=d34ab27a | started at 21:23:59 | # reduce the flicker: whole frames differ in brightness by about 1%, so each stabilized frame is div
+Fixation 0: brightness factors 0.9836 to 1.0142, whole-frame level 17.9 DN -> 0.5 DN
+Fixation 1: brightness factors 0.9904 to 1.0106, whole-frame level 14.9 DN -> 0.3 DN
+----- cell 42 took 6.0 s | 6.5 min since the start
+
+===== cell 44 id=e6682037 | started at 21:24:05 | SMOOTH_SIGMA = 32    # pixels; structure larger than about this counts as a frame's smooth part
+Rendering 131 frames at 32.24 FPS...
+Saved animation to flicker_corrected_burst_preview_2be71d1bd46aa79d.gif
+Rendering 131 frames at 32.24 FPS...
+Saved animation to flicker_corrected_smooth_removed_burst_preview_1d2e982763c2bdc3.gif
+----- cell 44 took 18.3 s | 6.8 min since the start
+
+===== cell 46 id=background-functions | started at 21:24:23 | # background estimation in log space, following step 1 of the pipeline report
+----- cell 46 took 0.2 s | 6.8 min since the start
+
+===== cell 48 id=a944cd05 | started at 21:24:24 | FLUCTUATION_BLUR = 2.0        # pixels; each frame's change is blurred by this to beat the pixel noi
+Fluctuation measured on up to 131 frames per pixel, 99.6% of the pixels judged | of those, 66.4% change and 17.4% are quiet
+----- cell 48 took 26.0 s | 7.3 min since the start
+
+===== cell 50 id=2117e63a | started at 21:24:50 | BACKGROUND_SIGMA = 8  # pixels; the fitted background is a local mean of this width over the backgro
+Fixation 0: background fitted on 23% of the pixels, 75% of them quiet pixels (0 saturated and 474 glare pixels left out), density of the mean on them 0.0049 (robust sd) | frame offsets -0.0135 to +0.0170
+Fixation 1: background fitted on 21% of the pixels, 80% of them quiet pixels (0 saturated and 993 glare pixels left out), density of the mean on them 0.0066 (robust sd) | frame offsets -0.0105 to +0.0111
+----- cell 50 took 15.0 s | 7.5 min since the start
+
+===== cell 52 id=f4e3d672 | started at 21:25:05 | DENSITY_RANGE = (-0.1, 0.5)  # optical density shown from black to white, here and in the preview be
+----- cell 52 took 2.5 s | 7.5 min since the start
+
+===== cell 54 id=e3e7d0f9 | started at 21:25:07 | preview_height = round(PREVIEW_WIDTH * frame_height / frame_width)
+Rendering 131 frames at 32.24 FPS...
+Saved animation to density_burst_preview_27033a9ad1872e09.gif
+----- cell 54 took 3.8 s | 7.6 min since the start
+
+===== cell 56 id=dda11f5a | started at 21:25:11 | CLEANED_RANGE = (0.4, 1.1)  # fraction of the background's brightness shown from black to white
+Rendering 131 frames at 32.24 FPS...
+Saved animation to background_cleaned_burst_preview_f21ae96c10312b61.gif
+----- cell 56 took 13.7 s | 7.8 min since the start
+
+===== cell 58 id=b3809da0 | started at 21:25:25 | density_means = []  # per fixation: (rows, cols) mean density over the frames that cover each pixel
+Left, without background removal: -198 to +198 DN | right, with background removal: -0.082 to +0.082 optical density (4 x the noise of 0.0204)
+Rendering 131 frames at 32.24 FPS...
+Saved animation to mean_subtracted_with_and_without_background_15867ce9fdc1f1d5.gif
+----- cell 58 took 9.6 s | 8.0 min since the start
+
+===== cell 60 id=d1acb499 | started at 21:25:34 | SHADING_SIGMA = 32  # pixels; shading wider than about this is followed from frame to frame
+Without the temporal data, a frame differs from section 13's by one constant: at most 0.0006 of density, against a gray scale of -0.082 to +0.082
+Shading that moves from frame to frame: 0.0041 of density (rms), about 0.4% of the brightness. It is on the left and removed on the right.
+Rendering 131 frames at 32.24 FPS...
+Saved animation to mean_subtracted_fixed_and_per_frame_background_304ceea13b4223db.gif
+----- cell 60 took 11.6 s | 8.2 min since the start
+
+===== cell 62 id=1a2bd4bb | started at 21:25:46 | SMEAR_BLUR = 2.0         # pixels; each frame is blurred by this before its fluctuation is added up
+Fixation 0: 113 frames | the temporal burst averages to 0 within 7e-03 of density
+Fixation 1: 18 frames | the temporal burst averages to 0 within 9e-03 of density
+----- cell 62 took 13.5 s | 8.4 min since the start
+
+===== cell 64 id=3e4dd6ac | started at 21:26:00 | SMEAR_SIGMA = 64  # pixels; width of the local mean that is the smear's background. The noise floor 
+Fixation 0: background of the smear fitted on 16% of the pixels; the cleaned smear has a background noise of 0.12 noise floors | correlation with the background-cleaned average frame 0.59
+   stands out (5 x its own background noise): in the average frame on 47% of the field, in the smear on 52%, in both on 42% | where both do, the average frame is 18 x and the smear 18 x its noise (median)
+Fixation 1: background of the smear fitted on 8% of the pixels; the cleaned smear has a background noise of 0.16 noise floors | correlation with the background-cleaned average frame 0.54
+   stands out (5 x its own background noise): in the average frame on 42% of the field, in the smear on 35%, in both on 29% | where both do, the average frame is 18 x and the smear 13 x its noise (median)
+----- cell 64 took 13.4 s | 8.6 min since the start
+
+===== cell 66 id=24fa194c | started at 21:26:13 | combined_sums = []  # per fixation: average frame / its background noise + cleaned smear / its backg
+Fixation 0: stands out (5 x the background noise) in the sum on 57% of the field | in the average frame alone on 47%, in the smear alone on 52%, in either on 57% | background noise of the sum 1.44 (two independent pictures would give 1.41)
+Fixation 1: stands out (5 x the background noise) in the sum on 47% of the field | in the average frame alone on 42%, in the smear alone on 35%, in either on 48% | background noise of the sum 1.42 (two independent pictures would give 1.41)
+Saved 10 pictures at full resolution in the folder vessel_pictures
+----- cell 66 took 5.2 s | 8.7 min since the start
+
+===== cell 67 id=0f29ccb6 | started at 21:26:18 | # invert the density of the average of the two for fixation 1
+----- cell 67 took 1.4 s | 8.8 min since the start
+
+===== cell 69 id=graph-functions | started at 21:26:20 | RIDGE_WIDTHS = (1.5, 2.1, 3, 4.2, 6, 8.5, 12, 17, 24)  # pixels; half-widths at which a vessel is lo
+----- cell 69 took 0.1 s | 8.8 min since the start
+
+===== cell 70 id=e5a0d93a | started at 21:26:20 | FLOW_MASK_FILE = "flow_vessel_mask.png"  # the vessel mask from the flow, saved by development.ipynb
+C:\Users\ihave\AppData\Local\Temp\ipykernel_30128\2422812676.py:61: FutureWarning: Parameter `min_size` is deprecated since version 0.26.0 and will be removed in 2.0.0 (or later). To avoid this warning, please use the parameter `max_size` instead. For more details, see the documentation of `remove_small_objects`. Note that the new threshold removes objects smaller than **or equal to** its value, while the previous parameter only removed smaller ones.
+  lines = remove_small_objects(lines, MIN_LINE, connectivity=2)
+picture                               mask  length segments  forks loose ends per 1000 px networks  largest found again and back
+mean frame, minus its log              25%   28098      695    320        330        11.7      103      76%         74%      73%
+density, first guess of background     25%   28603      715    338        324        11.3      104      75%         75%      73%
+density, background cleaned            31%   40377     1202    599        412        10.2      104      84%         71%      79%
+mean of the frames' densities          31%   40347     1202    596        412        10.2      107      84%         71%      80%
+smear                                  35%   55137     2081   1052        584        10.6      168      78%         34%      69%
+smear, background removed              35%   55036     2065   1042        582        10.6      169      78%         34%      68%
+average of density and smear           39%   55643     1946   1007        508         9.1      135      90%         59%      77%
+larger of density and smear            38%   53447     1836    948        527         9.9      140      85%         56%      76%
+both: root of density x smear          39%   57932     2140   1137        524         9.0      121      91%         63%      71%
+
+Share of the row's centerlines that the column's pass within 3 px (anchor fixation):
+                                          0   1   2   3   4   5   6   7   8
+  0 mean frame, minus its log            100  97  92  92  67  67  86  87  84
+  1 density, first guess of background    96 100  92  92  67  66  86  87  84
+  2 density, background cleaned           66  67 100  99  66  66  85  85  84
+  3 mean of the frames' densities         66  67  99 100  66  66  85  85  84
+  4 smear                                 36  37  50  50 100 100  78  77  78
+  5 smear, background removed             36  37  50  50 100 100  78  77  78
+  6 average of density and smear          46  46  64  64  77  77 100  82  89
+  7 larger of density and smear           48  49  66  66  78  78  86 100  82
+  8 both: root of density x smear         43  44  61  61  74  74  86  76 100
+Saved the 9 pictures, alone, with their centerlines and as masks, at full resolution in the folder vessel_pictures/graphs
+----- cell 70 took 36.8 s | 9.4 min since the start
+
+===== cell 71 id=917d1bd7 | started at 21:26:57 | #  we shouldnt be using binary masks to form our centerlines...
+----- cell 71 took 1.0 s | 9.4 min since the start
+
+===== cell 72 id=d973aeb7 | started at 21:26:58 | #  deploy a neural field whose pixels have 16 orientations (neurons), and whose convolution kernel i
+Orientation-sensitive field: 16 neurons at each of 2291101 pixels; 1.4% of them stay active after lateral inhibition
+not strung below a string reaches least length  strings length (px) on the mask lines mask lines found
+            0.20             0.50           25     1193      109406               50%              91%
+            0.35             0.65           25      914       94897               56%              90%
+            0.50             0.80           25      674       80713               64%              90%
+            0.65             0.90           25      445       63368               76%              87%
+            0.35             0.65           10     1705      106028               54%              93%
+            0.35             0.65           60      484       79487               61%              85%
+            0.35             0.65          150      184       52327               70%              68%
+----- cell 72 took 21.2 s | 9.7 min since the start
+
+===== cell 73 id=ba2abedb | started at 21:27:19 | #  deploy another neural field whose pixels have 16 orientations (neurons), and whose convolution ke
+Flow-sensitive field: 112 pairs of frames of fixation 0, 7 of them with a dropped frame in between | the field's answer per pair varies by 12% around its mean, and is 0.52 x as large across a dropped frame as otherwise
+not strung below a string reaches least length  strings length (px) on the still lines still lines found
+            0.20             0.50           25      915       82086                70%               64%
+            0.35             0.65           25      609       67548                74%               58%
+            0.50             0.80           25      385       54596                79%               51%
+            0.65             0.90           25      219       38720                82%               38%
+            0.35             0.65           10     1083       72934                73%               59%
+            0.35             0.65           60      308       58390                77%               53%
+            0.35             0.65          150      144       44218                81%               43%
+----- cell 73 took 52.3 s | 10.6 min since the start
+
+===== cell 74 id=837a80c3 | started at 21:28:11 | # show combinations, oriented flow-sensitive centerlines, oriented orientation-sensitive centerlines
+Centerlines at the pruning (0.35, 0.65, 25): 94897 px from the orientation-sensitive field, 67548 px from the flow-sensitive field, 47650 px in both (50% of the still's)
+Saved the four pictures and the prunings at full resolution in the folder vessel_pictures/neural
+----- cell 74 took 3.2 s | 10.7 min since the start
+
+===== cell 75 id=ec39442e | started at 21:28:14 | #  the unpruned still centerlines look best, but many vessels are heavily fractured and have continu
+Horizontal layer on the centerlines at the pruning (0.2, 0.5, 25): 113487 neurons speak
+   round 1: 5318 bridges, 19286 neurons start to fire; 169 more bridges dropped, over tissue where the picture shows nothing
+   round 2: 1561 bridges, 4341 neurons start to fire; 225 more bridges dropped, over tissue where the picture shows nothing
+   round 3: 770 bridges, 1854 neurons start to fire; 246 more bridges dropped, over tissue where the picture shows nothing
+                             length (px)  forks loose ends per 1000 px networks largest added (px) fluctuates flow line
+as they are                        78510   1814       1506        19.2      347     66%          0 
+pieces within 2 px joined          69526   1275       1027        14.8      202     82%          0 
+after the horizontal layer         74545   1755        769        10.3      137     94%       4578        91%       36%
+ends extended into lines           75900   1879        591         7.8       89     96%       5255        91%       36%
+For comparison: of the joined centerlines 90% lie where the tissue fluctuates and 56% near a flow line; of the field as a whole 52% and 19%
+Saved both pictures at full resolution in the folder vessel_pictures/neural (consolidated_before, consolidated_after)
+----- cell 75 took 14.7 s | 10.9 min since the start
+
+===== cell 78 id=shared-functions | started at 21:28:29 | MAX_GAP_FRAMES = 1  # recorded frames; two kept frames are compared as a pair only when they are thi
+----- cell 78 took 0.0 s | 10.9 min since the start
+
+===== cell 79 id=a2a30a28 | started at 21:28:29 | fixation_has_data = []  # per fixation: True where the mean density and the background fit both have
+Fixation 0: 113 frames from 0.000 s to 3.692 s | 105 of 112 pairs of neighbouring frames are 1 frame apart, the others have dropped frames between them | data on 99.3% of the field
+Fixation 1: 18 frames from 3.785 s to 4.312 s | 17 of 17 pairs of neighbouring frames are 1 frame apart, the others have dropped frames between them | data on 99.0% of the field
+temporal_frame against section 14's right-hand video, on a sample of frames: largest difference 3.4e-08 of density
+----- cell 79 took 0.9 s | 10.9 min since the start
+
+===== cell 81 id=contrast-functions | started at 21:28:30 | CONTRAST_FILL = 16  # pixels; how far the picture is continued smoothly into the places without data
+----- cell 81 took 0.0 s | 10.9 min since the start
+
+===== cell 82 id=5758c612 | started at 21:28:30 | contrast_maps = []   # per fixation: the mean frame's density in multiples of the local noise
+Fixation 0: on the 398160 quiet pixels the contrast has median -0.00 and robust sd 0.85 with the fit's noise map as it is (not within 10% of 1); after dividing by 0.85: median -0.00, robust sd 1.00, mean +0.06
+Fixation 1: on the 388392 quiet pixels the contrast has median +0.01 and robust sd 1.09 with the fit's noise map as it is (within 10% of 1); after dividing by 1.09: median +0.01, robust sd 1.00, mean +0.04
+----- cell 82 took 1.0 s | 10.9 min since the start
+
+===== cell 84 id=hypercolumn-functions | started at 21:28:31 | N_ORIENT = 16                    # neurons per hypercolumn; neuron k looks for a line running along 
+----- cell 84 took 0.0 s | 10.9 min since the start
+
+===== cell 86 id=fbb2574b | started at 21:28:31 | # the three receptive fields of one neuron (orientation 2, lines 3 pixels wide): white excites, blac
+Fixation 0: the strongest neuron of a hypercolumn answers above 2 on 2.7% of the quiet pixels and above 4.5 on 0.16%; over the whole field on 27% and 15%
+   noise level per width: 0.09 0.09 0.11 0.13 0.15 0.17 0.18 0.18 | floor per width: 0.00 0.52 0.45 0.39 0.10 0.11 0.05 0.10
+Fixation 1: the strongest neuron of a hypercolumn answers above 2 on 2.6% of the quiet pixels and above 4.5 on 0.12%; over the whole field on 26% and 14%
+   noise level per width: 0.10 0.08 0.08 0.10 0.11 0.13 0.14 0.14 | floor per width: 0.00 0.50 0.46 0.37 0.09 0.10 0.05 0.09
+Orientation, on the 203877 pixels of large vessels (half-width 6 px or more): the winning neuron is 5.0 degrees from the structure tensor's orientation (median), within one step of 11.25 degrees on 77%
+Half-width, on the 40367 px of section 18's centerlines: 0.89 x section 18's (median), within one step of the widths (x 1.41) on 74%, correlation of the logs 0.76
+Of section 18's centerlines, 99% have a neuron answering above 2 within 3 px and 97% one above 4.5
+----- cell 86 took 37.6 s | 11.6 min since the start
+
+===== cell 88 id=lateral-functions | started at 21:29:09 | THETA_CENTRE = 1.0       # orientation steps; width of the centre of the tuning over orientation
+Tuning over orientation: on a plain line the best neuron of a hypercolumn keeps 33% of its answer when the surround is taken off; a gain of 2.99 gives it back
+----- cell 88 took 0.2 s | 11.6 min since the start
+
+===== cell 89 id=909046ce | started at 21:29:09 | PROFILE_WIDTHS = (2, 3, 4.5, 7, 11)  # pixels; half-widths of the five vessels whose profiles are sh
+Fixation 0: 147616 crest neurons above 2 before the interactions, 17.8% of them with a parallel duplicate alongside | after: 159780, 3.3% | 46% of them answer above 4.5
+Fixation 1: 138875 crest neurons above 2 before the interactions, 18.6% of them with a parallel duplicate alongside | after: 164826, 3.5% | 40% of them answer above 4.5
+Width at half maximum of the answer across a vessel, before -> after the interactions:
+   half-width    2 px at (x  678, y  595):   2.3 px ->   1.7 px
+   half-width    3 px at (x  465, y  441):   2.8 px ->   1.7 px
+   half-width  4.5 px at (x  621, y  561):   3.9 px ->   2.5 px
+   half-width    7 px at (x  613, y  590):   4.8 px ->   3.2 px
+   half-width   11 px at (x  222, y  894):   9.4 px ->   4.9 px
+----- cell 89 took 68.3 s | 12.7 min since the start
+
+===== cell 91 id=chain-functions | started at 21:30:17 | STRING_ROUNDS = 3       # times the neurons that are still free on one side look for a partner
+----- cell 91 took 0.1 s | 12.7 min since the start
+
+===== cell 92 id=60d9e4e0 | started at 21:30:18 | L_MIN_SWEEP = (5, 10, 20, 40)  # pixels; a chain shorter than this is pruned
+Fixation 0: 159780 crest neurons strung into 17535 chains; 8088 gaps bridged (of 48178 pairs of ends that a smooth curve could join), leaving 9447 chains, 257540 px in all | 16406 ends run into a chain, 15573 places where two chains meet
+Fixation 1: 164826 crest neurons strung into 19306 chains; 9045 gaps bridged (of 55087 pairs of ends that a smooth curve could join), leaving 10261 chains, 272864 px in all | 17598 ends run into a chain, 16506 places where two chains meet
+
+L_MIN Z_MIN T_HIGH  length chains junctions loose ends per 1000 px networks largest found again by chance above chance and back moves by
+    5     2      3  197334   3257      8835       1412         7.2      148     98%         80%       35%          69%      83%    30.1%
+   10     2      3  193713   2758      7978       1364         7.0      119     98%         80%       35%          69%      82%    26.6%
+   20     2      3  184233   2108      6606       1209         6.6       69     98%         79%       34%          69%      82%    26.7%
+   40     2      3  162924   1374      4742        929         5.7       26     99%         78%       32%          68%      80%    21.7%
+    5     3      3  162792   2271      6456        991         6.1       90     98%         80%       31%          72%      84%    18.8%
+   10     3      3  160414   1942      5895        937         5.8       62     98%         80%       30%          71%      83%    16.3%
+   20     3      3  154582   1544      5017        871         5.6       39     98%         80%       30%          71%      83%    18.0%
+   40     3      3  141209   1086      3788        750         5.3       18     99%         79%       29%          70%      81%    16.5%
+    5     4      3  142312   1756      5110        839         5.9       62     98%         80%       28%          72%      84%    10.2%
+   10     4      3  140818   1551      4751        809         5.7       52     98%         80%       28%          72%      84%     9.5%
+   20     4      3  136669   1270      4111        760         5.6       38     99%         79%       28%          71%      83%    12.6%
+   40     4      3  126389    921      3185        652         5.2       18     99%         79%       27%          71%      81%    14.4%
+    5     5      3  124974   1421      4083        749         6.0       60     98%         79%       26%          72%      83%     7.9%
+   10     5      3  123900   1276      3835        716         5.8       51     98%         79%       26%          71%      83%     9.0%
+   20     5      3  120640   1057      3338        672         5.6       37     98%         78%       26%          71%      82%    10.5%
+   40     5      3  112583    784      2616        593         5.3       22     98%         78%       25%          71%      81%    11.3%
+    5     2    4.5  180808   2519      7351       1048         5.8       70     99%         80%       32%          70%      83%    26.0%
+   10     2    4.5  178660   2225      6833       1038         5.8       60     99%         79%       32%          70%      83%    20.6%
+   20     2    4.5  172590   1813      5890       1004         5.8       45     99%         79%       32%          69%      83%    19.0%
+   40     2    4.5  157098   1286      4452        879         5.6       23     99%         78%       30%          68%      81%    20.2%
+    5     3    4.5  161378   2174      6281        943         5.8       75     98%         80%       30%          72%      84%    15.2%
+   10     3    4.5  159342   1893      5794        907         5.7       58     98%         80%       30%          72%      84%    12.9%
+   20     3    4.5  153916   1525      4967        861         5.6       37     98%         80%       30%          71%      83%    14.2%
+   40     3    4.5  140963   1082      3775        748         5.3       17     99%         79%       29%          70%      81%    15.8%
+    5     4    4.5  142304   1755      5107        840         5.9       62     98%         80%       28%          72%      84%     8.4%
+   10     4    4.5  140818   1551      4751        809         5.7       52     98%         80%       28%          72%      84%     8.4%
+   20     4    4.5  136669   1270      4111        760         5.6       38     99%         79%       28%          71%      83%    10.8%
+   40     4    4.5  126389    921      3185        652         5.2       18     99%         79%       27%          71%      81%    11.5%
+    5     5    4.5  124974   1421      4083        749         6.0       60     98%         79%       26%          72%      83%     6.4%
+   10     5    4.5  123900   1276      3835        716         5.8       51     98%         79%       26%          71%      83%     7.5%
+   20     5    4.5  120640   1057      3338        672         5.6       37     98%         78%       26%          71%      82%     8.6%
+   40     5    4.5  112583    784      2616        593         5.3       22     98%         78%       25%          71%      81%     8.5%  <- chosen
+    5     2      6  163962   2016      6204        864         5.3       38     99%         80%       31%          70%      83%    18.2%
+   10     2      6  162601   1830      5877        855         5.3       32     99%         80%       31%          70%      83%    14.3%
+   20     2      6  158144   1530      5158        845         5.3       30     99%         79%       31%          70%      82%    16.9%
+   40     2      6  146212   1127      4019        755         5.2       16     99%         78%       30%          69%      80%    20.2%
+    5     3      6  154052   1892      5712        842         5.5       45     99%         80%       30%          72%      83%    13.9%
+   10     3      6  152691   1706      5386        823         5.4       37     99%         80%       30%          72%      83%    11.1%
+   20     3      6  148283   1410      4681        806         5.4       33     99%         80%       30%          71%      82%    12.0%
+   40     3      6  137045   1029      3634        705         5.1       16     99%         79%       29%          71%      81%    12.9%
+    5     4      6  140743   1673      4965        797         5.7       50     99%         80%       28%          72%      84%    11.5%
+   10     4      6  139495   1502      4666        774         5.5       42     99%         80%       28%          72%      83%    10.2%
+   20     4      6  135611   1241      4056        739         5.4       34     99%         79%       28%          71%      83%    11.1%
+   40     4      6  125921    913      3160        649         5.2       18     99%         79%       27%          71%      81%    10.7%
+    5     5      6  124866   1414      4076        744         6.0       58     98%         79%       26%          71%      83%    11.3%
+   10     5      6  123821   1273      3832        714         5.8       50     98%         79%       26%          71%      83%    11.1%
+   20     5      6  120576   1055      3335        670         5.6       37     98%         78%       26%          71%      82%    11.7%
+   40     5      6  112583    784      2616        593         5.3       22     98%         78%       25%          71%      81%    11.1%
+
+picture                               length segments  forks loose ends per 1000 px networks  largest found again and back
+mean frame, minus its log              28098      695    320        330        11.7      103      76%         74%      73%
+density, first guess of background     28603      715    338        324        11.3      104      75%         75%      73%
+density, background cleaned            40377     1202    599        412        10.2      104      84%         71%      79%
+mean of the frames' densities          40347     1202    596        412        10.2      107      84%         71%      80%
+smear                                  55137     2081   1052        584        10.6      168      78%         34%      69%
+smear, background removed              55036     2065   1042        582        10.6      169      78%         34%      68%
+average of density and smear           55643     1946   1007        508         9.1      135      90%         59%      77%
+larger of density and smear            53447     1836    948        527         9.9      140      85%         56%      76%
+both: root of density x smear          57932     2140   1137        524         9.0      121      91%         63%      71%
+orientation chains (section 22)       112583      784   2616        593         5.3       22      98%         78%      81%
+At the chosen pruning (L_MIN 40, Z_MIN 5, T_HIGH 4.5): 2542 places where two chains of different orientation meet and stay two chains | 60% of the chains lie on section 18's centerlines of the density, and 91% of those are found
+Found again in fixation 1, with what chance alone finds taken off: section 18's graph of the density 71% found, 14% by chance, 67% above chance | the chains 78%, 25%, 71%
+----- cell 92 took 40.5 s | 13.4 min since the start
+
+===== cell 94 id=signal-functions | started at 21:30:58 | PROFILE_REACH = 3.0   # half-widths; how far to either side of a chain the frames are read (plus PRO
+----- cell 94 took 0.0 s | 13.4 min since the start
+
+===== cell 96 id=bf99f609 | started at 21:30:58 | TRAVEL_CHAINS = 15     # chains per width class on which the question is put: the longest ones
+Fixation 0: 105 pairs of frames one frame apart are compared; 7 pairs are split by dropped frames and left out
+width class          chains in place (r1)   peak clear peaks off 0 px per frame  px per s  decision
+thin, under 3 px         15          0.53   0.58        10 of 15            2.2        70  flow is visible: velocity from the kymographs
+medium, 3 to 6 px        15          0.56   0.60        13 of 15            3.7       120  flow is visible: velocity from the kymographs
+wide, 6 px and up        15          0.56   0.66        12 of 15            4.7       151  flow is visible: velocity from the kymographs
+The pattern along a vessel keeps half its correlation over 7.0 px, so it can be followed while it moves by up to about 3.5 px between frames: 113 px per second at 32.2 frames per second. A flow of v px per second needs v / 3.5 frames per second.
+----- cell 96 took 2.9 s | 13.4 min since the start
+
+===== cell 98 id=flow-functions | started at 21:31:01 | FLOW_REDUCTION = 2                       # the flow-sensitive field works on frames reduced by this 
+----- cell 98 took 0.1 s | 13.4 min since the start
+
+===== cell 99 id=74652435 | started at 21:31:01 | def to_frame_size(strung):
+Fixation 0: 105 pairs of frames | the field's answer per pair varies by 6% around its mean | the strongest neuron of a hypercolumn answers above 2 on 0.1% of the quiet pixels and above 4.5 on 0.02% | 37878 crest neurons, 2954 chains, 506 kept at the chosen pruning with 68208 px
+Fixation 1: 17 pairs of frames | the field's answer per pair varies by 3% around its mean | the strongest neuron of a hypercolumn answers above 2 on 0.4% of the quiet pixels and above 4.5 on 0.01% | 47806 crest neurons, 4018 chains, 549 kept at the chosen pruning with 73056 px
+Where things change, against the cleaned smear of section 16: correlation 0.53
+Orientation where the flow field and the static field are both strong (43875 reduced pixels): the same on 46%, within one step on 78%, at right angles on 3% (chance: 6%, 19%, 19%)
+The neurons that are given the change itself, on the 64195 reduced pixels where things change on a vessel: their strongest orientation is the vessel's on 10%, within one step on 18%, at right angles on 28%. The change inside a vessel is not a line along the vessel, which is why the centerlines are read from the picture of where things change
+Flow chains: 72% of their length lies on the static chains, and they find 46% of the static chains
+----- cell 99 took 35.1 s | 14.0 min since the start
+
+===== cell 101 id=segment-functions | started at 21:31:36 | VELOCITY_LENGTH = 40      # pixels; a chain has to be this long for a velocity
+----- cell 101 took 0.0 s | 14.0 min since the start
+
+===== cell 103 id=deb4a27d | started at 21:31:36 | visible_classes = [flow_visible.get(name, {}).get("visible", False) for _, _, name in WIDTH_CLASSES]
+Fixation 0: 784 chains read over 3.69 s
+   heart rate: the periodogram of all vessels' line mass peaks at 1.20 Hz (72 per minute) with 28% of the variance; frames in shuffled order reach that in 0.0% of tries: found
+   vasomotion (below 0.2 Hz) needs more than 5 s of burst: not measured
+   velocity, thin, under 3 px: 194 of 269 chains of 40 px or more have a clear one; median 60 px/s (1.9 px per frame), quartiles 31 and 139; the continuity equation gives the same direction on 90% and 0.79 x the speed (median)
+   velocity, medium, 3 to 6 px: 287 of 369 chains of 40 px or more have a clear one; median 61 px/s (1.9 px per frame), quartiles 35 and 123; the continuity equation gives the same direction on 97% and 0.86 x the speed (median)
+   velocity, wide, 6 px and up: 115 of 146 chains of 40 px or more have a clear one; median 60 px/s (1.9 px per frame), quartiles 33 and 126; the continuity equation gives the same direction on 93% and 0.83 x the speed (median)
+   focus: over the burst a vessel's apparent half-width is blurred by 0.39 of its sharpest (median); 65% of the frames are lucky (in runs of 3 or more) | all vessels' half-width against time: rank correlation +0.13, no steady drift, so no depth order is read from it
+Fixation 1: 748 chains read over 0.53 s
+   heart rate: the fixation is too short for one (0.53 s)
+   vasomotion (below 0.2 Hz) needs more than 5 s of burst: not measured
+   velocity, thin, under 3 px: 168 of 212 chains of 40 px or more have a clear one; median 105 px/s (3.3 px per frame), quartiles 50 and 193; the continuity equation gives the same direction on 80% and 0.82 x the speed (median)
+   velocity, medium, 3 to 6 px: 316 of 361 chains of 40 px or more have a clear one; median 119 px/s (3.7 px per frame), quartiles 62 and 196; the continuity equation gives the same direction on 88% and 0.92 x the speed (median)
+   velocity, wide, 6 px and up: 150 of 175 chains of 40 px or more have a clear one; median 106 px/s (3.3 px per frame), quartiles 64 and 200; the continuity equation gives the same direction on 92% and 0.90 x the speed (median)
+   focus: over the burst a vessel's apparent half-width is blurred by 0.26 of its sharpest (median); 81% of the frames are lucky (in runs of 3 or more) | all vessels' half-width against time: rank correlation +0.03, no steady drift, so no depth order is read from it
+----- cell 103 took 23.7 s | 14.4 min since the start
+
+===== cell 105 id=graph-builder | started at 21:32:00 | NODE_MERGE = 3        # points along a chain; junction places closer than this on one chain are one 
+----- cell 105 took 0.1 s | 14.4 min since the start
+
+===== cell 106 id=f4043670 | started at 21:32:00 | CHAIN_NEAR = 2   # pixels; a static chain and a flow chain that pass this close are the same line
+Fixation 0: neurons of both fields answer on 12% of the field (a vessel with flow), only static ones on 15% (no flow seen), only flow ones on 7% (faint or blurred vessels the static field missed)
+   chains: static 112583 px, flow 67702 px, combined field 121387 px in 864 chains | graph: 5241 edges, 285 ends, 565 nodes with 3 arms, 882 with 4 or more; 39 crossings were fused from two 3-arm nodes
+Fixation 1: neurons of both fields answer on 10% of the field (a vessel with flow), only static ones on 15% (no flow seen), only flow ones on 8% (faint or blurred vessels the static field missed)
+   chains: static 109874 px, flow 72507 px, combined field 126072 px in 860 chains | graph: 5440 edges, 312 ends, 570 nodes with 3 arms, 935 with 4 or more; 36 crossings were fused from two 3-arm nodes
+Fixation 0: 44% of the static chains' length has a flow chain within 2 px (the intersection, white in the picture)
+----- cell 106 took 82.7 s | 15.8 min since the start
+
+===== cell 108 id=junction-functions | started at 21:33:23 | MOST_ARMS = 6            # junctions with more arms than this are left unresolved
+----- cell 108 took 0.1 s | 15.8 min since the start
+
+===== cell 109 id=d060f1c4 | started at 21:33:23 | GALLERY = 16         # junctions shown from either end of the ordering by confidence
+Fixation 0: 1447 junctions (565 with 3 arms, 562 with 4, 320 with more)
+   read as: 579 unresolved, 416 bifurcation, 258 crossing, 113 bifurcation + through, 57 through + unresolved, 18 through + through + through, 6 bifurcation + bifurcation
+   resolved 805 (56%), ambiguous 63 (4%), unresolved 579 | crossings: 258 by partitions, 436 by the baseline's rules, 224 by both
+   directions: 3366 of 5241 edges have a measured one; the junctions give one to 193 more; 0 could not be given one because their two ends disagree
+   flux balance at the 202 bifurcations with a clear velocity in all three arms: what flows in minus what flows out is +3% of the flux through the junction (median), robust sd 42% (SIGMA_FLUX is 45%)
+Fixation 1: 1505 junctions (570 with 3 arms, 603 with 4, 332 with more)
+   read as: 626 unresolved, 416 bifurcation, 258 crossing, 118 bifurcation + through, 67 through + unresolved, 12 through + through + through, 8 bifurcation + bifurcation
+   resolved 807 (54%), ambiguous 72 (5%), unresolved 626 | crossings: 258 by partitions, 471 by the baseline's rules, 212 by both
+   directions: 3396 of 5440 edges have a measured one; the junctions give one to 227 more; 0 could not be given one because their two ends disagree
+   flux balance at the 216 bifurcations with a clear velocity in all three arms: what flows in minus what flows out is +0% of the flux through the junction (median), robust sd 47% (SIGMA_FLUX is 45%)
+Saved the junctions of every fixation as vessel_pictures/junctions/junctions_fixation_<n>.json and the gallery as gallery.png
+----- cell 109 took 12.7 s | 16.0 min since the start
+
+===== cell 111 id=synthetic-functions | started at 21:33:36 | # The scoring is vascnet's (github.com/karimghabra/attempt5000, branch claude/beautiful-ritchie-zc7x
+----- cell 111 took 1.1 s | 16.0 min since the start
+
+===== cell 112 id=60812f76 | started at 21:33:37 | SYNTH_SEEDS = (1, 2, 3, 4, 5, 6)  # one synthetic burst is made and read for each
+6 synthetic bursts of 512 x 384 px and 64 frames, read with the real burst's constants and pruning. Shares in percent, with their 95% interval over bursts:
+                                 centerline precision        centerline recall       junction precision          junction recall     type right, of found    found and typed right
+partitions, with flow                   69 (59 to 77)           99 (97 to 100)            20 (13 to 32)            89 (83 to 95)            62 (45 to 77)            55 (41 to 71)
+partitions, geometry alone              69 (59 to 77)           99 (97 to 100)            20 (13 to 32)            89 (83 to 95)            62 (45 to 77)            55 (41 to 71)
+the baseline's rules                    69 (59 to 77)           99 (97 to 100)            20 (13 to 32)            89 (83 to 95)            65 (52 to 78)            58 (43 to 72)
+   38 true junctions are asked for, 170 junctions were read | of the found bifurcations 69% and of the found crossings 63% are typed right
+   flow at the junctions found: 97 of 112 arms have a measured direction; it is the true one on 100%; median error of the speed 20% of the true speed
+----- cell 112 took 52.0 s | 16.9 min since the start
+
+===== cell 114 id=flow-vessel-functions | started at 21:34:29 | SAVED_FOLDER = "section_29_inputs"  # where this section's inputs are saved, next to the notebook (a
+----- cell 114 took 0.1 s | 16.9 min since the start
+
+===== cell 116 id=a1eeca87 | started at 21:34:29 | # save what section 29 works on, so that it can be run in a kernel that holds nothing else
+Saved in section_29_inputs: 19 files, 1.49 GB
+[memory] inputs saved: 9.02 GB now, 9.66 GB at the most so far
+----- cell 116 took 34.6 s | 17.5 min since the start
+
+===== cell 118 id=4b1e8e10 | started at 21:35:04 | # In a fresh kernel, start here: nothing above this cell has to be run. The cells that only define f
+Opened 2 fixations of 1920 x 1200 px: 113 frames, 18 frames
+[memory] inputs opened: 9.11 GB now, 9.66 GB at the most so far
+----- cell 118 took 0.6 s | 17.5 min since the start
+
+===== cell 120 id=14db3b8e | started at 21:35:04 | flow_masks = []  # per fixation: the mask, where there is flow data, and where both are (boolean pic
+Fixation 0: the mask (static score) covers 26% of the field; 50% of it has flow data, 50% has none | flow data outside the mask: 6% of the field
+   inside the intersection the flow field's winning orientation is the static one's on 46% of the pixels, within one step on 75%, within two on 83%, at right angles (7 or 8 steps) on 3.8% (chance: 6%, 19%, 31%, 19%)
+Fixation 1: the mask (static score) covers 25% of the field; 47% of it has flow data, 53% has none | flow data outside the mask: 6% of the field
+   inside the intersection the flow field's winning orientation is the static one's on 40% of the pixels, within one step on 71%, within two on 80%, at right angles (7 or 8 steps) on 4.5% (chance: 6%, 19%, 31%, 19%)
+[memory] mask and flow: 9.17 GB now, 9.66 GB at the most so far
+----- cell 120 took 2.6 s | 17.5 min since the start
+
+===== cell 122 id=13a450d7 | started at 21:35:07 | # four ways to centerlines, in every fixation. No vessel is dropped for want of flow data: every cen
+centerlines                                 length  lines loose ends per 1000 px found again by chance above chance with flow data
+ridges of the static score                   60240    860       1013        16.8         79%       18%          74%            55%
+the same, consolidated                       59882   1459        185         3.1         78%       18%          73%            54%
+section 22's chains                         112583    784        593         5.3         78%       26%          71%            55%
+ridges of the flow score inside the mask     24702    304        582        23.6         64%        5%          62%           100%
+Going on with: the same, consolidated
+[memory] centerlines: 9.17 GB now, 9.66 GB at the most so far
+----- cell 122 took 9.6 s | 17.7 min since the start
+
+===== cell 124 id=87ce2c9a | started at 21:35:16 | spline_vessels = []   # per fixation: every vessel as splines, with its flow (see spline_vessel and 
+Fixation 0: 1318 vessels fitted, 55033 px of centerline described by 22524 numbers | the centerlines' points lie 0.26 px from their spline (median of the rms)
+   flow data on 709 vessels with 54% of the length; a clear direction of flow on 391 with 58% of the length (median speed 111 px/s) | a clear direction on 67% of the length with flow data and on 46% of the length without
+Fixation 1: 1145 vessels fitted, 50958 px of centerline described by 20140 numbers | the centerlines' points lie 0.26 px from their spline (median of the rms)
+   flow data on 545 vessels with 51% of the length; a clear direction of flow on 389 with 64% of the length (median speed 143 px/s) | a clear direction on 72% of the length with flow data and on 57% of the length without
+[memory] splines and kymographs: 9.17 GB now, 9.66 GB at the most so far
+----- cell 124 took 24.3 s | 18.1 min since the start
+
+===== cell 126 id=69069e36 | started at 21:35:41 | # the graph of the spline vessels, and its junctions with flow as evidence
+Fixation 0: 410 junctions on 1327 edges; 406 edges have a measured direction of flow, the junctions give one to 74 more
+   read as: 265 bifurcation, 91 unresolved, 51 crossing, 2 bifurcation + through, 1 through + unresolved
+      47 junctions: the geometric reading stands; mean confidence 1.00 by geometry -> 1.00
+     147 junctions: flow confirms the geometric reading; mean confidence 0.73 by geometry -> 0.84
+     215 junctions: flow speaks against it and offers no other; mean confidence 0.57 by geometry -> 0.14
+       1 junctions: flow changes the reading; mean confidence 0.70 by geometry -> 0.39
+Fixation 1: 362 junctions on 1166 edges; 405 edges have a measured direction of flow, the junctions give one to 74 more
+   read as: 247 bifurcation, 75 unresolved, 37 crossing, 2 bifurcation + through, 1 through + unresolved
+      35 junctions: the geometric reading stands; mean confidence 1.00 by geometry -> 1.00
+     284 junctions: flow confirms the geometric reading; mean confidence 0.71 by geometry -> 0.86
+      42 junctions: flow speaks against it and offers no other; mean confidence 0.07 by geometry -> 0.04
+       1 junctions: flow changes the reading; mean confidence 0.55 by geometry -> 0.57
+[memory] junctions: 9.16 GB now, 9.66 GB at the most so far
+----- cell 126 took 5.8 s | 18.2 min since the start
+
+===== cell 128 id=harness-functions | started at 21:35:46 | HARNESS_SEEDS = tuple(range(1, 17))        # bursts for developing: looked at while choosing between
+----- cell 128 took 0.0 s | 18.2 min since the start
+
+===== cell 130 id=52e06830 | started at 21:35:47 | # the tube rule's one setting, swept on the real burst: nothing here knows any truth
+The blur of the picture, per fixation: 1.50 px, 1.50 px
+centerlines                                    length  pieces  loose ends per 1000 px  found again above chance
+plain ridges                                    60240     860                    16.8                       74%
+consolidated, by length                         59882    1459                     3.1                       73%
+consolidated, tube rule, 0.00 field lengths     77999    3472                    16.7                       72%
+consolidated, tube rule, 0.25 field lengths     71273    2255                    11.1                       71%
+consolidated, tube rule, 0.50 field lengths     70287    2150                    10.6                       71%
+consolidated, tube rule, 0.75 field lengths     69277    2072                     9.9                       71%
+consolidated, tube rule, 1.00 field lengths     68246    1978                     8.6                       71%
+consolidated, tube rule, 1.50 field lengths     66231    1829                     7.5                       71%
+consolidated, tube rule, 2.00 field lengths     64093    1728                     6.3                       71%
+consolidated, tube rule, 3.00 field lengths     61142    1571                     4.3                       70%
+[memory] tube rule sweep: 9.16 GB now, 9.66 GB at the most so far
+----- cell 130 took 37.8 s | 18.8 min since the start
+
+===== cell 132 id=whole-vessel-functions | started at 21:36:24 | SPEED_WINDOW = TRAVEL_LENGTH  # pixels; a whole vessel is read again in windows of at least this len
+----- cell 132 took 0.1 s | 18.8 min since the start
+
+===== cell 133 id=e826b76b | started at 21:36:24 | SPEED_LIMIT = fps * saved["pattern length"] / 2  # pixels per second; section 23's limit for a patte
+The pattern along a vessel is 7.0 px long (section 23): speeds above 113 px/s cannot be followed at 32.2 frames per second
+Fixation 0: 1327 pieces are 836 whole vessels; 13 joins were undone because their two sides ran against each other
+   a clear speed on 220 whole vessels with 40% of the length: median 51 px/s, median sigma 36 px/s (91% of the speed) | 145 more with 32% of the length are above the limit and flagged
+   the sigmas were widened 4.4 times, from 54 pairs of neighbouring windows | after that 83% of the 54 pairs agree within 2 sigmas | along one vessel the windows' speeds span 100% of their median (median over 34 vessels)
+Fixation 1: 1166 pieces are 757 whole vessels; 10 joins were undone because their two sides ran against each other
+   a clear speed on 156 whole vessels with 32% of the length: median 64 px/s, median sigma 19 px/s (36% of the speed) | 248 more with 53% of the length are above the limit and flagged
+   the sigmas were widened 1.2 times, from 42 pairs of neighbouring windows | after that 69% of the 42 pairs agree within 2 sigmas | along one vessel the windows' speeds span 96% of their median (median over 30 vessels)
+[memory] whole vessels: 9.21 GB now, 9.66 GB at the most so far
+----- cell 133 took 56.5 s | 19.8 min since the start
+
+===== cell 135 id=flow-evidence-functions | started at 21:37:21 | def direction_counts(graph, junctions, readings, flagged=False):
+----- cell 135 took 0.0 s | 19.8 min since the start
+
+===== cell 136 id=eb745c7a | started at 21:37:21 | evidence_junctions = []    # per fixation: the junctions of whole_graphs, read with flow as a likeli
+Fixation 0: 2 of 6 three-arm junctions with all arms measured are all in or all out: p = 0.50 | 7 of 7 junctions that a vessel passes have the same direction on both sides: p = 0.97
+   directions from speeds above the limit, which do not count: 2 of 28 three-arm junctions with such an arm are all in or all out: p = 0.90 | 13 of 15 pairs of sides with such a side agree: p = 0.91
+   410 junctions, flow as a likelihood ratio with p = 0.50: 293 no flow data, 61 no other reading, 53 fits both, 3 changes
+   where flow speaks for or against, the mean confidence goes from 0.30 to 0.70; 2 junctions have directions that cannot be under their reading
+   of the 215 junctions that flow contradicted in section 29 (per piece, by the tests): with the flow of whole vessels the tests still contradict 178; as a likelihood ratio flow speaks against 0, changes 2, and 1 have directions that cannot be under their reading
+   the trunk of 265 bifurcations: the direction rule speaks at 4; at 2 of them (50%) it names the widest arm (three arms alike would agree at 33%)
+Fixation 1: 0 of 4 three-arm junctions with all arms measured are all in or all out: p = 0.89 | 5 of 5 junctions that a vessel passes have the same direction on both sides: p = 0.96
+   directions from speeds above the limit, which do not count: 3 of 53 three-arm junctions with such an arm are all in or all out: p = 0.93 | 15 of 15 pairs of sides with such a side agree: p = 0.98
+   362 junctions, flow as a likelihood ratio with p = 0.89: 293 no flow data, 39 no other reading, 22 confirms, 5 speaks against, 2 changes, 1 fits both
+   where flow speaks for or against, the mean confidence goes from 0.64 to 0.74; 2 junctions have directions that cannot be under their reading
+   of the 42 junctions that flow contradicted in section 29 (per piece, by the tests): with the flow of whole vessels the tests still contradict 41; as a likelihood ratio flow speaks against 1, changes 0, and 1 have directions that cannot be under their reading
+   the trunk of 247 bifurcations: the direction rule speaks at 4; at 0 of them (0%) it names the widest arm (three arms alike would agree at 33%)
+[memory] flow evidence: 9.14 GB now, 9.66 GB at the most so far
+----- cell 136 took 4.1 s | 19.8 min since the start
+
+===== cell 138 id=3dd53238 | started at 21:37:25 | harness = {}     # per set of bursts ("development", "held out"): {way: [one score per burst]} (see 
+[memory] development: 16 bursts read 10 ways: 9.20 GB now, 9.66 GB at the most so far
+[memory] held out: 16 bursts read 10 ways: 9.17 GB now, 9.66 GB at the most so far
+
+development: 16 bursts with 97 true junctions that are asked for. Shares in percent, with their 95% interval over bursts:
+                                                    centerline precision        centerline recall       junction precision          junction recall     type right, of found    found and typed right
+chains of sections 19 to 27                                70 (65 to 76)            98 (98 to 99)            21 (16 to 28)            95 (91 to 98)            51 (38 to 64)            48 (35 to 61)
+plain ridges                                               95 (92 to 97)            94 (92 to 96)            76 (67 to 85)            73 (61 to 84)            73 (60 to 83)            54 (39 to 68)
+consolidated, keeping short pieces                         94 (92 to 96)            92 (90 to 94)            75 (64 to 85)            64 (58 to 70)            65 (54 to 75)            41 (33 to 49)
+consolidated, dropping short pieces                        95 (93 to 97)            89 (86 to 92)            81 (68 to 92)            39 (30 to 48)            71 (55 to 85)            28 (20 to 35)
+tube rule on plain ridges                                  99 (99 to 99)            81 (73 to 88)            87 (74 to 96)            47 (32 to 61)            65 (46 to 81)            31 (17 to 45)
+consolidated, tube rule                                    96 (94 to 97)            88 (83 to 92)            77 (67 to 86)            71 (65 to 78)            68 (56 to 77)            48 (38 to 58)
+plain ridges, whole vessels                                95 (92 to 97)            94 (92 to 96)            76 (67 to 85)            73 (61 to 84)            73 (60 to 83)            54 (39 to 68)
+consolidated, whole vessels                                94 (92 to 96)            92 (90 to 94)            75 (64 to 85)            64 (58 to 70)            65 (54 to 75)            41 (33 to 49)
+plain ridges, whole vessels, likelihood ratio              95 (92 to 97)            94 (92 to 96)            76 (67 to 85)            73 (61 to 84)            73 (60 to 83)            54 (39 to 68)
+consolidated, whole vessels, likelihood ratio              94 (92 to 96)            92 (90 to 94)            75 (64 to 85)            64 (58 to 70)            65 (54 to 75)            41 (33 to 49)
+   junctions read, and the share of the found bifurcations and crossings that are typed right:
+      chains of sections 19 to 27                       445 read | bifurcations  62%, crossings  49%
+      plain ridges                                       93 read | bifurcations 100%, crossings  71%
+      consolidated, keeping short pieces                 83 read | bifurcations  94%, crossings  47%
+      consolidated, dropping short pieces                47 read | bifurcations  96%, crossings  30%
+      tube rule on plain ridges                          53 read | bifurcations 100%, crossings  52%
+      consolidated, tube rule                            90 read | bifurcations  93%, crossings  62%
+      plain ridges, whole vessels                        93 read | bifurcations 100%, crossings  71%
+      consolidated, whole vessels                        83 read | bifurcations  94%, crossings  47%
+      plain ridges, whole vessels, likelihood ratio      93 read | bifurcations 100%, crossings  71%
+      consolidated, whole vessels, likelihood ratio      83 read | bifurcations  94%, crossings  47%
+
+held out: 16 bursts with 92 true junctions that are asked for. Shares in percent, with their 95% interval over bursts:
+                                                    centerline precision        centerline recall       junction precision          junction recall     type right, of found    found and typed right
+chains of sections 19 to 27                                70 (66 to 75)            99 (98 to 99)            22 (17 to 28)            92 (88 to 97)            44 (33 to 56)            40 (31 to 51)
+plain ridges                                               95 (92 to 97)            93 (90 to 95)            84 (72 to 93)            77 (70 to 84)            70 (58 to 82)            54 (43 to 66)
+consolidated, keeping short pieces                         93 (91 to 96)            92 (89 to 94)            72 (57 to 87)            63 (55 to 71)            66 (50 to 79)            41 (29 to 53)
+consolidated, dropping short pieces                        94 (92 to 96)            88 (84 to 91)            91 (82 to 98)            45 (37 to 52)            54 (34 to 72)            24 (14 to 33)
+tube rule on plain ridges                                  99 (99 to 99)            80 (71 to 87)           94 (82 to 100)            49 (33 to 63)            58 (42 to 73)            28 (16 to 41)
+consolidated, tube rule                                    95 (92 to 97)            85 (81 to 90)            71 (57 to 85)            66 (54 to 78)            64 (52 to 76)            42 (31 to 56)
+plain ridges, whole vessels                                95 (92 to 97)            93 (90 to 95)            84 (72 to 93)            77 (70 to 84)            70 (58 to 82)            54 (43 to 66)
+consolidated, whole vessels                                93 (91 to 96)            92 (89 to 94)            72 (57 to 87)            63 (55 to 71)            66 (50 to 79)            41 (29 to 53)
+plain ridges, whole vessels, likelihood ratio              95 (92 to 97)            93 (90 to 95)            84 (72 to 93)            77 (70 to 84)            70 (58 to 82)            54 (43 to 66)
+consolidated, whole vessels, likelihood ratio              93 (91 to 96)            92 (89 to 94)            72 (57 to 87)            63 (55 to 71)            66 (50 to 79)            41 (29 to 53)
+   junctions read, and the share of the found bifurcations and crossings that are typed right:
+      chains of sections 19 to 27                       387 read | bifurcations  52%, crossings  47%
+      plain ridges                                       85 read | bifurcations 100%, crossings  63%
+      consolidated, keeping short pieces                 81 read | bifurcations  89%, crossings  67%
+      consolidated, dropping short pieces                45 read | bifurcations  84%, crossings  20%
+      tube rule on plain ridges                          48 read | bifurcations 100%, crossings  46%
+      consolidated, tube rule                            86 read | bifurcations  96%, crossings  65%
+      plain ridges, whole vessels                        85 read | bifurcations 100%, crossings  63%
+      consolidated, whole vessels                        81 read | bifurcations  89%, crossings  67%
+      plain ridges, whole vessels, likelihood ratio      85 read | bifurcations 100%, crossings  63%
+      consolidated, whole vessels, likelihood ratio      81 read | bifurcations  89%, crossings  67%
+
+development, section 32: the speed of whole vessels with a clear speed that lie on one true segment
+   plain ridges, whole vessels                      median error 3% of the true speed, 90th percentile 18% | median sigma 4% | true speed within 2 sigma: 79% (66 to 90; n=135) | direction right: 100% (100 to 100; n=135) | neighbouring windows that agree: 94 of 110
+   consolidated, whole vessels                      median error 3% of the true speed, 90th percentile 24% | median sigma 4% | true speed within 2 sigma: 78% (68 to 86; n=120) | direction right: 100% (100 to 100; n=120) | neighbouring windows that agree: 71 of 88
+   plain ridges, whole vessels, likelihood ratio    median error 3% of the true speed, 90th percentile 18% | median sigma 4% | true speed within 2 sigma: 79% (66 to 90; n=135) | direction right: 100% (100 to 100; n=135) | neighbouring windows that agree: 94 of 110
+   consolidated, whole vessels, likelihood ratio    median error 3% of the true speed, 90th percentile 24% | median sigma 4% | true speed within 2 sigma: 78% (68 to 86; n=120) | direction right: 100% (100 to 100; n=120) | neighbouring windows that agree: 71 of 88
+development, the flow at the arms of the junctions found (measured directions): per piece against whole vessels
+   plain ridges                                     direction right: 99% (98 to 100; n=182) | speed error: median 6%, 90th percentile 31%
+   consolidated, keeping short pieces               direction right: 100% (100 to 100; n=112) | speed error: median 5%, 90th percentile 28%
+   consolidated, dropping short pieces              direction right: 100% (100 to 100; n=81) | speed error: median 6%, 90th percentile 28%
+   tube rule on plain ridges                        direction right: 100% (100 to 100; n=136) | speed error: median 6%, 90th percentile 27%
+   consolidated, tube rule                          direction right: 99% (98 to 100; n=151) | speed error: median 6%, 90th percentile 30%
+   plain ridges, whole vessels                      direction right: 100% (100 to 100; n=176) | speed error: median 5%, 90th percentile 21%
+   consolidated, whole vessels                      direction right: 96% (92 to 98; n=140) | speed error: median 4%, 90th percentile 35%
+development, section 33: how reliable a measured direction is
+   plain ridges, whole vessels        without truth: 0 of 23 three-arm junctions are all in or all out, p = 0.98; 43 of 43 pairs of sides agree, p = 0.99 | with truth: 1.00 of 176 arms, 1.00 of 135 whole vessels
+   consolidated, whole vessels        without truth: 4 of 29 three-arm junctions are all in or all out, p = 0.82; 12 of 12 pairs of sides agree, p = 0.98 | with truth: 0.96 of 140 arms, 1.00 of 120 whole vessels
+development, section 33: the confidence of the junctions found, type right against type wrong
+   plain ridges                                     52 right, 19 wrong | by geometry 0.86 against 0.63, told apart 0.86 | with flow 0.95 against 0.80, told apart 0.87 | 69 confirms, 1 contradicts, 1 no flow data
+   consolidated, keeping short pieces               40 right, 22 wrong | by geometry 0.79 against 0.41, told apart 0.80 | with flow 0.92 against 0.50, told apart 0.84 | 52 confirms, 9 contradicts, 1 no flow data
+   consolidated, dropping short pieces              27 right, 11 wrong | by geometry 0.77 against 0.56, told apart 0.71 | with flow 0.92 against 0.70, told apart 0.86 | 37 confirms, 1 contradicts
+   tube rule on plain ridges                        30 right, 16 wrong | by geometry 0.88 against 0.60, told apart 0.93 | with flow 0.96 against 0.80, told apart 0.96 | 46 confirms
+   consolidated, tube rule                          47 right, 22 wrong | by geometry 0.82 against 0.62, told apart 0.69 | with flow 0.93 against 0.74, told apart 0.75 | 64 confirms, 3 contradicts, 2 no flow data
+   plain ridges, whole vessels                      52 right, 19 wrong | by geometry 0.86 against 0.63, told apart 0.86 | with flow 0.95 against 0.81, told apart 0.86 | 69 confirms, 1 contradicts, 1 no flow data
+   consolidated, whole vessels                      40 right, 22 wrong | by geometry 0.79 against 0.41, told apart 0.80 | with flow 0.87 against 0.53, told apart 0.79 | 50 confirms, 11 contradicts, 1 no flow data
+   plain ridges, whole vessels, likelihood ratio    52 right, 19 wrong | by geometry 0.86 against 0.63, told apart 0.86 | with flow 0.88 against 0.68, told apart 0.78 | 31 confirms, 31 no other reading, 8 no flow data, 1 speaks against
+   consolidated, whole vessels, likelihood ratio    40 right, 22 wrong | by geometry 0.79 against 0.41, told apart 0.80 | with flow 0.79 against 0.41, told apart 0.80 | 39 no other reading, 12 no flow data, 9 confirms, 2 fits both
+development, section 33: the trunk of a bifurcation (found at a true bifurcation, three arms, all matched to true limbs)
+   plain ridges                                     widest: 67% (46 to 86; n=27) | direction: 100% (100 to 100; n=17) | both: 78% (56 to 96; n=27)
+   consolidated, keeping short pieces               widest: 39% (21 to 58; n=31) | direction: 100% (100 to 100; n=13) | both: 58% (41 to 73; n=31)
+   consolidated, dropping short pieces              widest: 46% (26 to 68; n=24) | direction: 100% (100 to 100; n=12) | both: 71% (57 to 84; n=24)
+   tube rule on plain ridges                        widest: 75% (54 to 93; n=16) | direction: 100% (100 to 100; n=12) | both: 88% (69 to 100; n=16)
+   consolidated, tube rule                          widest: 46% (29 to 67; n=28) | direction: 92% (70 to 100; n=12) | both: 64% (45 to 82; n=28)
+   plain ridges, whole vessels                      widest: 67% (46 to 86; n=27) | direction: 100% (100 to 100; n=14) | both: 74% (54 to 92; n=27)
+   consolidated, whole vessels                      widest: 39% (21 to 58; n=31) | direction: 95% (85 to 100; n=19) | both: 74% (57 to 89; n=31)
+
+held out, section 32: the speed of whole vessels with a clear speed that lie on one true segment
+   plain ridges, whole vessels                      median error 4% of the true speed, 90th percentile 19% | median sigma 5% | true speed within 2 sigma: 74% (63 to 83; n=121) | direction right: 100% (100 to 100; n=121) | neighbouring windows that agree: 77 of 102
+   consolidated, whole vessels                      median error 6% of the true speed, 90th percentile 36% | median sigma 7% | true speed within 2 sigma: 71% (57 to 85; n=112) | direction right: 99% (97 to 100; n=112) | neighbouring windows that agree: 69 of 86
+   plain ridges, whole vessels, likelihood ratio    median error 4% of the true speed, 90th percentile 19% | median sigma 5% | true speed within 2 sigma: 74% (63 to 83; n=121) | direction right: 100% (100 to 100; n=121) | neighbouring windows that agree: 77 of 102
+   consolidated, whole vessels, likelihood ratio    median error 6% of the true speed, 90th percentile 36% | median sigma 7% | true speed within 2 sigma: 71% (57 to 85; n=112) | direction right: 99% (97 to 100; n=112) | neighbouring windows that agree: 69 of 86
+held out, the flow at the arms of the junctions found (measured directions): per piece against whole vessels
+   plain ridges                                     direction right: 99% (96 to 100; n=174) | speed error: median 9%, 90th percentile 37%
+   consolidated, keeping short pieces               direction right: 100% (100 to 100; n=107) | speed error: median 4%, 90th percentile 36%
+   consolidated, dropping short pieces              direction right: 98% (95 to 100; n=66) | speed error: median 3%, 90th percentile 41%
+   tube rule on plain ridges                        direction right: 98% (94 to 100; n=127) | speed error: median 7%, 90th percentile 37%
+   consolidated, tube rule                          direction right: 99% (97 to 100; n=121) | speed error: median 5%, 90th percentile 38%
+   plain ridges, whole vessels                      direction right: 96% (91 to 99; n=151) | speed error: median 5%, 90th percentile 20%
+   consolidated, whole vessels                      direction right: 96% (92 to 99; n=129) | speed error: median 8%, 90th percentile 46%
+held out, section 33: how reliable a measured direction is
+   plain ridges, whole vessels        without truth: 2 of 19 three-arm junctions are all in or all out, p = 0.85; 23 of 23 pairs of sides agree, p = 0.99 | with truth: 0.96 of 151 arms, 1.00 of 121 whole vessels
+   consolidated, whole vessels        without truth: 0 of 20 three-arm junctions are all in or all out, p = 0.98; 15 of 15 pairs of sides agree, p = 0.98 | with truth: 0.96 of 129 arms, 0.99 of 112 whole vessels
+held out, section 33: the confidence of the junctions found, type right against type wrong
+   plain ridges                                     50 right, 21 wrong | by geometry 0.86 against 0.62, told apart 0.81 | with flow 0.94 against 0.76, told apart 0.81 | 67 confirms, 2 contradicts, 2 no flow data
+   consolidated, keeping short pieces               38 right, 20 wrong | by geometry 0.83 against 0.70, told apart 0.53 | with flow 0.93 against 0.78, told apart 0.56 | 48 confirms, 7 no flow data, 3 contradicts
+   consolidated, dropping short pieces              22 right, 19 wrong | by geometry 0.83 against 0.62, told apart 0.67 | with flow 0.93 against 0.76, told apart 0.68 | 35 confirms, 4 no flow data, 2 contradicts
+   tube rule on plain ridges                        26 right, 19 wrong | by geometry 0.86 against 0.68, told apart 0.78 | with flow 0.95 against 0.84, told apart 0.83 | 44 confirms, 1 no flow data
+   consolidated, tube rule                          39 right, 22 wrong | by geometry 0.83 against 0.56, told apart 0.80 | with flow 0.93 against 0.78, told apart 0.81 | 60 confirms, 1 no flow data
+   plain ridges, whole vessels                      50 right, 21 wrong | by geometry 0.86 against 0.62, told apart 0.81 | with flow 0.93 against 0.76, told apart 0.79 | 66 confirms, 3 contradicts, 2 no flow data
+   consolidated, whole vessels                      38 right, 20 wrong | by geometry 0.83 against 0.70, told apart 0.53 | with flow 0.93 against 0.77, told apart 0.57 | 48 confirms, 7 no flow data, 3 contradicts
+   plain ridges, whole vessels, likelihood ratio    50 right, 21 wrong | by geometry 0.86 against 0.62, told apart 0.81 | with flow 0.87 against 0.65, told apart 0.78 | 29 no other reading, 24 confirms, 14 no flow data, 2 fits both, 2 speaks against
+   consolidated, whole vessels, likelihood ratio    38 right, 20 wrong | by geometry 0.83 against 0.70, told apart 0.53 | with flow 0.86 against 0.71, told apart 0.54 | 34 no other reading, 17 confirms, 3 speaks against, 3 no flow data, 1 fits both
+held out, section 33: the trunk of a bifurcation (found at a true bifurcation, three arms, all matched to true limbs)
+   plain ridges                                     widest: 73% (59 to 87; n=26) | direction: 100% (100 to 100; n=13) | both: 85% (68 to 97; n=26)
+   consolidated, keeping short pieces               widest: 52% (27 to 75; n=27) | direction: 100% (100 to 100; n=12) | both: 70% (52 to 87; n=27)
+   consolidated, dropping short pieces              widest: 62% (41 to 82; n=24) | direction: 100% (100 to 100; n=12) | both: 83% (68 to 96; n=24)
+   tube rule on plain ridges                        widest: 80% (67 to 100; n=15) | direction: 100% (100 to 100; n=13) | both: 100% (100 to 100; n=15)
+   consolidated, tube rule                          widest: 43% (23 to 62; n=23) | direction: 100% (100 to 100; n=11) | both: 61% (39 to 80; n=23)
+   plain ridges, whole vessels                      widest: 73% (59 to 87; n=26) | direction: 100% (100 to 100; n=10) | both: 88% (75 to 100; n=26)
+   consolidated, whole vessels                      widest: 52% (27 to 75; n=27) | direction: 92% (70 to 100; n=12) | both: 70% (48 to 89; n=27)
+
+Kept: 2879 rows of junctions, 3576 rows of arms and 976 rows of whole vessels, in vessel_pictures/harness
+[memory] harness: 9.14 GB now, 9.66 GB at the most so far
+----- cell 138 took 398.1 s | 26.5 min since the start
+
+DONE: 77 code cells in 26.7 min (1603 s), finished 2026-10-13 21:44:17
