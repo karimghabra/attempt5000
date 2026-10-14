@@ -1,0 +1,25 @@
+Run of development copy 2.ipynb started 2026-10-14 15:02:20: 3 code cells (only 4b1e8e10, core-functions, section-38b-table)
+
+===== cell 0 id=4b1e8e10 | started at 15:02:23 | # In a fresh kernel, start here: nothing above this cell has to be run. The cells that only define f
+A fresh kernel: the definitions were run from the notebook file. Opened 2 fixations of 1920 x 1200 px: 113 frames, 18 frames
+[memory] inputs opened: 0.99 GB now, 0.99 GB at the most so far
+----- cell 0 took 8.2 s | 0.2 min since the start
+
+===== cell 1 id=core-functions | started at 15:02:31 | CORE_PAIRS = ((1.0, 1.0), (1.5, 1.5), (2.0, 2.0), (3.0, 3.0), (5.0, 3.0), (5.0, 5.0))  # radii of th
+----- cell 1 took 0.2 s | 0.2 min since the start
+
+===== cell 2 id=section-38b-table | started at 15:02:31 | # acceptance step 6: the core z by radius and blur (section 38b). Two vessels crossing at right angl
+The core's matched filter: z for two vessels against one lumen, at a right-angle core, 12 realisations each (median z under each truth, the z the template expects for two vessels, and told_apart between the two)
+        radii                        blur 0.8 px                       blur 1.5 px                       blur 2.0 px                       blur 3.5 px
+      1 and 1          10.0 /   2.3 (  8.3) 1.00          2.7 /   0.3 (  1.0) 0.97          1.3 /   0.1 (  1.6) 0.77          0.8 /   0.4 (  1.1) 0.62
+   1.5 and 1.5          20.9 /   1.1 ( 18.4) 1.00          5.0 /  -1.8 (  2.0) 1.00          3.2 /  -0.4 (  2.9) 0.98          1.6 /   0.3 (  1.6) 0.72
+      2 and 2          27.4 /   0.8 ( 25.6) 1.00          8.4 /  -3.1 (  9.7) 1.00          4.9 /  -1.7 (  5.0) 1.00          2.5 /  -0.5 (  2.0) 0.94
+      3 and 3          41.0 /   0.6 ( 42.6) 1.00         23.8 /   0.6 ( 22.6) 1.00         17.1 /  -3.9 ( 13.5) 1.00          6.5 /  -2.0 (  3.4) 1.00
+      5 and 3          52.1 /   0.3 ( 56.8) 1.00         31.6 /  -0.1 ( 30.9) 1.00         24.7 /  -0.4 ( 22.6) 1.00         13.5 /  -0.4 (  4.7) 1.00
+      5 and 5          84.1 /  -0.1 ( 94.0) 1.00         58.3 /   0.2 ( 57.6) 1.00         48.9 /   0.5 ( 45.7) 1.00         23.9 /  -8.2 (  9.9) 1.00
+   (each cell: median z with two vessels / with one lumen (the expected z) told_apart)
+
+The gate: decisive (z >= 3) for R >= 3 at the real burst's blur (1.5 px; section 29's picture_blur 1.50): R 3 and 3: median z 23.8, R 5 and 3: median z 31.6, R 5 and 5: median z 58.3 -> PASSED | capillaries as they come out, in the table
+----- cell 2 took 1624.4 s | 27.3 min since the start
+
+DONE: 3 code cells in 27.3 min (1638 s), finished 2026-10-14 15:29:38
