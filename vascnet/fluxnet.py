@@ -132,7 +132,8 @@ def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lu
                        p: float = 0.85, robust_rounds: int = 5, huber: float = 3.0, flips: bool = True,
                        measurement: np.ndarray | None = None, edge_confidence: np.ndarray | None = None,
                        edge_scale: np.ndarray | None = None, lumen_confidence: np.ndarray | float | None = None,
-                       lumen_group: np.ndarray | None = None, flip_margin: float = 0.0) -> FluxSolution:
+                       lumen_group: np.ndarray | None = None, flip_margin: float = 0.0,
+                       watch=None) -> FluxSolution:
     """Solve the flux network.
 
     q_hat, sigma_hat  per edge: the measured flux and its sigma; NaN where no speed was read.
@@ -168,6 +169,10 @@ def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lu
                       through-lumens of a crossing are one reading, not two).
     flip_margin       a move to turn measurements round is taken only when it lowers the total by more than this
                       (0: whenever it lowers it). A precision knob for the harness to sweep.
+    watch             optional, a callable (a `vascnet.watch.Recorder`) handed a state dict at the start of the
+                      sign step, at every candidate move the step considers taking (the best of its iteration,
+                      with `taken` True where it is applied and False where the step stops), and at the end: the
+                      fit can then be watched as an animation.
     """
     q_hat = np.array(q_hat, dtype=float)
     sigma_hat = np.asarray(sigma_hat, dtype=float)
@@ -246,9 +251,20 @@ def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lu
     scale = lumen_scale(np.where(measured, np.abs(np.nan_to_num(q_hat)), np.abs(q)))
     q, covariance, precision = solve(scale)
     cov = np.nan_to_num(covariance)
+    def report(kind, taken, edges=(), rows=(), gain=None, last=False, q_if=None):
+        """Hand a state to the watcher: the current fluxes, or `q_if`, what they would be under a candidate."""
+        if watch is not None:
+            state = {"kind": kind, "taken": taken, "edges": [int(e) for e in edges], "q": (q if q_if is None else q_if).copy(),
+                     "q_hat": q_hat.copy(), "measured": measured.copy(), "flipped": flipped.copy(),
+                     "disabled": disabled.copy(), "aside_lumens": [lumens[r] for r in rows], "last": last}
+            if gain is not None:
+                state["gain"] = float(gain)
+            watch(state)
+
     # 1. the signs: sets of measurements touching one lumen, turned round together, in closed form from C; or a
     # lumen set aside (its balance dropped, which removes its row: the fall of the minimised chi-square is its
     # scaled residual squared over 1 - its leverage, the identity for deleting an observation)
+    report("start", False)
     if flips:
         for _ in range(count + len(lumens) + 1):
             # the best single move, a flip set or a lumen set aside, by the fall of the penalised total; which
@@ -263,6 +279,8 @@ def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lu
                     delta = 4 * float(r @ q[S]) - 4 * float(r @ cov[np.ix_(S, S)] @ r)
                     cost = 2 * log_odds * sum(-1 if flipped[edges_of[item][0]] else 1 for item in subset)
                     gain = delta + cost
+                    if watch is not None:  # every candidate, with the fluxes it would give, for the film
+                        report("flip", False, edges=S, gain=gain, q_if=q - 2 * cov[:, S] @ r)
                     if gain < best_gain - 1e-9 and gain < -flip_margin:
                         best, best_gain = S, gain
             rows = balance * (np.sqrt(balance_weight) / scale)[:, None]
@@ -280,15 +298,19 @@ def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lu
                 # a row of leverage 1 (a lumen with an arm nothing else reaches) makes I - H singular; that row
                 # holds no residual and nothing is gained or lost by deleting it, so the pseudo-inverse is exact
                 gain = -float(residual @ np.linalg.pinv(inner, rcond=1e-10) @ residual) + float(aside_cost[these].max())
+                if watch is not None:
+                    report("set aside", False, rows=these, gain=gain)
                 if gain < best_gain - 1e-9:
                     aside, best_gain = these, gain
             if aside is not None:
+                report("set aside", True, rows=aside, gain=best_gain)
                 disabled[aside], balance_weight[aside] = True, 0.0
                 q, covariance, precision = solve(scale)
                 cov = np.nan_to_num(covariance)
                 continue
             if best is None:
                 break
+            report("flip", True, edges=best, gain=best_gain)
             q_hat[best] = -q_hat[best]
             flipped[best] = ~flipped[best]
             q = cov @ (precision_base * weight * np.nan_to_num(q_hat))
@@ -306,6 +328,7 @@ def solve_flux_network(q_hat: np.ndarray, sigma_hat: np.ndarray, lumens: list[Lu
             break
         weight, balance_weight = new_weight, new_balance_weight
     sigma = np.where(reached, np.sqrt(np.maximum(np.diag(cov), 0.0)), np.inf)
+    report("done", False, last=True)
     # per measured edge: what the rest of the network predicts for it, and the measurement against that
     own = precision_base * weight
     leverage = np.where(measured, own * np.diag(cov), 0.0)
