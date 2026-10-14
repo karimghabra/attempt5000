@@ -7208,7 +7208,8 @@ del small
 DEFINITION_CELLS = ("setup", "background-functions", "graph-functions", "shared-functions", "contrast-functions",
                     "hypercolumn-functions", "lateral-functions", "chain-functions", "signal-functions", "flow-functions",
                     "segment-functions", "graph-builder", "junction-functions", "synthetic-functions",
-                    "flow-vessel-functions", "harness-functions", "whole-vessel-functions", "flow-evidence-functions")
+                    "flow-vessel-functions", "harness-functions", "whole-vessel-functions", "flow-evidence-functions",
+                    "generator-functions")
 fresh_kernel = "load_saved" not in globals()
 if fresh_kernel:
     import contextlib
@@ -8443,3 +8444,887 @@ figure.savefig("vessel_pictures/harness/flow_on_synthetic.png", dpi=110)
 plt.show()
 del burst, front
 memory_note("harness")
+
+# %% [markdown]
+# # Plan for a clean cyclic graph (`docs/cyclic_graph_recursion_plan.md`)
+#
+# Sections 35 to 42 carry out the plan in `docs/cyclic_graph_recursion_plan.md`, in the order of its acceptance steps (Part III). Each step ends with a number and a gate; its report is in `reports/step_<n>_<date>.md`. Like section 29 these sections run from the saved inputs: in a fresh kernel, run section 29's cell *Open the inputs* first. Every cell that only defines has an id listed in that cell's `DEFINITION_CELLS`.
+#
+# ## 35. Synthetic bursts with the things this plan is about
+#
+# Section 28's generator makes three trees, each splitting once, with nothing thinner than about 2.5 px, no loops, no gaps, no vessel that stops inside the field, the density blurred instead of the light, and the true background handed over. Every claim of the plan about capillaries, loops, gaps, plexus junctions, overlaps or the second fixation needs a burst that has them. `synthetic_burst_35(seed, kind, **things)` adds them, each one switched on by its name:
+#
+# | thing | what it adds |
+# |---|---|
+# | `capillaries` | trees with a trunk of radius 1.5 to 2 px (daughters of 1 to 1.7 px), half of whose daughters split a second time |
+# | `loops` | a daughter that curves round and runs into the other daughter: a loop, closed where both fluxes join (Murray's radius, the flux conserved) |
+# | `gaps` | a stretch of `SYNTH_GAP_LENGTH` px along which a segment fades to `SYNTH_GAP_DEPTH` of its density |
+# | `ends` | a segment that stops inside the field instead of leaving it |
+# | `halos` | around every tree with a vessel of 3 px or more, its own density blurred over three radii, of either sign |
+# | `overlaps` | a hidden vessel: a vessel of another depth lying along a stretch of a vessel, nothing emerging at either end |
+# | `profile` | the cells' speed changes across a vessel, `v_max (1 - (r / R)^SYNTH_BLUNT)`; capillaries in single file |
+# | `transmittance` | the camera blurs each tree's transmittance, not its density (as `vascnet.synth.render`) |
+# | `background` | the frames measured against section 12's `fit_background` of the mean frame instead of the true background |
+# | `second` | a second fixation: the same network and tissue moved by a known shift, with fresh clusters and camera noise |
+# | `fine` | a pixel's density as a mean over 7 x 7 points, so that a vessel of radius 1 keeps its mass within 2% anywhere on the grid |
+#
+# and `kind` is `"trees"` (section 28's three trees and what the things add to them) or one of the two kinds of plexus made from the same lines of one seed: `"crossing plexus"`, every line a vessel at its own depth, so that every meeting is a projected crossing; and `"anastomotic plexus"`, every line in one lumen, so that every meeting is a mixing node of four arms, with the fluxes of a network of resistors.
+#
+# **The old seeds are kept.** With no thing switched on, `synthetic_burst_35(seed)` draws the same random numbers in the same order and does the same arithmetic as `synthetic_burst(seed)`: its burst is the same to the bit, with new keys beside the old ones. What a thing needs on top is drawn from a random stream of its own (`stream`), so that switching one thing on leaves what the others draw as it was. Section 28's code is not changed, so sections 30 and 34 read the same bursts.
+#
+# **The truth** has, per junction, its number of arms `n` (3 at a bifurcation, 4 at a crossing or an anastomosis; `junction_arms` sums them over a fused "complex" junction), its `lumens` (1 or 2), its `kind` (split, loop, anastomosis, projected crossing) and its `limbs`; per segment its nodes and flux; and the gaps, terminations, hidden vessels and halos that were put in. `mark_visible_35` applies vascnet's visibility rules to any network.
+#
+# **New bursts.** `TREE_SEEDS` and `TREE_HELD_OUT` (16 each) are trees with every thing on (`SYNTH_THINGS`); `PLEXUS_SEEDS` and `PLEXUS_HELD_OUT` (8 each) are plexus bursts, every seed read as both kinds. The cell after the definitions checks the old seeds and counts what every new seed holds.
+#
+# **Result:** the generator, the check of the 32 old seeds, and per new seed the counts of loops, gaps, terminations, plexus junctions of each kind and collinear overlaps (`synthetic_counts`; `vessel_pictures/synthetic_35/counts.csv`, and a picture of one burst of each kind in `kinds.png`).
+
+# %%
+SYNTH_LOOP = 0.5             # chance that one daughter of a tree runs back into the other one, which makes a loop
+SYNTH_GAP = 0.25             # chance that a segment has a gap: a stretch along which its density fades
+SYNTH_GAP_LENGTH = 24        # pixels; the length of a gap
+SYNTH_GAP_DEPTH = 0.15       # the share of its density a segment keeps at the middle of a gap
+SYNTH_END = 0.25             # chance that a segment that would leave the frame stops inside it instead (a termination)
+SYNTH_BLUNT = 3.0            # the speed across a vessel is v_max (1 - (r / R)^SYNTH_BLUNT): 2 is a parabola, more is blunter
+SYNTH_FILE = 2.0             # pixels; in a vessel of this radius or less the cells go in single file, all at one speed
+SYNTH_LAMINA = 1.2           # pixels; a vessel's clusters are drawn in strips across it about this wide (5 at the most)
+SYNTH_CAPILLARY_TREES = 2    # capillary trees added to the three trees of section 28
+SYNTH_CAPILLARY = (1.5, 2.0)        # pixels; the radius of a capillary tree's trunk (its daughters come out at 1 to 1.7)
+SYNTH_CAPILLARY_SPEED = (0.8, 2.5)  # pixels per frame; the speed in a capillary tree's trunk, and in a thin line of a plexus
+SYNTH_SPLIT_AGAIN = 0.5      # chance that a daughter of a capillary tree splits a second time
+SYNTH_HALO = 0.5             # a thick tree's halo is its own density blurred over SYNTH_HALO_REACH radii, times this, of
+SYNTH_HALO_REACH = 3.0       # either sign: about a tenth of the vessel's density on its centre, reaching three radii out
+SYNTH_HALO_LEAST = 3.0       # pixels; a tree has a halo when its thickest vessel has at least this radius
+SYNTH_OVERLAPS = 1           # hidden vessels per burst: a vessel of another depth lying along a vessel, nothing emerging
+SYNTH_PLEXUS = (3, 4)        # lines of a plexus that enter from the left and from the top
+SYNTH_PLEXUS_THICK = 0.4     # the share of a plexus' lines that are thick (radius 3 to 4.5); the others are capillaries
+SYNTH_FINE = 7               # a pixel's density is the mean over this many points a side: a vessel of radius 1 keeps its
+                             # mass within 2% wherever it lies on the pixel grid (with 3 a side it loses up to 7%)
+SYNTH_SHIFT = (8.0, 30.0)    # pixels; how far the second fixation is moved along each axis, either way
+SYNTH_BACKGROUND = 8         # pixels; the width of the background fit's local mean (section 12's BACKGROUND_SIGMA)
+# The things section 35 adds, each of which can be switched on by its name. With every one off, synthetic_burst_35
+# makes the burst of section 28 for the same seed, bit for bit.
+SYNTH_PLAIN = {"capillaries": 0, "loops": 0.0, "gaps": 0.0, "ends": 0.0, "halos": False, "overlaps": 0, "profile": False,
+               "transmittance": False, "background": None, "second": False, "fine": False}
+SYNTH_THINGS = {"capillaries": SYNTH_CAPILLARY_TREES, "loops": SYNTH_LOOP, "gaps": SYNTH_GAP, "ends": SYNTH_END,
+                "halos": True, "overlaps": SYNTH_OVERLAPS, "profile": True, "transmittance": True, "background": "fit",
+                "second": True, "fine": True}
+SYNTH_KINDS = ("trees", "crossing plexus", "anastomotic plexus")
+TREE_SEEDS = tuple(range(2001, 2017))          # bursts of trees with the things of section 35, for developing
+TREE_HELD_OUT = tuple(range(3001, 3017))       # and held out
+PLEXUS_SEEDS = tuple(range(4001, 4009))        # plexus bursts for developing: every seed is read as both kinds
+PLEXUS_HELD_OUT = tuple(range(5001, 5009))     # and held out
+COUNTED = ("trees", "segments", "capillary segments", "bifurcations", "loops", "gaps", "terminations",
+           "projected crossings", "anastomoses", "collinear overlaps", "halos", "junctions asked for")
+
+
+def stream(seed, name):
+    """A random stream of its own for one of the things section 35 adds, so that switching one thing on or off
+    leaves what the others draw as it was."""
+    return np.random.default_rng([seed, int.from_bytes(hashlib.sha256(name.encode()).digest()[:4], "little")])
+
+
+def inside_frame(points, margin=0.0):
+    """Which of some (x, y) points lie inside a synthetic frame, at least `margin` pixels from its edge."""
+    rows, columns = SYNTH_SHAPE
+    return ((points[..., 0] >= margin) & (points[..., 0] < columns - margin)
+            & (points[..., 1] >= margin) & (points[..., 1] < rows - margin))
+
+
+def cut_at_frame(points):
+    """A path up to where it first leaves the frame (as section 28 cuts a daughter)."""
+    inside = inside_frame(points)
+    return points[:np.argmin(inside) if not inside.all() else len(points)]
+
+
+def tree_nodes(segments, nodes=None, first=0):
+    """Give the segments of trees (each with `parent`, a parent before its children in the list) their nodes: `start`
+    and `end`, numbers into `nodes`, a list of (x, y). A trunk starts at a node of its own, a daughter at the node
+    its parent ends in, and every segment ends in a node of its own. Returns the nodes."""
+    nodes = [] if nodes is None else nodes
+    for segment in segments[first:]:
+        if segment["parent"] is None:
+            segment["start"] = len(nodes)
+            nodes.append(segment["points"][0].copy())
+        else:
+            segment["start"] = segments[segment["parent"]]["end"]
+        segment["end"] = len(nodes)
+        nodes.append(segment["points"][-1].copy())
+    return nodes
+
+
+def apart_within_tree(segments, members, margin=2.0, near=15):
+    """Whether the segments of one tree keep clear of each other: no two of them come closer than the sum of their
+    radii plus `margin`, except within `near` points of a node they share. Two segments of one tree that touch
+    anywhere else would be drawn as one lumen with no junction in the truth."""
+    for first, second in itertools.combinations(members, 2):
+        a, b = segments[first], segments[second]
+        points_a, points_b = a["points"], b["points"]
+        shared = {a["start"], a["end"]} & {b["start"], b["end"]}
+        keep_a, keep_b = np.ones(len(points_a), dtype=bool), np.ones(len(points_b), dtype=bool)
+        for node in shared:
+            for segment, keep in ((a, keep_a), (b, keep_b)):
+                if segment["start"] == node:
+                    keep[:near] = False
+                if segment["end"] == node:
+                    keep[-near:] = False
+        if not keep_a.any() or not keep_b.any():
+            continue
+        distance, _ = scipy.spatial.cKDTree(points_b[keep_b]).query(points_a[keep_a])
+        if distance.min() < a["radius"] + b["radius"] + margin:
+            return False
+    return True
+
+
+def capillary_trees(rng, segments, nodes, count):
+    """Add `count` capillary trees to a network: drawn as section 28 draws a tree, with a trunk of radius
+    SYNTH_CAPILLARY, shorter, and with daughters that split a second time with the chance SYNTH_SPLIT_AGAIN (where
+    they are still thick enough to have daughters of a pixel's radius). A tree whose segments would touch each other
+    away from their junctions is drawn again."""
+    rows, columns = SYNTH_SHAPE
+    diagonal = np.hypot(rows, columns)
+    tree = max(segment["tree"] for segment in segments) + 1 if segments else 0
+    for _ in range(count):
+        for attempt in range(30):
+            grown, base = [], len(segments)
+            side, along = rng.integers(4), rng.uniform(0.2, 0.8)
+            start, heading = (((along * columns, 0), np.pi / 2), ((along * columns, rows - 1), -np.pi / 2),
+                              ((0, along * rows), 0.0), ((columns - 1, along * rows), np.pi))[side]
+            heading += rng.uniform(-0.35, 0.35)
+            radius = rng.uniform(*SYNTH_CAPILLARY)
+            speed = rng.uniform(*SYNTH_CAPILLARY_SPEED) * rng.choice([-1, 1])
+            depth = rng.uniform(-0.6, 0.6)
+            trunk, heading = wandering_path(start, heading, rng.uniform(0.2, 0.35) * diagonal, rng)
+            grown.append({"points": trunk, "radius": radius, "speed": speed, "tree": tree, "depth": depth, "parent": None})
+            waiting = [(0, heading)]  # segments that split at their end: (place among `grown`, heading there)
+            while waiting:
+                parent, heading = waiting.pop(0)
+                share = rng.uniform(0.35, 0.65)
+                for part, turn in ((share, rng.uniform(0.4, 0.75)), (1 - share, -rng.uniform(0.4, 0.75))):
+                    daughter = {"radius": grown[parent]["radius"] * part ** (1 / 3),
+                                "speed": grown[parent]["speed"] * part ** (1 / 3), "tree": tree, "depth": depth,
+                                "parent": base + parent}
+                    again = parent == 0 and daughter["radius"] >= 1.3 and rng.random() < SYNTH_SPLIT_AGAIN
+                    length = rng.uniform(60, 120) if again else 0.8 * diagonal
+                    path, ahead = wandering_path(grown[parent]["points"][-1], heading + turn, length, rng)
+                    daughter["points"] = cut_at_frame(path)
+                    grown.append(daughter)
+                    if again and len(daughter["points"]) == len(path) and inside_frame(path[-1], 30):
+                        waiting.append((len(grown) - 1, ahead))
+            if any(len(segment["points"]) < 20 for segment in grown) or not inside_frame(trunk[-1], 20):
+                continue
+            segments.extend(grown)
+            marked = len(nodes)
+            tree_nodes(segments, nodes, base)
+            if apart_within_tree(segments, range(base, len(segments))):
+                break
+            del segments[base:], nodes[marked:]
+        tree += 1
+
+
+def close_loop(rng, segments, nodes, trunk):
+    """Make a loop in a tree: one daughter of `trunk` leaves as it did, curves round and runs into the other
+    daughter some way along it. The other daughter is cut there in two; its far part carries both fluxes, with the
+    radius Murray's law gives and the speed that conserves the flux. Returns whether a loop that keeps inside the
+    frame and clear of the rest of its tree was found (the network is left as it was otherwise)."""
+    daughters = [number for number, segment in enumerate(segments) if segment["parent"] == trunk]
+    leaves = [number for number in daughters if not any(other["parent"] == number for other in segments)]
+    if len(daughters) != 2 or len(leaves) != 2:
+        return False
+    split = segments[trunk]["points"][-1]
+    for attempt in range(8):
+        a, b = daughters if rng.random() < 0.5 else daughters[::-1]  # a comes back into b
+        coming, taking = segments[a], segments[b]
+        reach, angle, stretch = int(rng.uniform(70, 130)), rng.uniform(0.5, 0.9), rng.uniform(1.0, 1.4)
+        if reach > len(taking["points"]) - 40 or len(coming["points"]) < 12:
+            continue
+        target = taking["points"][reach]
+        if not inside_frame(target, 20):
+            continue
+        ahead = taking["points"][reach + 5] - taking["points"][reach - 5]
+        ahead /= np.hypot(*ahead)
+        leave = coming["points"][8] - split
+        leave /= np.hypot(*leave)
+        beside = coming["points"][min(30, len(coming["points"]) - 1)] - target
+        side = np.sign(ahead[0] * beside[1] - ahead[1] * beside[0]) or 1.0  # which side of the other daughter it is on
+        turn = -side * angle  # it arrives from its own side, at this angle to the daughter it runs into
+        arrive = np.array([ahead[0] * np.cos(turn) - ahead[1] * np.sin(turn), ahead[0] * np.sin(turn) + ahead[1] * np.cos(turn)])
+        # a cubic through the split and the target, leaving and arriving in those directions, a pixel between points
+        t = np.linspace(0, 1, 2000)[:, None]
+        pull = stretch * np.hypot(*(target - split))
+        curve = ((2 * t ** 3 - 3 * t ** 2 + 1) * split + (t ** 3 - 2 * t ** 2 + t) * pull * leave
+                 + (-2 * t ** 3 + 3 * t ** 2) * target + (t ** 3 - t ** 2) * pull * arrive)
+        travelled = np.r_[0, np.cumsum(np.hypot(*np.diff(curve, axis=0).T))]
+        steps = np.arange(1, int(travelled[-1]) + 1)
+        path = np.column_stack([np.interp(steps, travelled, curve[:, 0]), np.interp(steps, travelled, curve[:, 1])])
+        path[-1] = target
+        if len(path) < 40 or len(path) > 400 or not inside_frame(path, 6).all():
+            continue
+        middle = path[15:-15]
+        if scipy.spatial.cKDTree(taking["points"]).query(middle)[0].min() < coming["radius"] + taking["radius"] + 2:
+            continue
+        if scipy.spatial.cKDTree(segments[trunk]["points"][:-15]).query(middle)[0].min() < coming["radius"] + segments[trunk]["radius"] + 2:
+            continue
+        flux = abs(coming["speed"]) * coming["radius"] ** 2 + abs(taking["speed"]) * taking["radius"] ** 2
+        radius = (coming["radius"] ** 3 + taking["radius"] ** 3) ** (1 / 3)
+        far = {"points": taking["points"][reach + 1:], "radius": radius, "speed": np.sign(taking["speed"]) * flux / radius ** 2,
+               "tree": taking["tree"], "depth": taking["depth"], "parent": b, "start": len(nodes), "end": taking["end"]}
+        nodes.append(target.copy())
+        coming["points"], coming["end"] = path, far["start"]
+        taking["points"], taking["end"] = taking["points"][:reach + 1], far["start"]
+        segments.append(far)
+        coming["loop"] = far["loop"] = taking["loop"] = True
+        return True
+    return False
+
+
+def plexus_network(seed, anastomoses):
+    """Draw a plexus: SYNTH_PLEXUS lines that enter from the left and from the top and cross the frame, wandering
+    as section 28's vessels do, each a capillary or (SYNTH_PLEXUS_THICK of them) a thick vessel.
+
+    Two kinds are made from the same lines of one seed. Without `anastomoses` every line is a vessel at a depth of
+    its own, with a speed of its own: where two lines pass over each other is a projected crossing. With
+    `anastomoses` all lines lie in one lumen at one depth: where two meet is a mixing node of four arms, the lines
+    are cut there into pieces, and the flux of every piece is that of a network of resistors (conductance radius^4
+    over length) between pressures given where the lines enter and leave the frame, so that the flux is conserved
+    at every node. Returns the segments and the nodes."""
+    rng = stream(seed, "plexus")
+    rows, columns = SYNTH_SHAPE
+    diagonal = np.hypot(rows, columns)
+    lines = []  # (points, radius)
+    cuts, kept = [], []  # per line the places where other lines meet it; the meetings: ((line, place), (line, place))
+    plans = [("left", place) for place in range(SYNTH_PLEXUS[0])] + [("top", place) for place in range(SYNTH_PLEXUS[1])]
+    for side, place in plans:
+        for attempt in range(60):
+            count = SYNTH_PLEXUS[0] if side == "left" else SYNTH_PLEXUS[1]
+            along = (place + rng.uniform(0.2, 0.8)) / count
+            start, heading = ((0, along * rows), 0.0) if side == "left" else ((along * columns, 0), np.pi / 2)
+            heading += rng.uniform(-0.3, 0.3)
+            radius = rng.uniform(3.0, 4.5) if rng.random() < SYNTH_PLEXUS_THICK else rng.uniform(1.2, 2.0)
+            points = cut_at_frame(wandering_path(start, heading, 2 * diagonal, rng)[0])
+            if len(points) < 0.5 * min(rows, columns):
+                continue
+            # where it meets the lines drawn before it, at the place where they come closest. Every contact has to
+            # be a crossing, not a run alongside or a near miss, at least 12 points from the lines' ends and from
+            # every other meeting on either line, so that no piece between two nodes is too short to be a vessel.
+            fits, meetings, mine = True, [], []
+            for number, (other, other_radius) in enumerate(lines):
+                distance, nearest = scipy.spatial.cKDTree(other).query(points)
+                touching = np.flatnonzero(distance < radius + other_radius + 1)
+                for run in np.split(touching, np.flatnonzero(np.diff(touching) > 5) + 1):
+                    if not len(run):
+                        continue
+                    at = int(run[np.argmin(distance[run])])
+                    there = int(nearest[at])
+                    if (len(run) > 6 * (radius + other_radius + 1) or distance[at] >= 1.0
+                            or min(at, len(points) - 1 - at, there, len(other) - 1 - there) < 12
+                            or any(abs(there - cut) < 12 for cut in cuts[number])
+                            or any(abs(at - cut) < 12 for cut in mine)):
+                        fits = False
+                    meetings.append(((len(lines), at), (number, there)))
+                    mine.append(at)
+            if fits:
+                lines.append((points, radius))
+                cuts.append(mine)
+                for meeting in meetings:
+                    cuts[meeting[1][0]].append(meeting[1][1])
+                kept += meetings
+                break
+    cuts = dict(enumerate(cuts))
+    segments, nodes = [], []
+    if not anastomoses:
+        for number, (points, radius) in enumerate(lines):
+            limits = SYNTH_CAPILLARY_SPEED if radius <= SYNTH_FILE else (1.5, 3.5)
+            segments.append({"points": points, "radius": radius, "speed": rng.uniform(*limits) * rng.choice([-1, 1]),
+                             "tree": number, "depth": rng.uniform(-0.6, 0.6), "parent": None})
+        return segments, tree_nodes(segments)
+    depth = rng.uniform(-0.6, 0.6)
+    node_at = {}  # (line, place) -> node
+    for (first, at), (second, other) in kept:
+        lines[second][0][other] = lines[first][0][at]  # both lines pass through one point there
+        node_at[(first, at)] = node_at[(second, other)] = len(nodes)
+        nodes.append(lines[first][0][at].copy())
+    given = []  # the nodes where a line enters or leaves the frame: the pressure is given there
+    for number, (points, radius) in enumerate(lines):
+        places = [0] + sorted(cuts[number]) + [len(points) - 1]
+        for place in (places[0], places[-1]):
+            node_at[(number, place)] = len(nodes)
+            given.append(len(nodes))
+            nodes.append(points[place].copy())
+        for before, after in zip(places[:-1], places[1:]):
+            # a piece starts a point beyond the node it leaves, as a daughter of section 28 does, and ends on its node
+            segments.append({"points": points[before + (before > 0):after + 1], "radius": radius, "tree": 0, "depth": depth,
+                             "parent": None, "start": node_at[(number, before)], "end": node_at[(number, after)], "line": number})
+    # the pressures: a slope across the frame in some direction, and a little of its own at every end
+    slope = rng.uniform(0, 2 * np.pi)
+    pressure = np.zeros(len(nodes))
+    for node in given:
+        pressure[node] = (np.cos(slope) * nodes[node][0] / columns + np.sin(slope) * nodes[node][1] / rows + rng.normal(0, 0.15))
+    conductance = np.array([segment["radius"] ** 4 / len(segment["points"]) for segment in segments])
+    laplacian = np.zeros((len(nodes), len(nodes)))
+    for segment, g in zip(segments, conductance):
+        a, b = segment["start"], segment["end"]
+        laplacian[a, a] += g
+        laplacian[b, b] += g
+        laplacian[a, b] -= g
+        laplacian[b, a] -= g
+    free = np.setdiff1d(np.arange(len(nodes)), given)
+    if len(free):
+        pressure[free] = np.linalg.solve(laplacian[np.ix_(free, free)], -laplacian[np.ix_(free, given)] @ pressure[given])
+    flux = np.array([g * (pressure[segment["start"]] - pressure[segment["end"]]) for segment, g in zip(segments, conductance)])
+    speed = flux / np.array([segment["radius"] ** 2 for segment in segments])
+    speed *= rng.uniform(2.0, 3.5) / np.abs(speed).max()  # the fastest piece at a speed of section 28's vessels
+    for segment, value in zip(segments, speed):
+        segment["speed"] = float(value)
+    return segments, nodes
+
+
+def node_ends(segments, nodes):
+    """Per node, the ends of the segments that meet in it: (segment, end), end 0 for a segment's first point and 1
+    for its last, in the order of the segments."""
+    ends = [[] for _ in nodes]
+    for number, segment in enumerate(segments):
+        ends[segment["start"]].append((number, 0))
+        ends[segment["end"]].append((number, 1))
+    return ends
+
+
+def network_truth_35(segments, nodes):
+    """What is true of a network, as network_truth (section 28) returns it and with what section 35 adds.
+
+    The centerlines as a picture. The junctions: every node where three or more segments of one lumen meet (three:
+    a `bifurcation`, which is a split or the place where a loop closes; four: an `anastomosis`), and every place
+    where segments of two trees pass over each other (a `crossing`). Each junction has the keys of section 28 (x, y,
+    type, radius, segments, and places for a crossing) and, new: `n`, the number of arms; `lumens`, 1 or 2; `kind`
+    ("split", "loop", "anastomosis", "projected crossing"); `limbs`, its arms as (segment, place along it, way: +1
+    where the segment runs on from the junction towards its last point, -1 towards its first); and for a crossing
+    `overlap`, the length in pixels along which the two vessels lie on each other. A hidden vessel (`host`) makes no
+    crossing with the vessel it lies along."""
+    lines = np.zeros(SYNTH_SHAPE, dtype=np.uint8)
+    for segment in segments:
+        cv2.polylines(lines, np.rint(segment["points"]).astype(np.int32)[None], False, 1)
+    junctions = []
+    for node, ends in enumerate(node_ends(segments, nodes)):
+        if len(ends) < 3:
+            continue
+        members = sorted((number for number, _ in ends), key=lambda number: -segments[number]["radius"])
+        thickest = members[0]
+        members = [thickest] + sorted(number for number in members if number != thickest)
+        place = segments[thickest]["points"][-1 if segments[thickest]["end"] == node else 0]
+        looped = len(ends) == 3 and sum(end == 1 for _, end in ends) == 2 and any(segments[number].get("loop") for number, _ in ends)
+        junctions.append({"x": float(place[0]), "y": float(place[1]), "type": "bifurcation" if len(ends) == 3 else "anastomosis",
+                          "radius": float(segments[thickest]["radius"]), "segments": members, "n": len(ends), "lumens": 1,
+                          "kind": "anastomosis" if len(ends) > 3 else "loop" if looped else "split",
+                          "limbs": [(number, len(segments[number]["points"]) - 1 if end else 0, -1 if end else 1)
+                                    for number, end in sorted(ends, key=lambda item: members.index(item[0]))]})
+    for first, second in itertools.combinations(range(len(segments)), 2):
+        if segments[first]["tree"] == segments[second]["tree"]:
+            continue
+        if segments[first].get("host") == second or segments[second].get("host") == first:
+            continue
+        distance, nearest = scipy.spatial.cKDTree(segments[second]["points"]).query(segments[first]["points"])
+        close = np.flatnonzero(distance < 1.0)
+        for run in np.split(close, np.flatnonzero(np.diff(close) > 5) + 1):
+            if len(run):
+                at = run[np.argmin(distance[run])]
+                x, y = segments[first]["points"][at]
+                # a crossing counts once, also where a tree's segments meet and all of them cross the other tree's
+                known = any(np.hypot(x - junction["x"], y - junction["y"]) < SYNTH_APART
+                            for junction in junctions if junction["type"] == "crossing")
+                if 8 <= x < SYNTH_SHAPE[1] - 8 and 8 <= y < SYNTH_SHAPE[0] - 8 and not known:
+                    reach = segments[first]["radius"] + segments[second]["radius"] + 1
+                    lying = distance < reach
+                    low = high = at
+                    while low > 0 and lying[low - 1]:
+                        low -= 1
+                    while high < len(lying) - 1 and lying[high + 1]:
+                        high += 1
+                    junctions.append({"x": float(x), "y": float(y), "type": "crossing",
+                                      "radius": float(max(segments[first]["radius"], segments[second]["radius"])),
+                                      "segments": [first, second], "places": [int(at), int(nearest[at])],
+                                      "n": 4, "lumens": 2, "kind": "projected crossing", "overlap": int(high - low + 1),
+                                      "limbs": [(number, place, way) for number, place in ((first, int(at)), (second, int(nearest[at])))
+                                                for way in (-1, 1)]})
+    return lines > 0, junctions
+
+
+def mark_visible_35(junctions, segments, nodes, layers, noise):
+    """mark_visible (section 28) for any network: the true junctions that nobody can be asked to find, by vascnet's
+    rules. A crossing is handed to vascnet.synth._annotate_visibility as there. A junction of one lumen (a split,
+    the closing of a loop, an anastomosis) is visible when its faintest segment stands at 3 x noise or more, which is
+    vascnet's rule for a bifurcation, applied to every segment that meets in it. For the rule that a crossing's
+    vessel has to run on beyond it, a segment runs on where its node holds another segment."""
+    ends = node_ends(segments, nodes)
+    others = lambda number, node: [other for other, _ in ends[node] if other != number]
+    branches = []
+    for number, segment in enumerate(segments):
+        before, after = others(number, segment["start"]), others(number, segment["end"])
+        branches.append(vascnet.synth.Branch(segment["points"], np.full(len(segment["points"]), segment["radius"]),
+                                             segment["tree"], before[0] if before else None, after))
+    crossings = [junction for junction in junctions if junction["type"] == "crossing"]
+    described = [dict(junction, type="crossover", branches=tuple(junction["segments"]), pos=tuple(junction["places"]))
+                 for junction in crossings]
+    vascnet.synth._annotate_visibility(vascnet.synth.Network(SYNTH_SHAPE, branches, [], described), layers, noise)
+    for junction, seen in zip(crossings, described):
+        junction.update({name: seen[name] for name in ("contrast", "visible", "ambiguous") if name in seen})
+    floor = 3.0 * max(noise, 1e-6)
+    for junction in junctions:
+        if junction["type"] != "crossing":
+            junction["contrast"] = float(min(branches[number].contrast for number in junction["segments"]))
+            junction["visible"] = bool(junction["contrast"] >= floor)
+
+
+def junction_arms(junction):
+    """The number of arms of a true junction, also after close ones were fused into one "complex" junction
+    (vascnet.evaluate.cluster_truth keeps the members' types): 3 for a bifurcation, 4 for a crossing or an
+    anastomosis, and their sum for a complex one."""
+    if "n" in junction:
+        return int(junction["n"])
+    return sum(3 if member == "bifurcation" else 4 for member in junction.get("members", ()))
+
+
+def footprint(segment, pixels, fine):
+    """Where a segment's blood lies: its pixels, their place along it, and the length of the line of sight through
+    it there (`chord`, times the absorption). As in section 28 the pixels are those within the radius plus one of
+    one of the segment's points. With `fine` the chord is the mean over SYNTH_FINE x SYNTH_FINE points of every
+    pixel, each measured from the segment's polyline and not from its nearest point, and every pixel also gets
+    `across`: its place across the vessel, from -1 at one wall to 1 at the other. A gap is put into the chord."""
+    points, radius = segment["points"], segment["radius"]
+    distance, along = scipy.spatial.cKDTree(points).query(pixels, distance_upper_bound=radius + 1)
+    inside = np.flatnonzero(np.isfinite(distance))
+    segment["pixels"], segment["along"] = inside, along[inside]
+    nearest = segment["along"]
+    if not fine:
+        segment["chord"] = 2 * np.sqrt(np.maximum(radius ** 2 - distance[inside] ** 2, 0)) * SYNTH_ABSORB
+    else:
+        chord = np.zeros(len(inside))
+        offsets = (np.arange(SYNTH_FINE) + 0.5) / SYNTH_FINE - 0.5
+        for dy, dx in itertools.product(offsets, offsets):
+            spot = pixels[inside] + (dx, dy)
+            best = np.full(len(inside), np.inf)
+            for step in (-1, 0):  # the two pieces of the polyline that end in the nearest point
+                first = np.clip(nearest + step, 0, max(len(points) - 2, 0))
+                a, b = points[first], points[np.minimum(first + 1, len(points) - 1)]
+                ab = b - a
+                t = np.clip(((spot - a) * ab).sum(axis=1) / np.maximum((ab ** 2).sum(axis=1), 1e-12), 0, 1)
+                best = np.minimum(best, np.hypot(*(spot - (a + t[:, None] * ab)).T))
+            chord += 2 * np.sqrt(np.maximum(radius ** 2 - best ** 2, 0))
+        segment["chord"] = chord / SYNTH_FINE ** 2 * SYNTH_ABSORB
+    ahead = points[np.minimum(nearest + 1, len(points) - 1)] - points[np.maximum(nearest - 1, 0)]
+    ahead /= np.maximum(np.hypot(*ahead.T), 1e-12)[:, None]
+    aside = pixels[inside] - points[nearest]
+    segment["across"] = np.clip((ahead[:, 0] * aside[:, 1] - ahead[:, 1] * aside[:, 0]) / radius, -1, 1)
+    gap = segment.get("gap")
+    if gap is not None:
+        away = np.abs(np.arange(len(points)) - gap["place"]) / (gap["length"] / 2)
+        fade = 1 - (1 - gap["depth"]) * np.where(away < 1, 0.5 * (1 + np.cos(np.pi * away)), 0.0)
+        segment["chord"] = segment["chord"] * fade[segment["along"]]
+
+
+def laminae_of(segment):
+    """The strips across a segment in which its clusters are drawn when the speed changes across the vessel: how
+    many (one for a capillary, where the cells go in single file), and the share of the vessel's cross-section
+    that lies in each (a cluster is anywhere in the cross-section with the same chance)."""
+    count = 1 if segment["radius"] <= SYNTH_FILE else int(np.clip(round(segment["radius"] / SYNTH_LAMINA), 2, 5))
+    edges = np.linspace(-1, 1, count + 1)
+    area = lambda a: (a * np.sqrt(1 - a ** 2) + np.arcsin(a)) / np.pi + 0.5  # of the unit disc, the share left of a
+    return count, np.diff(area(edges))
+
+
+def image_network(segments, nodes, rng, things, texture=None, extra=None, lines=None, junctions=None, valid=None):
+    """Image a network as section 28's synthetic_burst does: clusters of red cells carried through it, a focal plane
+    that drifts, a 12-bit camera with shot and read noise, frames dropped. With every thing of section 35 off the
+    random numbers are drawn in the same order and the same arithmetic is done as there.
+
+    `rng` draws what section 28 draws; `extra` draws what the things of section 35 need on top of it. `texture`:
+    the tissue's texture where it is given (the second fixation shows the first one's tissue), else it is drawn.
+    Returns a dict with the frames, their times and pairs, the mean, the quiet pixels, the texture, and each
+    tree's density without noise (`layers`)."""
+    rows, columns = SYNTH_SHAPE
+    y, x = np.mgrid[:rows, :columns]
+    pixels = np.column_stack([x.ravel(), y.ravel()]).astype(np.float64)
+    for segment in segments:
+        footprint(segment, pixels, things["fine"])
+    profile = bool(things["profile"])
+    trees = sorted({segment["tree"] for segment in segments})
+    # clusters of red cells: (segment, place along it, size), spread over the network to begin with
+    clusters = [[number, place, rng.lognormal(0, 0.4)] for number, segment in enumerate(segments)
+                for place in rng.uniform(0, len(segment["points"]), rng.poisson(len(segment["points"]) / CLUSTER_SPACING))]
+    if profile:
+        # every cluster also has a place in the vessel's cross-section, (a, b) in the unit disc: a across the vessel
+        # as the camera sees it, b along the line of sight. Its speed depends on how far it is from the axis.
+        for cluster in clusters:
+            radius, angle = np.sqrt(extra.random()), extra.uniform(0, 2 * np.pi)
+            cluster += [radius * np.cos(angle), radius * np.sin(angle)]
+        for segment in segments:
+            segment["laminae"], segment["lamina share"] = laminae_of(segment)
+            segment["lamina"] = np.minimum(((segment["across"] + 1) / 2 * segment["laminae"]).astype(int), segment["laminae"] - 1)
+            # the speed on the axis that gives the segment its mean speed: the mean of 1 - r^k over the disc is k / (k + 2)
+            segment["speed max"] = segment["speed"] * ((SYNTH_BLUNT + 2) / SYNTH_BLUNT if segment["radius"] > SYNTH_FILE else 1.0)
+
+    def pace(segment, cluster):
+        """How far a cluster moves along a segment in one frame."""
+        if not profile or segment["radius"] <= SYNTH_FILE:
+            return segment["speed"]
+        return segment["speed max"] * (1 - np.hypot(cluster[3], cluster[4]) ** SYNTH_BLUNT)
+
+    # where a cluster goes that leaves a segment by one of its ends: the segments that carry blood away from the
+    # node there, with the odds of their flux
+    ends = node_ends(segments, nodes)
+    beyond = {}
+    for number, segment in enumerate(segments):
+        for end, node in ((0, segment["start"]), (1, segment["end"])):
+            onward = [(other, other_end) for other, other_end in ends[node]
+                      if other != number and (segments[other]["speed"] > 0) == (other_end == 0) and segments[other]["speed"] != 0]
+            odds = np.array([abs(segments[other]["speed"]) * segments[other]["radius"] ** 2 for other, _ in onward])
+            beyond[(number, end)] = (onward, odds)
+    # where the blood comes in: at the end of a segment that nothing else reaches, when the segment's blood leaves it
+    enters = [len(ends[segment["start"] if segment["speed"] > 0 else segment["end"]]) == 1 for segment in segments]
+    illumination = SYNTH_LIGHT * (1 + 0.15 * np.cos(2 * np.pi * x / columns / 1.7) * np.cos(2 * np.pi * y / rows / 2.3))
+    if texture is None:
+        # the tissue's own texture: it stays in the mean frame, where it is the noise the vessels have to stand out from
+        texture = cv2.GaussianBlur(rng.normal(0, 1, (rows, columns)).astype(np.float32), (0, 0), SYNTH_GRAIN)
+        texture *= SYNTH_TEXTURE / texture.std()
+    kept = [frame for frame in range(SYNTH_FRAMES) if frame not in SYNTH_DROPPED]
+    frames = np.zeros((len(kept), rows, columns), dtype=np.float32)
+    layers = np.zeros((max(trees) + 1, rows, columns), dtype=np.float32)  # each tree's density without noise, mean over the frames
+    depth_of = {tree: next(segment["depth"] for segment in segments if segment["tree"] == tree) for tree in trees}
+    halos = things.get("halo signs") or {}
+    for frame in range(SYNTH_FRAMES):
+        # move the clusters; at a split one daughter is taken with the odds of its share of the flux
+        moved = []
+        for cluster in clusters:
+            number, place = cluster[0], cluster[1]
+            segment = segments[number]
+            step = pace(segment, cluster)
+            place += step
+            for _ in range(len(segments) if profile else 1):
+                count = len(segments[number]["points"])
+                if not (place >= count or place < 0):
+                    break
+                onward, odds = beyond[(number, 1 if place >= count else 0)]
+                if not onward:
+                    break
+                left = place - count if place >= count else -place  # how far beyond the end it came
+                other, other_end = onward[rng.choice(len(odds), p=odds / odds.sum())] if len(onward) > 1 else onward[0]
+                if profile:  # the rest of the frame is spent in the next segment, at the cluster's speed there
+                    left *= abs(pace(segments[other], cluster)) / max(abs(step), 1e-9)
+                    step = pace(segments[other], cluster)
+                    place = left if other_end == 0 else len(segments[other]["points"]) - 1.0 - left
+                else:
+                    place = 0.0 if other_end == 0 else len(segments[other]["points"]) - 1.0
+                number = other
+            if 0 <= place < len(segments[number]["points"]):
+                moved.append([number, place] + cluster[2:])
+        clusters = moved
+        # new clusters come in where the blood comes in: at the root, or at the leaves
+        for number, segment in enumerate(segments):
+            if not enters[number]:
+                continue
+            start = 0.0 if segment["speed"] > 0 else len(segment["points"]) - 1.0
+            if not profile:
+                if rng.random() < abs(segment["speed"]) / CLUSTER_SPACING:
+                    clusters.append([number, start, rng.lognormal(0, 0.4)])
+            elif rng.random() < abs(segment["speed max" if segment["radius"] > SYNTH_FILE else "speed"]) / CLUSTER_SPACING:
+                # more clusters come in near the axis, where the blood is faster: the cross-section stays evenly filled
+                radius, angle = np.sqrt(extra.random()), extra.uniform(0, 2 * np.pi)
+                if segment["radius"] <= SYNTH_FILE or extra.random() < 1 - radius ** SYNTH_BLUNT:
+                    clusters.append([number, start, rng.lognormal(0, 0.4), radius * np.cos(angle), radius * np.sin(angle)])
+        if frame not in kept:
+            continue
+        focus = SYNTH_FOCUS[0] + (SYNTH_FOCUS[1] - SYNTH_FOCUS[0]) * frame / (SYNTH_FRAMES - 1)
+        density = texture.copy()
+        for tree in trees:
+            layer = np.zeros(rows * columns, dtype=np.float32)
+            for number, segment in enumerate(segments):
+                if segment["tree"] != tree:
+                    continue
+                if profile and segment["laminae"] > 1:
+                    here = np.array([[c[1], c[2], c[3]] for c in clusters if c[0] == number]).reshape(-1, 3)
+                    strip = np.minimum(((here[:, 2] + 1) / 2 * segment["laminae"]).astype(int), segment["laminae"] - 1)
+                    modulation = np.zeros((segment["laminae"], len(segment["points"])))
+                    np.add.at(modulation, (strip, here[:, 0].astype(int)), here[:, 1])
+                    modulation = (scipy.ndimage.gaussian_filter1d(modulation, CLUSTER_LENGTH, axis=1, mode="constant")
+                                  * CLUSTER_SPACING / segment["lamina share"][:, None])
+                    blood = segment["chord"] * (1 + CLUSTER_DEPTH * (modulation[segment["lamina"], segment["along"]] - 1))
+                else:
+                    here = np.array([[c[1], c[2]] for c in clusters if c[0] == number]).reshape(-1, 2)
+                    modulation = np.bincount(here[:, 0].astype(int), weights=here[:, 1], minlength=len(segment["points"]))
+                    modulation = scipy.ndimage.gaussian_filter1d(modulation, CLUSTER_LENGTH, mode="constant") * CLUSTER_SPACING
+                    blood = segment["chord"] * (1 + CLUSTER_DEPTH * (modulation[segment["along"]] - 1))
+                layer[segment["pixels"]] = np.maximum(layer[segment["pixels"]], blood)  # one lumen where a tree's segments meet
+            blur = SYNTH_SHARP + SYNTH_DEFOCUS * abs(depth_of[tree] - focus)
+            if things["transmittance"]:  # the camera blurs the light that comes through, not the density
+                layer = -np.log(cv2.GaussianBlur(np.exp(-layer.reshape(rows, columns)), (0, 0), blur))
+            else:
+                layer = cv2.GaussianBlur(layer.reshape(rows, columns), (0, 0), blur)
+            layers[tree] += layer / len(kept)
+            density += layer  # densities of two depths add
+            if tree in halos:
+                reach = SYNTH_HALO_REACH * max(segment["radius"] for segment in segments if segment["tree"] == tree)
+                density += np.float32(halos[tree] * SYNTH_HALO) * cv2.GaussianBlur(layer, (0, 0), reach)
+        light = illumination * np.exp(-density)
+        seen = rng.poisson(light * SYNTH_GAIN) / SYNTH_GAIN + rng.normal(0, SYNTH_READ, light.shape)
+        seen = np.clip(np.rint(seen), 1, SYNTH_SATURATION)
+        frames[kept.index(frame)] = np.log(illumination) - np.log(seen)
+    times = np.array(kept) / SYNTH_FPS
+    pairs = [(place, place + 1, float(times[place + 1] - times[place])) for place in range(len(kept) - 1)
+             if kept[place + 1] - kept[place] <= MAX_GAP_FRAMES]
+    wall = cv2.distanceTransform((~lines).astype(np.uint8), cv2.DIST_L2, 5)
+    mean, quiet = frames.mean(axis=0), wall > 3 * max(s["radius"] for s in segments)
+    out = {"times": times, "pairs": pairs, "texture": texture, "layers": layers}
+    if things["background"]:
+        # The true background is no longer handed over. The frames are measured against a background fitted to the
+        # mean of the frames as recorded: section 12's fit_background ("fit"), or the true background with a local
+        # mean of the density taken off on the quiet pixels ("local mean": the harness is approximate there).
+        valid_here = np.ones((rows, columns), dtype=bool) if valid is None else valid
+        if things["background"] == "fit":
+            recorded = illumination * np.exp(-frames.astype(np.float64)).mean(axis=0)  # the mean frame, in DN
+            fit = fit_background(recorded, valid=valid_here, sigma=SYNTH_BACKGROUND, saturation=SYNTH_SATURATION)
+            shift = (fit["B"] - np.log(illumination)).astype(np.float32)
+        else:
+            shift = (-masked_mean(mean, quiet & valid_here, SYNTH_BACKGROUND)).astype(np.float32)
+        frames += shift
+        mean = frames.mean(axis=0)
+        out["background error"] = shift  # the fitted background minus the true one, in density
+    if valid is not None:
+        quiet = quiet & valid
+    out.update({"frames": frames, "mean": mean, "quiet": quiet})
+    if junctions is not None:
+        mark_visible_35(junctions, segments, nodes, layers, robust_sd(mean[quiet]))
+    return out
+
+
+def synthetic_burst_35(seed, kind="trees", **things):
+    """A synthetic burst with the things of section 35, each switched on by its name (SYNTH_THINGS has the settings
+    used for the new bursts; with none given, every one is off and the burst is section 28's synthetic_burst(seed),
+    bit for bit, with new keys beside the old ones).
+
+      kind           "trees": the three trees of section 28; "crossing plexus", "anastomotic plexus": plexus_network
+      capillaries    the number of capillary trees added (capillary_trees)
+      loops          the chance, per tree, that a daughter runs back into the other one (close_loop)
+      gaps           the chance, per segment, of a gap SYNTH_GAP_LENGTH long that fades to SYNTH_GAP_DEPTH
+      ends           the chance that a segment that leaves the frame stops inside it instead
+      halos          a halo of either sign around every tree with a vessel of SYNTH_HALO_LEAST or more
+      overlaps       the number of hidden vessels: a vessel of another depth lying along a stretch of a vessel,
+                     with nothing emerging at either end
+      profile        the speed changes across a vessel, v_max (1 - (r / R)^SYNTH_BLUNT), and a cluster that passes
+                     a node spends the rest of the frame in the next segment
+      transmittance  each tree's transmittance is blurred, not its density
+      background     "fit": the frames are measured against section 12's fit of the mean frame; "local mean": against
+                     the true background, with a local mean of the density taken off; None: the true background
+      second         a second fixation: the same network and tissue moved by a known shift, imaged again
+      fine           the density of a pixel is a mean over SYNTH_FINE x SYNTH_FINE points
+
+    Returns the dict of synthetic_burst, with: `kind`, `things`; `nodes`: per node x, y and the (segment, end) that
+    meet in it; `gaps`, `terminations`, `overlaps`, `halos`: what was put in, each recorded; `counts`: how many of
+    each (COUNTED); `second`: the second fixation as a burst of its own (frames, times, pairs, mean, valid, quiet,
+    lines) with `shift` (dx, dy) and `to second`, the 3x3 map from the first fixation's (x, y) to the second's.
+    Segments have, new: `start`, `end` (their nodes), `flux` (speed x radius^2, signed along the points), and
+    where it applies `gap`, `host`, `loop`, `speed max`. Junctions: see network_truth_35.
+    """
+    unknown = set(things) - set(SYNTH_PLAIN)
+    if unknown or kind not in SYNTH_KINDS:
+        raise ValueError(f"not a thing or a kind of section 35: {sorted(unknown) or kind}")
+    things = {**SYNTH_PLAIN, **things}
+    rng = np.random.default_rng(seed)
+    rows, columns = SYNTH_SHAPE
+    gaps, terminations, overlaps, loops = [], [], [], 0
+    if kind == "trees":
+        segments = synthetic_network(rng)
+        nodes = tree_nodes(segments)
+        if things["capillaries"]:
+            capillary_trees(stream(seed, "capillaries"), segments, nodes, things["capillaries"])
+        if things["loops"]:
+            draw = stream(seed, "loops")
+            for trunk in [number for number, segment in enumerate(segments) if segment["parent"] is None]:
+                if draw.random() < things["loops"]:
+                    loops += close_loop(draw, segments, nodes, trunk)
+        if things["ends"]:
+            draw = stream(seed, "ends")
+            ends = node_ends(segments, nodes)
+            for number, segment in enumerate(segments):
+                leaf = len(ends[segment["end"]]) == 1 and segment["parent"] is not None and not segment.get("loop")
+                if leaf and len(segment["points"]) >= 90 and draw.random() < things["ends"]:
+                    stop = int(draw.uniform(50, min(140, len(segment["points"]) - 30)))
+                    if inside_frame(segment["points"][stop], 30):
+                        segment["points"] = segment["points"][:stop + 1]
+                        nodes[segment["end"]] = segment["points"][-1].copy()
+                        terminations.append({"segment": number, "x": float(segment["points"][-1, 0]), "y": float(segment["points"][-1, 1])})
+        if things["overlaps"]:
+            draw = stream(seed, "overlaps")
+            hosts = [number for number, segment in enumerate(segments) if len(segment["points"]) >= 140 and segment["radius"] >= 2.5]
+            for _ in range(things["overlaps"] if hosts else 0):
+                host = int(draw.choice(hosts))
+                length = int(draw.uniform(40, 80))
+                first = int(draw.uniform(30, len(segments[host]["points"]) - length - 30))
+                hidden = {"points": segments[host]["points"][first:first + length].copy(),
+                          "radius": segments[host]["radius"] * draw.uniform(0.6, 1.0), "speed": draw.uniform(1.0, 3.0) * draw.choice([-1, 1]),
+                          "tree": max(segment["tree"] for segment in segments) + 1, "depth": draw.uniform(-0.6, 0.6),
+                          "parent": None, "host": host}
+                segments.append(hidden)
+                tree_nodes(segments, nodes, len(segments) - 1)
+                overlaps.append({"segment": len(segments) - 1, "host": host, "from": first, "length": length})
+    else:
+        segments, nodes = plexus_network(seed, kind == "anastomotic plexus")
+    if things["gaps"]:
+        draw = stream(seed, "gaps")
+        for number, segment in enumerate(segments):
+            if "host" in segment or len(segment["points"]) < 4 * SYNTH_GAP_LENGTH or draw.random() >= things["gaps"]:
+                continue
+            place = int(draw.uniform(1.5 * SYNTH_GAP_LENGTH, len(segment["points"]) - 1.5 * SYNTH_GAP_LENGTH))
+            if inside_frame(segment["points"][place], 10):
+                segment["gap"] = {"place": place, "length": SYNTH_GAP_LENGTH, "depth": SYNTH_GAP_DEPTH}
+                gaps.append({"segment": number, "place": place, "x": float(segment["points"][place, 0]),
+                             "y": float(segment["points"][place, 1])})
+    halos = {}
+    if things["halos"]:
+        draw = stream(seed, "halos")
+        for tree in sorted({segment["tree"] for segment in segments}):
+            if max((segment["radius"] for segment in segments if segment["tree"] == tree and "host" not in segment),
+                   default=0) >= SYNTH_HALO_LEAST:
+                halos[tree] = int(draw.choice([-1, 1]))
+    extended = kind != "trees" or any(things[name] != SYNTH_PLAIN[name] for name in things)
+    lines, junctions = network_truth_35(segments, nodes) if extended else network_truth(segments)
+    imaged = image_network(segments, nodes, rng, {**things, "halo signs": halos}, extra=stream(seed, "profile"),
+                           lines=lines, junctions=junctions)
+    if not extended:  # the junctions of section 28 have the new keys too; they are added after the old ones were made
+        for junction, full in zip(junctions, network_truth_35(segments, nodes)[1]):
+            junction.update({name: full[name] for name in full if name not in junction})
+    for segment in segments:
+        segment["flux"] = float(segment["speed"] * segment["radius"] ** 2)
+    ends = node_ends(segments, nodes)
+    burst = {"frames": imaged["frames"], "times": imaged["times"], "pairs": imaged["pairs"], "fps": SYNTH_FPS,
+             "mean": imaged["mean"], "valid": np.ones((rows, columns), dtype=bool), "quiet": imaged["quiet"],
+             "segments": segments, "lines": lines, "junctions": junctions, "kind": kind, "things": things,
+             "nodes": [{"x": float(place[0]), "y": float(place[1]), "ends": ends[node]} for node, place in enumerate(nodes)],
+             "gaps": gaps, "terminations": terminations, "overlaps": overlaps, "halos": halos, "layers": imaged["layers"]}
+    if "background error" in imaged:
+        burst["background error"] = imaged["background error"]
+    asked = [junction for junction in vascnet.evaluate.cluster_truth(
+        [dict(junction, type=as_vascnet(junction["type"]) if junction["type"] != "anastomosis" else "crossover")
+         for junction in junctions]) if junction.get("visible", True)]
+    burst["counts"] = {
+        "trees": len({segment["tree"] for segment in segments}), "segments": len(segments),
+        "capillary segments": sum(segment["radius"] <= SYNTH_FILE for segment in segments),
+        "bifurcations": sum(junction["type"] == "bifurcation" for junction in junctions), "loops": int(loops),
+        "gaps": len(gaps), "terminations": len(terminations),
+        "projected crossings": sum(junction["type"] == "crossing" for junction in junctions),
+        "anastomoses": sum(junction["type"] == "anastomosis" for junction in junctions),
+        "collinear overlaps": len(overlaps), "halos": len(halos), "junctions asked for": len(asked)}
+    if things["second"]:
+        # the second fixation: the same network and the same tissue, moved by a known shift, imaged again with
+        # clusters, camera noise and frames of its own. Where the first fixation's field does not reach, the second
+        # has no data: the network was only drawn inside the first one's frame.
+        draw = stream(seed, "second")
+        shift = np.array([draw.uniform(*SYNTH_SHIFT) * draw.choice([-1, 1]) for _ in range(2)])  # (dx, dy)
+        to_second = np.array([[1, 0, shift[0]], [0, 1, shift[1]], [0, 0, 1.0]])
+        moved = []
+        for segment in segments:
+            moved.append({name: value for name, value in segment.items() if name not in ("pixels", "along", "chord", "across", "lamina")})
+            moved[-1]["points"] = segment["points"] + shift
+        moved_nodes = [place + shift for place in nodes]
+        size = (columns, rows)
+        texture = cv2.warpAffine(imaged["texture"], to_second[:2], size, flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
+        valid = cv2.warpAffine(np.ones((rows, columns), dtype=np.float32), to_second[:2], size, flags=cv2.INTER_LINEAR) > 0.999
+        moved_lines = np.zeros(SYNTH_SHAPE, dtype=np.uint8)
+        for segment in moved:
+            cv2.polylines(moved_lines, np.rint(segment["points"]).astype(np.int32)[None], False, 1)
+        again = image_network(moved, moved_nodes, draw, {**things, "halo signs": halos}, texture=texture,
+                              extra=stream(seed, "second profile"), lines=moved_lines > 0, valid=valid)
+        burst["second"] = {"frames": again["frames"], "times": again["times"], "pairs": again["pairs"], "fps": SYNTH_FPS,
+                           "mean": again["mean"], "valid": valid, "quiet": again["quiet"], "lines": (moved_lines > 0) & valid,
+                           "shift": (float(shift[0]), float(shift[1])), "to second": to_second}
+    return burst
+
+
+SECTION_28_SEGMENT_KEYS = ("points", "radius", "speed", "tree", "depth", "parent", "pixels", "along", "chord")
+SECTION_28_JUNCTION_KEYS = ("x", "y", "type", "radius", "segments", "places", "contrast", "visible", "ambiguous")
+
+
+def section_28_part(burst):
+    """What synthetic_burst (section 28) returns, taken out of a burst of synthetic_burst_35: its keys, its
+    segments' keys and its junctions' keys, without what section 35 adds."""
+    old = {key: burst[key] for key in ("frames", "times", "pairs", "fps", "mean", "valid", "quiet", "segments", "lines", "junctions")}
+    old["segments"] = [{key: segment[key] for key in SECTION_28_SEGMENT_KEYS} for segment in burst["segments"]]
+    old["junctions"] = [{key: junction[key] for key in SECTION_28_JUNCTION_KEYS if key in junction} for junction in burst["junctions"]]
+    return old
+
+
+def same_bits(first, second):
+    """Whether two values are the same to the bit: arrays of one dtype and shape with the same bytes, dicts with the
+    same keys, lists of the same length, numbers of one type that are equal (NaN equal to NaN)."""
+    if isinstance(first, np.ndarray) or isinstance(second, np.ndarray):
+        return (isinstance(first, np.ndarray) and isinstance(second, np.ndarray) and first.dtype == second.dtype
+                and first.shape == second.shape and first.tobytes() == second.tobytes())
+    if isinstance(first, dict):
+        return isinstance(second, dict) and first.keys() == second.keys() and all(same_bits(first[k], second[k]) for k in first)
+    if isinstance(first, (list, tuple)):
+        return type(first) is type(second) and len(first) == len(second) and all(map(same_bits, first, second))
+    return type(first) is type(second) and (first == second or (first != first and second != second))
+
+# %%
+# the 32 old seeds, made by both generators: with no thing switched on they have to be the same to the bit
+old_seeds = HARNESS_SEEDS + HELD_OUT_SEEDS
+differ = [seed for seed in old_seeds if not same_bits(synthetic_burst(seed), section_28_part(synthetic_burst_35(seed)))]
+print(f"Old seeds: {len(old_seeds) - len(differ)} of {len(old_seeds)} are the same to the bit when made by section 35's "
+      f"generator with no thing switched on" + (f"; DIFFERENT: {differ}" if differ else ""))
+
+# what every new seed holds
+synthetic_counts = []  # one row per new burst: its set, kind and seed, and its counts (COUNTED)
+sets = (("trees, developing", "trees", TREE_SEEDS), ("trees, held out", "trees", TREE_HELD_OUT),
+        ("plexus, developing", "crossing plexus", PLEXUS_SEEDS), ("plexus, developing", "anastomotic plexus", PLEXUS_SEEDS),
+        ("plexus, held out", "crossing plexus", PLEXUS_HELD_OUT), ("plexus, held out", "anastomotic plexus", PLEXUS_HELD_OUT))
+for name, kind, seeds in sets:
+    for seed in seeds:
+        burst = synthetic_burst_35(seed, kind, **SYNTH_THINGS)
+        synthetic_counts.append({"set": name, "kind": kind, "seed": seed, **burst["counts"],
+                                 "shift": "{:+.1f} {:+.1f}".format(*burst["second"]["shift"]),
+                                 "background error": float(robust_sd(burst["background error"][burst["quiet"]]))})
+del burst
+short = {"capillary segments": "capil", "bifurcations": "bifur", "terminations": "ends", "projected crossings": "cross",
+         "anastomoses": "anast", "collinear overlaps": "overl", "junctions asked for": "asked"}
+print(f"\nPer new burst: {', '.join(f'{short.get(name, name)} = {name}' for name in COUNTED if name in short)}")
+print(f"{'set':20s} {'kind':19s} {'seed':>5s} " + " ".join(f"{short.get(name, name):>6s}" for name in COUNTED)
+      + f" {'shift (x y)':>12s} {'bg error':>8s}")
+for row in synthetic_counts:
+    print(f"{row['set']:20s} {row['kind']:19s} {row['seed']:5d} " + " ".join(f"{row[name]:6d}" for name in COUNTED)
+          + f" {row['shift']:>12s} {row['background error']:8.4f}")
+print("\nIn all, per set and kind:")
+for name, kind, seeds in sets:
+    rows = [row for row in synthetic_counts if row["set"] == name and row["kind"] == kind]
+    print(f"{name:20s} {kind:19s} {len(rows):3d} bursts | " + ", ".join(f"{sum(row[count] for row in rows)} {count}" for count in COUNTED
+                                                                     if count not in ("trees", "segments")))
+os.makedirs("vessel_pictures/synthetic_35", exist_ok=True)
+save_table(synthetic_counts, "vessel_pictures/synthetic_35/counts.csv")
+
+# one burst of each kind: a frame, the mean with what is true of it, and the second fixation
+cases = ((TREE_SEEDS[1], "trees"), (PLEXUS_SEEDS[0], "crossing plexus"), (PLEXUS_SEEDS[0], "anastomotic plexus"))
+colors = {"split": "gold", "loop": "orange", "projected crossing": "cyan", "anastomosis": "magenta"}
+figure, axes = plt.subplots(len(cases), 3, figsize=(18, 4.6 * len(cases)))
+for row, (seed, kind) in enumerate(cases):
+    burst = synthetic_burst_35(seed, kind, **SYNTH_THINGS)
+    top = np.percentile(burst["mean"], 99.8)
+    axes[row, 0].imshow(burst["frames"][10], cmap="gray_r", vmin=-0.05, vmax=top)
+    axes[row, 0].set_title(f"{kind}, seed {seed}: one frame (density)", fontsize=10)
+    axes[row, 1].imshow(burst["mean"], cmap="gray_r", vmin=-0.05, vmax=top)
+    for junction in burst["junctions"]:
+        axes[row, 1].add_patch(plt.Circle((junction["x"], junction["y"]), 9, fill=False, lw=1.2,
+                                          color=colors[junction["kind"]] if junction["visible"] else "gray"))
+    for gap in burst["gaps"]:
+        axes[row, 1].plot(gap["x"], gap["y"], "x", color="red", ms=10, mew=2)
+    for end in burst["terminations"]:
+        axes[row, 1].plot(end["x"], end["y"], "s", color="lime", ms=7, mfc="none", mew=2)
+    for overlap in burst["overlaps"]:
+        points = burst["segments"][overlap["segment"]]["points"]
+        axes[row, 1].plot(points[:, 0], points[:, 1], "-", color="purple", lw=4, alpha=0.5)
+    axes[row, 1].set_title("the mean, with the truth: junctions (gold split, orange loop closed, cyan crossing, magenta "
+                           "anastomosis, gray nobody is asked for it), gaps (red x), terminations (green), hidden vessel (purple)", fontsize=7)
+    axes[row, 2].imshow(np.where(burst["second"]["valid"], burst["second"]["mean"], np.nan), cmap="gray_r", vmin=-0.05, vmax=top)
+    axes[row, 2].set_title("the second fixation, moved by ({:+.1f}, {:+.1f}) px".format(*burst["second"]["shift"]), fontsize=10)
+    for axis in axes[row]:
+        axis.axis("off")
+figure.tight_layout()
+figure.savefig("vessel_pictures/synthetic_35/kinds.png", dpi=90)
+plt.show()
+del burst
+memory_note("section 35")

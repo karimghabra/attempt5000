@@ -1,0 +1,217 @@
+Run of development copy 2.ipynb started 2026-10-13 23:02:16: 4 code cells (only 4b1e8e10, 3dd53238, generator-functions, section-35)
+
+===== cell 0 id=4b1e8e10 | started at 23:02:19 | # In a fresh kernel, start here: nothing above this cell has to be run. The cells that only define f
+A fresh kernel: the definitions were run from the notebook file. Opened 2 fixations of 1920 x 1200 px: 113 frames, 18 frames
+[memory] inputs opened: 0.99 GB now, 0.99 GB at the most so far
+----- cell 0 took 3.6 s | 0.1 min since the start
+
+===== cell 1 id=3dd53238 | started at 23:02:23 | harness = {}     # per set of bursts ("development", "held out"): {way: [one score per burst]} (see 
+[memory] development: 16 bursts read 10 ways: 1.07 GB now, 1.49 GB at the most so far
+[memory] held out: 16 bursts read 10 ways: 1.07 GB now, 1.49 GB at the most so far
+
+development: 16 bursts with 97 true junctions that are asked for. Shares in percent, with their 95% interval over bursts:
+                                                    centerline precision        centerline recall       junction precision          junction recall     type right, of found    found and typed right
+chains of sections 19 to 27                                70 (65 to 76)            98 (98 to 99)            21 (16 to 28)            95 (91 to 98)            51 (38 to 64)            48 (35 to 61)
+plain ridges                                               95 (92 to 97)            94 (92 to 96)            76 (67 to 85)            73 (61 to 84)            73 (60 to 83)            54 (39 to 68)
+consolidated, keeping short pieces                         94 (92 to 96)            92 (90 to 94)            75 (64 to 85)            64 (58 to 70)            65 (54 to 75)            41 (33 to 49)
+consolidated, dropping short pieces                        95 (93 to 97)            89 (86 to 92)            81 (68 to 92)            39 (30 to 48)            71 (55 to 85)            28 (20 to 35)
+tube rule on plain ridges                                  99 (99 to 99)            81 (73 to 88)            87 (74 to 96)            47 (32 to 61)            65 (46 to 81)            31 (17 to 45)
+consolidated, tube rule                                    96 (94 to 97)            88 (83 to 92)            77 (67 to 86)            71 (65 to 78)            68 (56 to 77)            48 (38 to 58)
+plain ridges, whole vessels                                95 (92 to 97)            94 (92 to 96)            76 (67 to 85)            73 (61 to 84)            73 (60 to 83)            54 (39 to 68)
+consolidated, whole vessels                                94 (92 to 96)            92 (90 to 94)            75 (64 to 85)            64 (58 to 70)            65 (54 to 75)            41 (33 to 49)
+plain ridges, whole vessels, likelihood ratio              95 (92 to 97)            94 (92 to 96)            76 (67 to 85)            73 (61 to 84)            73 (60 to 83)            54 (39 to 68)
+consolidated, whole vessels, likelihood ratio              94 (92 to 96)            92 (90 to 94)            75 (64 to 85)            64 (58 to 70)            65 (54 to 75)            41 (33 to 49)
+   junctions read, and the share of the found bifurcations and crossings that are typed right:
+      chains of sections 19 to 27                       445 read | bifurcations  62%, crossings  49%
+      plain ridges                                       93 read | bifurcations 100%, crossings  71%
+      consolidated, keeping short pieces                 83 read | bifurcations  94%, crossings  47%
+      consolidated, dropping short pieces                47 read | bifurcations  96%, crossings  30%
+      tube rule on plain ridges                          53 read | bifurcations 100%, crossings  52%
+      consolidated, tube rule                            90 read | bifurcations  93%, crossings  62%
+      plain ridges, whole vessels                        93 read | bifurcations 100%, crossings  71%
+      consolidated, whole vessels                        83 read | bifurcations  94%, crossings  47%
+      plain ridges, whole vessels, likelihood ratio      93 read | bifurcations 100%, crossings  71%
+      consolidated, whole vessels, likelihood ratio      83 read | bifurcations  94%, crossings  47%
+
+held out: 16 bursts with 92 true junctions that are asked for. Shares in percent, with their 95% interval over bursts:
+                                                    centerline precision        centerline recall       junction precision          junction recall     type right, of found    found and typed right
+chains of sections 19 to 27                                70 (66 to 75)            99 (98 to 99)            22 (17 to 28)            92 (88 to 97)            44 (33 to 56)            40 (31 to 51)
+plain ridges                                               95 (92 to 97)            93 (90 to 95)            84 (72 to 93)            77 (70 to 84)            70 (58 to 82)            54 (43 to 66)
+consolidated, keeping short pieces                         93 (91 to 96)            92 (89 to 94)            72 (57 to 87)            63 (55 to 71)            66 (50 to 79)            41 (29 to 53)
+consolidated, dropping short pieces                        94 (92 to 96)            88 (84 to 91)            91 (82 to 98)            45 (37 to 52)            54 (34 to 72)            24 (14 to 33)
+tube rule on plain ridges                                  99 (99 to 99)            80 (71 to 87)           94 (82 to 100)            49 (33 to 63)            58 (42 to 73)            28 (16 to 41)
+consolidated, tube rule                                    95 (92 to 97)            85 (81 to 90)            71 (57 to 85)            66 (54 to 78)            64 (52 to 76)            42 (31 to 56)
+plain ridges, whole vessels                                95 (92 to 97)            93 (90 to 95)            84 (72 to 93)            77 (70 to 84)            70 (58 to 82)            54 (43 to 66)
+consolidated, whole vessels                                93 (91 to 96)            92 (89 to 94)            72 (57 to 87)            63 (55 to 71)            66 (50 to 79)            41 (29 to 53)
+plain ridges, whole vessels, likelihood ratio              95 (92 to 97)            93 (90 to 95)            84 (72 to 93)            77 (70 to 84)            70 (58 to 82)            54 (43 to 66)
+consolidated, whole vessels, likelihood ratio              93 (91 to 96)            92 (89 to 94)            72 (57 to 87)            63 (55 to 71)            66 (50 to 79)            41 (29 to 53)
+   junctions read, and the share of the found bifurcations and crossings that are typed right:
+      chains of sections 19 to 27                       387 read | bifurcations  52%, crossings  47%
+      plain ridges                                       85 read | bifurcations 100%, crossings  63%
+      consolidated, keeping short pieces                 81 read | bifurcations  89%, crossings  67%
+      consolidated, dropping short pieces                45 read | bifurcations  84%, crossings  20%
+      tube rule on plain ridges                          48 read | bifurcations 100%, crossings  46%
+      consolidated, tube rule                            86 read | bifurcations  96%, crossings  65%
+      plain ridges, whole vessels                        85 read | bifurcations 100%, crossings  63%
+      consolidated, whole vessels                        81 read | bifurcations  89%, crossings  67%
+      plain ridges, whole vessels, likelihood ratio      85 read | bifurcations 100%, crossings  63%
+      consolidated, whole vessels, likelihood ratio      81 read | bifurcations  89%, crossings  67%
+
+development, section 32: the speed of whole vessels with a clear speed that lie on one true segment
+   plain ridges, whole vessels                      median error 3% of the true speed, 90th percentile 18% | median sigma 4% | true speed within 2 sigma: 79% (66 to 90; n=135) | direction right: 100% (100 to 100; n=135) | neighbouring windows that agree: 94 of 110
+   consolidated, whole vessels                      median error 3% of the true speed, 90th percentile 24% | median sigma 4% | true speed within 2 sigma: 78% (68 to 86; n=120) | direction right: 100% (100 to 100; n=120) | neighbouring windows that agree: 71 of 88
+   plain ridges, whole vessels, likelihood ratio    median error 3% of the true speed, 90th percentile 18% | median sigma 4% | true speed within 2 sigma: 79% (66 to 90; n=135) | direction right: 100% (100 to 100; n=135) | neighbouring windows that agree: 94 of 110
+   consolidated, whole vessels, likelihood ratio    median error 3% of the true speed, 90th percentile 24% | median sigma 4% | true speed within 2 sigma: 78% (68 to 86; n=120) | direction right: 100% (100 to 100; n=120) | neighbouring windows that agree: 71 of 88
+development, the flow at the arms of the junctions found (measured directions): per piece against whole vessels
+   plain ridges                                     direction right: 99% (98 to 100; n=182) | speed error: median 6%, 90th percentile 31%
+   consolidated, keeping short pieces               direction right: 100% (100 to 100; n=112) | speed error: median 5%, 90th percentile 28%
+   consolidated, dropping short pieces              direction right: 100% (100 to 100; n=81) | speed error: median 6%, 90th percentile 28%
+   tube rule on plain ridges                        direction right: 100% (100 to 100; n=136) | speed error: median 6%, 90th percentile 27%
+   consolidated, tube rule                          direction right: 99% (98 to 100; n=151) | speed error: median 6%, 90th percentile 30%
+   plain ridges, whole vessels                      direction right: 100% (100 to 100; n=176) | speed error: median 5%, 90th percentile 21%
+   consolidated, whole vessels                      direction right: 96% (92 to 98; n=140) | speed error: median 4%, 90th percentile 35%
+development, section 33: how reliable a measured direction is
+   plain ridges, whole vessels        without truth: 0 of 23 three-arm junctions are all in or all out, p = 0.98; 43 of 43 pairs of sides agree, p = 0.99 | with truth: 1.00 of 176 arms, 1.00 of 135 whole vessels
+   consolidated, whole vessels        without truth: 4 of 29 three-arm junctions are all in or all out, p = 0.82; 12 of 12 pairs of sides agree, p = 0.98 | with truth: 0.96 of 140 arms, 1.00 of 120 whole vessels
+development, section 33: the confidence of the junctions found, type right against type wrong
+   plain ridges                                     52 right, 19 wrong | by geometry 0.86 against 0.63, told apart 0.86 | with flow 0.95 against 0.80, told apart 0.87 | 69 confirms, 1 contradicts, 1 no flow data
+   consolidated, keeping short pieces               40 right, 22 wrong | by geometry 0.79 against 0.41, told apart 0.80 | with flow 0.92 against 0.50, told apart 0.84 | 52 confirms, 9 contradicts, 1 no flow data
+   consolidated, dropping short pieces              27 right, 11 wrong | by geometry 0.77 against 0.56, told apart 0.71 | with flow 0.92 against 0.70, told apart 0.86 | 37 confirms, 1 contradicts
+   tube rule on plain ridges                        30 right, 16 wrong | by geometry 0.88 against 0.60, told apart 0.93 | with flow 0.96 against 0.80, told apart 0.96 | 46 confirms
+   consolidated, tube rule                          47 right, 22 wrong | by geometry 0.82 against 0.62, told apart 0.69 | with flow 0.93 against 0.74, told apart 0.75 | 64 confirms, 3 contradicts, 2 no flow data
+   plain ridges, whole vessels                      52 right, 19 wrong | by geometry 0.86 against 0.63, told apart 0.86 | with flow 0.95 against 0.81, told apart 0.86 | 69 confirms, 1 contradicts, 1 no flow data
+   consolidated, whole vessels                      40 right, 22 wrong | by geometry 0.79 against 0.41, told apart 0.80 | with flow 0.87 against 0.53, told apart 0.79 | 50 confirms, 11 contradicts, 1 no flow data
+   plain ridges, whole vessels, likelihood ratio    52 right, 19 wrong | by geometry 0.86 against 0.63, told apart 0.86 | with flow 0.88 against 0.68, told apart 0.78 | 31 confirms, 31 no other reading, 8 no flow data, 1 speaks against
+   consolidated, whole vessels, likelihood ratio    40 right, 22 wrong | by geometry 0.79 against 0.41, told apart 0.80 | with flow 0.79 against 0.41, told apart 0.80 | 39 no other reading, 12 no flow data, 9 confirms, 2 fits both
+development, section 33: the trunk of a bifurcation (found at a true bifurcation, three arms, all matched to true limbs)
+   plain ridges                                     widest: 67% (46 to 86; n=27) | direction: 100% (100 to 100; n=17) | both: 78% (56 to 96; n=27)
+   consolidated, keeping short pieces               widest: 39% (21 to 58; n=31) | direction: 100% (100 to 100; n=13) | both: 58% (41 to 73; n=31)
+   consolidated, dropping short pieces              widest: 46% (26 to 68; n=24) | direction: 100% (100 to 100; n=12) | both: 71% (57 to 84; n=24)
+   tube rule on plain ridges                        widest: 75% (54 to 93; n=16) | direction: 100% (100 to 100; n=12) | both: 88% (69 to 100; n=16)
+   consolidated, tube rule                          widest: 46% (29 to 67; n=28) | direction: 92% (70 to 100; n=12) | both: 64% (45 to 82; n=28)
+   plain ridges, whole vessels                      widest: 67% (46 to 86; n=27) | direction: 100% (100 to 100; n=14) | both: 74% (54 to 92; n=27)
+   consolidated, whole vessels                      widest: 39% (21 to 58; n=31) | direction: 95% (85 to 100; n=19) | both: 74% (57 to 89; n=31)
+
+held out, section 32: the speed of whole vessels with a clear speed that lie on one true segment
+   plain ridges, whole vessels                      median error 4% of the true speed, 90th percentile 19% | median sigma 5% | true speed within 2 sigma: 74% (63 to 83; n=121) | direction right: 100% (100 to 100; n=121) | neighbouring windows that agree: 77 of 102
+   consolidated, whole vessels                      median error 6% of the true speed, 90th percentile 36% | median sigma 7% | true speed within 2 sigma: 71% (57 to 85; n=112) | direction right: 99% (97 to 100; n=112) | neighbouring windows that agree: 69 of 86
+   plain ridges, whole vessels, likelihood ratio    median error 4% of the true speed, 90th percentile 19% | median sigma 5% | true speed within 2 sigma: 74% (63 to 83; n=121) | direction right: 100% (100 to 100; n=121) | neighbouring windows that agree: 77 of 102
+   consolidated, whole vessels, likelihood ratio    median error 6% of the true speed, 90th percentile 36% | median sigma 7% | true speed within 2 sigma: 71% (57 to 85; n=112) | direction right: 99% (97 to 100; n=112) | neighbouring windows that agree: 69 of 86
+held out, the flow at the arms of the junctions found (measured directions): per piece against whole vessels
+   plain ridges                                     direction right: 99% (96 to 100; n=174) | speed error: median 9%, 90th percentile 37%
+   consolidated, keeping short pieces               direction right: 100% (100 to 100; n=107) | speed error: median 4%, 90th percentile 36%
+   consolidated, dropping short pieces              direction right: 98% (95 to 100; n=66) | speed error: median 3%, 90th percentile 41%
+   tube rule on plain ridges                        direction right: 98% (94 to 100; n=127) | speed error: median 7%, 90th percentile 37%
+   consolidated, tube rule                          direction right: 99% (97 to 100; n=121) | speed error: median 5%, 90th percentile 38%
+   plain ridges, whole vessels                      direction right: 96% (91 to 99; n=151) | speed error: median 5%, 90th percentile 20%
+   consolidated, whole vessels                      direction right: 96% (92 to 99; n=129) | speed error: median 8%, 90th percentile 46%
+held out, section 33: how reliable a measured direction is
+   plain ridges, whole vessels        without truth: 2 of 19 three-arm junctions are all in or all out, p = 0.85; 23 of 23 pairs of sides agree, p = 0.99 | with truth: 0.96 of 151 arms, 1.00 of 121 whole vessels
+   consolidated, whole vessels        without truth: 0 of 20 three-arm junctions are all in or all out, p = 0.98; 15 of 15 pairs of sides agree, p = 0.98 | with truth: 0.96 of 129 arms, 0.99 of 112 whole vessels
+held out, section 33: the confidence of the junctions found, type right against type wrong
+   plain ridges                                     50 right, 21 wrong | by geometry 0.86 against 0.62, told apart 0.81 | with flow 0.94 against 0.76, told apart 0.81 | 67 confirms, 2 contradicts, 2 no flow data
+   consolidated, keeping short pieces               38 right, 20 wrong | by geometry 0.83 against 0.70, told apart 0.53 | with flow 0.93 against 0.78, told apart 0.56 | 48 confirms, 7 no flow data, 3 contradicts
+   consolidated, dropping short pieces              22 right, 19 wrong | by geometry 0.83 against 0.62, told apart 0.67 | with flow 0.93 against 0.76, told apart 0.68 | 35 confirms, 4 no flow data, 2 contradicts
+   tube rule on plain ridges                        26 right, 19 wrong | by geometry 0.86 against 0.68, told apart 0.78 | with flow 0.95 against 0.84, told apart 0.83 | 44 confirms, 1 no flow data
+   consolidated, tube rule                          39 right, 22 wrong | by geometry 0.83 against 0.56, told apart 0.80 | with flow 0.93 against 0.78, told apart 0.81 | 60 confirms, 1 no flow data
+   plain ridges, whole vessels                      50 right, 21 wrong | by geometry 0.86 against 0.62, told apart 0.81 | with flow 0.93 against 0.76, told apart 0.79 | 66 confirms, 3 contradicts, 2 no flow data
+   consolidated, whole vessels                      38 right, 20 wrong | by geometry 0.83 against 0.70, told apart 0.53 | with flow 0.93 against 0.77, told apart 0.57 | 48 confirms, 7 no flow data, 3 contradicts
+   plain ridges, whole vessels, likelihood ratio    50 right, 21 wrong | by geometry 0.86 against 0.62, told apart 0.81 | with flow 0.87 against 0.65, told apart 0.78 | 29 no other reading, 24 confirms, 14 no flow data, 2 fits both, 2 speaks against
+   consolidated, whole vessels, likelihood ratio    38 right, 20 wrong | by geometry 0.83 against 0.70, told apart 0.53 | with flow 0.86 against 0.71, told apart 0.54 | 34 no other reading, 17 confirms, 3 speaks against, 3 no flow data, 1 fits both
+held out, section 33: the trunk of a bifurcation (found at a true bifurcation, three arms, all matched to true limbs)
+   plain ridges                                     widest: 73% (59 to 87; n=26) | direction: 100% (100 to 100; n=13) | both: 85% (68 to 97; n=26)
+   consolidated, keeping short pieces               widest: 52% (27 to 75; n=27) | direction: 100% (100 to 100; n=12) | both: 70% (52 to 87; n=27)
+   consolidated, dropping short pieces              widest: 62% (41 to 82; n=24) | direction: 100% (100 to 100; n=12) | both: 83% (68 to 96; n=24)
+   tube rule on plain ridges                        widest: 80% (67 to 100; n=15) | direction: 100% (100 to 100; n=13) | both: 100% (100 to 100; n=15)
+   consolidated, tube rule                          widest: 43% (23 to 62; n=23) | direction: 100% (100 to 100; n=11) | both: 61% (39 to 80; n=23)
+   plain ridges, whole vessels                      widest: 73% (59 to 87; n=26) | direction: 100% (100 to 100; n=10) | both: 88% (75 to 100; n=26)
+   consolidated, whole vessels                      widest: 52% (27 to 75; n=27) | direction: 92% (70 to 100; n=12) | both: 70% (48 to 89; n=27)
+
+Kept: 2879 rows of junctions, 3576 rows of arms and 976 rows of whole vessels, in vessel_pictures/harness
+[memory] harness: 1.07 GB now, 1.49 GB at the most so far
+----- cell 1 took 490.7 s | 8.3 min since the start
+
+===== cell 2 id=generator-functions | started at 23:10:33 | SYNTH_LOOP = 0.5             # chance that one daughter of a tree runs back into the other one, whic
+----- cell 2 took 0.2 s | 8.3 min since the start
+
+===== cell 3 id=section-35 | started at 23:10:34 | # the 32 old seeds, made by both generators: with no thing switched on they have to be the same to t
+Old seeds: 32 of 32 are the same to the bit when made by section 35's generator with no thing switched on
+
+Per new burst: capil = capillary segments, bifur = bifurcations, ends = terminations, cross = projected crossings, anast = anastomoses, overl = collinear overlaps, asked = junctions asked for
+set                  kind                 seed  trees segments  capil  bifur  loops   gaps   ends  cross  anast  overl  halos  asked  shift (x y) bg error
+trees, developing    trees                2001      6     17      7      6      1      3      1     10      0      1      3      9  +18.0 +18.8   0.0060
+trees, developing    trees                2002      6     21      8      9      3      2      1     14      0      1      3     11  +26.8 +16.6   0.0061
+trees, developing    trees                2003      6     22     11      9      2      5      3     13      0      1      3     10  +24.7 -13.7   0.0051
+trees, developing    trees                2004      6     19      9      7      1      2      1     14      0      1      3     13  -13.9 +11.7   0.0060
+trees, developing    trees                2005      6     21     10      8      1      3      2     15      0      1      3     13   +8.6 -23.9   0.0057
+trees, developing    trees                2006      6     23     11     10      3      2      2     15      0      1      3     11  -18.4 +21.3   0.0057
+trees, developing    trees                2007      6     21     10      8      1      2      6      9      0      1      3      9  -23.2 +14.6   0.0062
+trees, developing    trees                2008      6     20      9      8      2      3      4     13      0      1      3      6  +20.1 -16.4   0.0058
+trees, developing    trees                2009      6     21      9      9      3      5      1      8      0      1      3     14  +23.9 +15.7   0.0059
+trees, developing    trees                2010      6     21     10      8      1      5      4     15      0      1      3      8   -27.5 -9.9   0.0055
+trees, developing    trees                2011      6     21     10      8      1      7      2     14      0      1      3      6  -12.3 +21.9   0.0052
+trees, developing    trees                2012      6     18      6      7      2      5      0     16      0      1      3     11  -24.7 -25.8   0.0057
+trees, developing    trees                2013      6     22     10      9      2      3      2     13      0      1      3      7  +24.3 -23.8   0.0056
+trees, developing    trees                2014      6     23     12      9      1      4      1     16      0      1      3     16  -22.4 +15.1   0.0057
+trees, developing    trees                2015      6     17      7      6      1      3      2      9      0      1      3     11  +26.6 -16.6   0.0060
+trees, developing    trees                2016      6     18      7      7      2      2      1     14      0      1      3     11   -14.8 -9.8   0.0054
+trees, held out      trees                3001      6     23     12      9      1      5      5     19      0      1      3     13  -18.5 +20.6   0.0057
+trees, held out      trees                3002      6     20      8      8      2      6      4     14      0      1      3     14   -9.3 -10.5   0.0058
+trees, held out      trees                3003      6     17      7      6      1      2      1     10      0      1      3      6  +14.2 +20.6   0.0063
+trees, held out      trees                3004      6     20      9      8      2      4      2      9      0      1      3      7  -24.8 +13.5   0.0052
+trees, held out      trees                3005      6     20      9      8      2      4      4     16      0      1      3      3  +16.4 -12.5   0.0058
+trees, held out      trees                3006      6     19      8      7      1      1      2      9      0      1      3     11  +17.5 -11.5   0.0057
+trees, held out      trees                3007      6     20      9      8      2      5      0     16      0      1      3     14  -13.2 -19.2   0.0053
+trees, held out      trees                3008      6     20      9      8      2      2      2     19      0      1      3     16  +22.4 +16.5   0.0057
+trees, held out      trees                3009      6     17      6      6      1      1      0      9      0      1      3     11    +9.6 -8.5   0.0057
+trees, held out      trees                3010      6     23     12      9      1      3      1     17      0      1      3     10  -16.9 +22.7   0.0054
+trees, held out      trees                3011      6     21     10      8      1      4      2     15      0      1      3     12  -20.7 -10.9   0.0060
+trees, held out      trees                3012      6     23     12      9      1      3      4     19      0      1      3     13  -23.5 -13.7   0.0055
+trees, held out      trees                3013      6     21     10      8      1      5      3     13      0      1      3     10  -13.4 -24.1   0.0061
+trees, held out      trees                3014      6     19      9      7      1      5      1     14      0      1      3      4  +12.3 +28.9   0.0057
+trees, held out      trees                3015      6     22     12      8      0      4      3     16      0      1      3     13  -12.1 +12.0   0.0052
+trees, held out      trees                3016      6     21     10      8      1      5      4     16      0      1      3     12   -8.1 -18.0   0.0055
+plexus, developing   crossing plexus      4001      7      7      2      0      0      2      0     13      0      0      5     12  -21.8 +17.3   0.0057
+plexus, developing   crossing plexus      4002      7      7      3      0      0      2      0     12      0      0      4     11  +27.4 -20.8   0.0061
+plexus, developing   crossing plexus      4003      7      7      2      0      0      3      0     13      0      0      5      8  -21.3 -13.0   0.0058
+plexus, developing   crossing plexus      4004      7      7      4      0      0      2      0     12      0      0      3      9  +19.6 -14.2   0.0062
+plexus, developing   crossing plexus      4005      7      7      2      0      0      1      0      9      0      0      5      9  +24.8 +17.1   0.0056
+plexus, developing   crossing plexus      4006      7      7      5      0      0      3      0     10      0      0      2      7  +29.5 -15.8   0.0061
+plexus, developing   crossing plexus      4007      7      7      4      0      0      3      0     12      0      0      3     10  +25.0 -22.6   0.0060
+plexus, developing   crossing plexus      4008      7      7      3      0      0      1      0     11      0      0      4      9  -21.3 -24.7   0.0055
+plexus, developing   anastomotic plexus   4001      1     33      8      0      0      4      0      0     13      0      1      9  -21.8 +17.3   0.0057
+plexus, developing   anastomotic plexus   4002      1     31     15      0      0      4      0      0     12      0      1      7  +27.4 -20.8   0.0053
+plexus, developing   anastomotic plexus   4003      1     33      7      0      0      4      0      0     13      0      1     10  -21.3 -13.0   0.0054
+plexus, developing   anastomotic plexus   4004      1     31     17      0      0      4      0      0     12      0      1      8  +19.6 -14.2   0.0054
+plexus, developing   anastomotic plexus   4005      1     25      9      0      0      2      0      0      9      0      1      4  +24.8 +17.1   0.0056
+plexus, developing   anastomotic plexus   4006      1     27     18      0      0      4      0      0     10      0      1      3  +29.5 -15.8   0.0064
+plexus, developing   anastomotic plexus   4007      1     31     17      0      0      3      0      0     12      0      1      4  +25.0 -22.6   0.0055
+plexus, developing   anastomotic plexus   4008      1     29     11      0      0      4      0      0     11      0      1     10  -21.3 -24.7   0.0058
+plexus, held out     crossing plexus      5001      7      7      3      0      0      2      0     14      0      0      4     14   -24.2 -8.6   0.0057
+plexus, held out     crossing plexus      5002      7      7      4      0      0      2      0      9      0      0      3      9  -13.3 +12.2   0.0056
+plexus, held out     crossing plexus      5003      7      7      5      0      0      2      0     10      0      0      2      7   +23.4 -8.5   0.0057
+plexus, held out     crossing plexus      5004      7      7      5      0      0      3      0     11      0      0      2      3   +10.1 -8.4   0.0060
+plexus, held out     crossing plexus      5005      7      7      6      0      0      4      0     11      0      0      1      9  +12.1 -23.7   0.0054
+plexus, held out     crossing plexus      5006      7      7      3      0      0      1      0     13      0      0      4     13   +8.6 -19.8   0.0052
+plexus, held out     crossing plexus      5007      7      7      1      0      0      2      0     10      0      0      6      9  -29.3 -16.1   0.0061
+plexus, held out     crossing plexus      5008      7      7      3      0      0      1      0     12      0      0      4      4  -14.8 +17.3   0.0060
+plexus, held out     anastomotic plexus   5001      1     35     15      0      0      3      0      0     14      0      1     11   -24.2 -8.6   0.0052
+plexus, held out     anastomotic plexus   5002      1     25     14      0      0      2      0      0      9      0      1      9  -13.3 +12.2   0.0057
+plexus, held out     anastomotic plexus   5003      1     27     21      0      0      2      0      0     10      0      1      4   +23.4 -8.5   0.0057
+plexus, held out     anastomotic plexus   5004      1     29     19      0      0      3      0      0     11      0      1      3   +10.1 -8.4   0.0060
+plexus, held out     anastomotic plexus   5005      1     29     26      0      0      7      0      0     11      0      1      3  +12.1 -23.7   0.0057
+plexus, held out     anastomotic plexus   5006      1     33     14      0      0      4      0      0     13      0      1     11   +8.6 -19.8   0.0055
+plexus, held out     anastomotic plexus   5007      1     27      3      0      0      3      0      0     10      0      1      9  -29.3 -16.1   0.0058
+plexus, held out     anastomotic plexus   5008      1     31     12      0      0      3      0      0     12      0      1      5  -14.8 +17.3   0.0055
+
+In all, per set and kind:
+trees, developing    trees                16 bursts | 146 capillary segments, 128 bifurcations, 27 loops, 56 gaps, 33 terminations, 208 projected crossings, 0 anastomoses, 16 collinear overlaps, 48 halos, 166 junctions asked for
+trees, held out      trees                16 bursts | 152 capillary segments, 125 bifurcations, 20 loops, 59 gaps, 38 terminations, 231 projected crossings, 0 anastomoses, 16 collinear overlaps, 48 halos, 169 junctions asked for
+plexus, developing   crossing plexus       8 bursts | 25 capillary segments, 0 bifurcations, 0 loops, 17 gaps, 0 terminations, 92 projected crossings, 0 anastomoses, 0 collinear overlaps, 31 halos, 75 junctions asked for
+plexus, developing   anastomotic plexus    8 bursts | 102 capillary segments, 0 bifurcations, 0 loops, 29 gaps, 0 terminations, 0 projected crossings, 92 anastomoses, 0 collinear overlaps, 8 halos, 55 junctions asked for
+plexus, held out     crossing plexus       8 bursts | 30 capillary segments, 0 bifurcations, 0 loops, 17 gaps, 0 terminations, 90 projected crossings, 0 anastomoses, 0 collinear overlaps, 26 halos, 68 junctions asked for
+plexus, held out     anastomotic plexus    8 bursts | 124 capillary segments, 0 bifurcations, 0 loops, 27 gaps, 0 terminations, 0 projected crossings, 90 anastomoses, 0 collinear overlaps, 8 halos, 55 junctions asked for
+[memory] section 35: 1.09 GB now, 1.49 GB at the most so far
+----- cell 3 took 962.4 s | 24.3 min since the start
+
+DONE: 4 code cells in 24.3 min (1461 s), finished 2026-10-13 23:26:37
