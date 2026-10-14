@@ -1,0 +1,58 @@
+Run of development copy 2.ipynb started 2026-10-14 14:27:01: 4 code cells (only 4b1e8e10, render-functions, section-38-one-burst, section-38-real)
+
+===== cell 0 id=4b1e8e10 | started at 14:27:03 | # In a fresh kernel, start here: nothing above this cell has to be run. The cells that only define f
+A fresh kernel: the definitions were run from the notebook file. Opened 2 fixations of 1920 x 1200 px: 113 frames, 18 frames
+[memory] inputs opened: 0.99 GB now, 0.99 GB at the most so far
+----- cell 0 took 4.3 s | 0.1 min since the start
+
+===== cell 1 id=render-functions | started at 14:27:08 | WINDOW_ALIGN = 20        # pixels; a re-scored window starts and ends on multiples of this (the widt
+----- cell 1 took 0.4 s | 0.1 min since the start
+
+===== cell 2 id=section-38-one-burst | started at 14:27:08 | # acceptance step 5 on one synthetic burst first: the initial model rendered and scored, its self-co
+Synthetic burst 1: 29 edges (21 drawn, the rest twins) in 6 lumens | blur fitted on the profiles 1.75 px (section 29's picture_blur 2.47; the trees' true mean blurs [1.3, 1.96, 2.12])
+   darkness: kappa median 0.0203 (the generator's 0.025), 141 windows; the last pass changed kappa by 3.11 sigma at the most
+   self-consistency, whole frame: render in data: found 90.6%, by chance 7.9%, above chance 89.8% | data in render: found 97.4%, by chance 8.9%, above chance 97.1%
+   self-consistency, within the tubes: render in data: found 94.3%, by chance 7.5%, above chance 93.9% | data in render: found 97.7%, by chance 9.0%, above chance 97.5%
+   the data's own repeatability (against the second fixation): found 98.5%, by chance 7.5%, above chance 98.4%
+   the generator's own noiseless truth, scored the same way: render in data: found 100.0%, by chance 7.2%, above chance 100.0% | data in render: found 99.3%, by chance 7.2%, above chance 99.3%
+   zero point per width (median over the orientations measured; points): 2.1: +0.53 (73), 3: +0.53 (1266), 4.2: +3.18 (514)
+   spline_to_graph: 22 vertices, 23 edges, 2 cycles, 10 twins | of vessel_graph's 9 junctions, 7 have a vertex of three or more arms within 5 px
+----- cell 2 took 101.5 s | 1.8 min since the start
+
+===== cell 3 id=section-38-real | started at 14:28:50 | # acceptance step 5 on the real burst: the initial model of the anchor's fixation rendered and score
+Run of development copy 2.ipynb started 2026-10-14 15:11:38: 4 code cells (only 4b1e8e10, render-functions, section-38-one-burst, section-38-real)
+
+===== cell 0 id=4b1e8e10 | started at 15:11:41 | # In a fresh kernel, start here: nothing above this cell has to be run. The cells that only define f
+A fresh kernel: the definitions were run from the notebook file. Opened 2 fixations of 1920 x 1200 px: 113 frames, 18 frames
+[memory] inputs opened: 0.99 GB now, 0.99 GB at the most so far
+----- cell 0 took 11.2 s | 0.2 min since the start
+
+===== cell 1 id=render-functions | started at 15:11:52 | WINDOW_ALIGN = 20        # pixels; a re-scored window starts and ends on multiples of this (the widt
+----- cell 1 took 0.4 s | 0.2 min since the start
+
+===== cell 2 id=section-38-one-burst | started at 15:11:52 | # acceptance step 5 on one synthetic burst first: the initial model rendered and scored, its self-co
+Synthetic burst 1: 29 edges (21 drawn, the rest twins) in 6 lumens | blur fitted on the profiles 1.75 px (section 29's picture_blur 2.47; the trees' true mean blurs [1.3, 1.96, 2.12])
+   darkness: kappa median 0.0203 (the generator's 0.025), 141 windows; the last pass changed kappa by 3.11 sigma at the most
+   self-consistency, whole frame: render in data: found 90.6%, by chance 7.9%, above chance 89.8% | data in render: found 97.4%, by chance 8.9%, above chance 97.1%
+   self-consistency, within the tubes: render in data: found 94.3%, by chance 7.5%, above chance 93.9% | data in render: found 97.7%, by chance 9.0%, above chance 97.5%
+   the data's own repeatability (against the second fixation): found 98.5%, by chance 7.5%, above chance 98.4%
+   the generator's own noiseless truth, scored the same way: render in data: found 100.0%, by chance 7.2%, above chance 100.0% | data in render: found 99.3%, by chance 7.2%, above chance 99.3%
+   zero point per width (median over the orientations measured; points): 2.1: +0.53 (73), 3: +0.53 (1266), 4.2: +3.18 (514)
+   spline_to_graph: 22 vertices, 23 edges, 2 cycles, 10 twins | of vessel_graph's 9 junctions, 7 have a vertex of three or more arms within 5 px
+----- cell 2 took 64.6 s | 1.3 min since the start
+
+===== cell 3 id=section-38-real | started at 15:12:57 | # acceptance step 5 on the real burst: the initial model of the anchor's fixation rendered and score
+Real burst, fixation 0: the initial model in 10.2 min: 1812 edges (1079 drawn, 733 twins not drawn) in 493 lumens | blur fitted on the profiles 3.00 px (section 29's picture_blur 1.50) | kappa median 0.2079; the last pass changed kappa by 50.05 sigma at the most
+   spline_to_graph of the pieces: 1560 vertices (660 ends, 250 of two arms, 509 of three, 140 of four or more), 1646 edges, 245 cycles, 829 twins | clean: 97 pairs of vertices closer than 4 px, 0 edges under 2 px
+   the self-consistency number, whole frame: render in data: found 86.3%, by chance 26.6%, above chance 81.4% | data in render: found 73.8%, by chance 21.6%, above chance 66.6%
+   within the tubes: render in data: found 87.4%, by chance 26.5%, above chance 82.9% | data in render: found 81.3%, by chance 21.8%, above chance 76.1%
+   the data's own repeatability (fixation 0's ridges against fixation 1's): found 80.7%, by chance 23.7%, above chance 74.8%
+   zero point per width (median over the orientations measured; points): 1.5: +3.36 (4393), 2.1: +2.72 (10275), 3: +1.02 (16215), 4.2: +0.77 (14543), 6: +0.69 (3749), 8.5: +0.65 (2607), 12: +0.31 (582), 17: +2.31 (1214)
+   cost: a full re-score (all 16 x 8 channels and the ridges, 1920 x 1200) 61.2 s; a windowed one (320 px, 110 px margin, all widths) 5.3 s; the windowed channels differ from the full ones inside the window by 0.1189 at the most
+
+The gate: within the tubes the agreement reaches the data's own repeatability (yes: render in data 82.9%, data in render 76.1% against 74.8% above chance); the windowed re-score equals the full one within 0.005 (no: 0.1189); a move's evaluation (one windowed re-score) under a few seconds (no: 5.3 s) -> FAILED
+   the darkness fit is filmed in vessel_pictures/fit/kappa.gif (4 frames); the render is in vessel_pictures/render
+[memory] section 38, real burst: 1.21 GB now, 2.37 GB at the most so far
+----- cell 3 took 926.5 s | 16.8 min since the start
+
+DONE: 4 code cells in 16.8 min (1007 s), finished 2026-10-14 15:28:26

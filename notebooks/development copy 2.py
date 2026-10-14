@@ -7210,7 +7210,7 @@ DEFINITION_CELLS = ("setup", "background-functions", "graph-functions", "shared-
                     "segment-functions", "graph-builder", "junction-functions", "synthetic-functions",
                     "flow-vessel-functions", "harness-functions", "whole-vessel-functions", "flow-evidence-functions",
                     "generator-functions", "cyclic-graph-functions", "flux-network-functions",
-                    "junction-cell-functions")
+                    "junction-cell-functions", "render-functions", "core-functions")
 fresh_kernel = "load_saved" not in globals()
 if fresh_kernel:
     import contextlib
@@ -10963,3 +10963,993 @@ figure.suptitle("section 36's checks at a blur of 1.5 px: the rings (red: the on
 figure.tight_layout()
 figure.savefig("vessel_pictures/junction_cells/checks.png", dpi=90)
 plt.show()
+
+# %% [markdown]
+# ## 38(a). The model as splines, rendered and scored (acceptance step 5)
+#
+# **The graph as a view of the splines** (`spline_to_graph`, section 37's rules):
+#
+# - k ends within `RIDGE_JOIN` are one vertex.
+# - An end on another spline's body splits the body there (a T).
+# - Two bodies passing within a pixel at `SAME_ARM` degrees or more cross; at less they touch at a glance and make no vertex.
+# - A twin (`read_arms`' rule) is marked and makes no vertex.
+# - Vertices within one core are one.
+# - A spline that crosses itself makes a loop; multi-edges and self-loops are allowed.
+# - The cycles are counted as edges − vertices + components.
+#
+# **The initial model** (`initial_model`):
+#
+# - section 37's pieces, their graph with the junctions read from the geometry;
+# - the lumens: every edge united through its junction's groups of two or three and through two pieces meeting end to end; a crossing's two pairs stay two lumens;
+# - the darkness: R and κ per window outside the cores (`window_kappa`), fitted on the density with the other lumens' render taken off, the thickest first, three passes (`kappa_passes`).
+#
+# **The blur is fitted on the profiles.** Section 38 fits R and κ per window; with R fixed from the ridge's half-width, κ came out 2–3 times too large on synthetic bursts. The blur is fitted per picture as the median over windows of the blur that fits each profile best (`fitted_blur`). Section 29's `picture_blur` cannot be less than the blur plus the thinnest vessel's own width, and came out at 2.2–2.8 px against true blurs of 1.3–2.1. The fitted blur came out at 1.75 px.
+#
+# **The renderer** (`render_graph`, `draw_lumen`): each lumen drawn on its own canvas as chord density, the max within the lumen; its transmittance blurred; densities added across lumens. A twin is not drawn.
+#
+# **The scoring** (`scoring_frame`, `channel_answers`, `ridges_of`): section 19's contrast with the data's own noise map and gain, then section 20's fields per channel, 16 orientations × 8 widths, before the widths compete, in noise units of the data's eight constants. The render is never measured. On the real burst the noise map is rebuilt from the saved density with section 12's `local_rms`, on quiet pixels taken as those with no neuron above `T_LOW` within 8 px, since section 29 saves neither; the data and the render go through the same rebuilt scoring. The ridges are `ridge_crests` on the winner, with no interactions.
+#
+# **The self-consistency number** (`self_consistency`): the render's ridges found again in the data's within `REPEAT_WITHIN`, and the data's in the render's, with what chance finds taken off (`repeated`). It is measured over the whole frame and within the tubes. **The zero point** of the topology residual per channel (`zero_points`) is the median of data minus render on the model's own centerline points. The topology residual is `topology_residual`. **Windowed re-scoring** (`rescore_window`) works on windows aligned to 20 px with a 110 px margin.
+#
+# **The gate** (Part III, step 5): within the tubes the agreement reaches the data's own repeatability on the real burst; the windowed re-score equals the full one inside the window within 0.005; a move's evaluation (one windowed re-score) takes under a few seconds (5 s is the line drawn here).
+#
+# **Result:** `real_model`, the numbers printed, `vessel_pictures/render/`, and the darkness fit's film `vessel_pictures/fit/kappa.gif`.
+
+# %%
+WINDOW_ALIGN = 20        # pixels; a re-scored window starts and ends on multiples of this (the widths' reduced grids:
+                         # factors 2, 2, 4 and 5 for widths 6 and up)
+WINDOW_MARGIN = 110      # pixels; around a re-scored window, so that the widest field sees what it sees in the frame
+KAPPA_PASSES = 3         # passes of the darkness fit over the lumens (Gauss-Seidel, the thickest first)
+PROFILE_STEP = 0.5       # pixels between the samples of a density profile across a vessel
+RIDGE_FINE = 3           # sub-pixel points a side when a vessel thinner than 2 px is drawn
+NOISE_WINDOW = 48        # pixels; section 12's window for the local noise of the density (fit_background's default)
+
+
+# ---------------------------------------------------------------- spline_to_graph (section 37)
+
+def spline_to_graph(splines, join=RIDGE_JOIN):
+    """The graph as a view of a set of splines (section 37's rules). Each spline is a dict with x, y and radius
+    (half-width) arrays, points about a pixel apart.
+
+      ends    k ends within `join` of each other are one vertex of k arms
+      T       an end within `join` of another spline's body (away from its ends) splits the body there
+      cross   two bodies that pass within a pixel of each other at SAME_ARM degrees or more cross: both are split at
+              the closest points, one vertex of four arms; at less they touch at a glance and make no vertex
+      twin    a spline that runs beside a longer one for most of its length (read_arms' rule: within SAME_ARM
+              degrees, closer than the larger width plus RING_MARGIN) is marked and makes no vertex
+      core    two vertices joined by a piece no longer than one core (half the widest incident width plus
+              RING_MARGIN) are one, as contract_cores does, while the merged vertex stays within two cores
+      loop    a spline that crosses itself is split there; multi-edges and self-loops are allowed
+    Returns {"vertices": [{"x", "y", "ends": [(edge, end)]}], "edges": [{"x", "y", "radius", "spline", "span",
+    "vertices"}], "twins": the twin splines, "cycles": edges - vertices + components}."""
+    cuts = [{0, len(spline["x"]) - 1} for spline in splines]
+    links = []  # (spline, place), (spline, place): one vertex
+    ends = [(number, place) for number, spline in enumerate(splines) for place in (0, len(spline["x"]) - 1)]
+    end_xy = np.array([[splines[n]["x"][p], splines[n]["y"][p]] for n, p in ends]).reshape(-1, 2)
+    if len(ends):
+        for a, b in scipy.spatial.cKDTree(end_xy).query_pairs(join):
+            links.append((ends[a], ends[b]))
+    owner = np.concatenate([np.full(len(spline["x"]), number) for number, spline in enumerate(splines)])
+    place = np.concatenate([np.arange(len(spline["x"])) for spline in splines])
+    xy = np.column_stack([np.concatenate([spline["x"] for spline in splines]), np.concatenate([spline["y"] for spline in splines])])
+    tree = scipy.spatial.cKDTree(xy)
+    size = np.array([len(spline["x"]) for spline in splines])
+    body = lambda spot: join < place[spot] < size[owner[spot]] - 1 - join
+    # T: an end that lands on another spline's body
+    for (number, spot), (x, y) in zip(ends, end_xy):
+        for other in tree.query_ball_point((x, y), join):
+            if owner[other] != number and body(other):
+                cuts[owner[other]].add(int(place[other]))
+                links.append(((number, spot), (int(owner[other]), int(place[other]))))
+    # crossings, glancing contacts and loops: points of two bodies (or two far parts of one) within a pixel
+    def tangent(spot):
+        number, at = owner[spot], place[spot]
+        lo, hi = max(at - 2, 0), min(at + 2, size[number] - 1)
+        start = np.flatnonzero(owner == number)[0]
+        d = xy[start + hi] - xy[start + lo]
+        return d / max(np.hypot(*d), 1e-9)
+    pairs = np.array(sorted(tree.query_pairs(1.0)), dtype=int).reshape(-1, 2)
+    pairs = pairs[[body(a) and body(b) and (owner[a] != owner[b] or abs(place[a] - place[b]) > 4 * join + 2) for a, b in pairs]] \
+        if len(pairs) else pairs
+    taken = set()
+    for a, b in sorted(pairs.tolist(), key=lambda pair: np.hypot(*(xy[pair[0]] - xy[pair[1]]))):
+        key = (owner[a], place[a] // 6, owner[b], place[b] // 6)
+        if key in taken:
+            continue  # one contact is one crossing, at its closest pair
+        turn = np.degrees(np.arccos(np.clip(abs(np.dot(tangent(a), tangent(b))), 0, 1)))
+        taken.update({(owner[a], place[a] // 6 + d1, owner[b], place[b] // 6 + d2) for d1 in (-1, 0, 1) for d2 in (-1, 0, 1)})
+        if turn < SAME_ARM:
+            continue  # a glance: no vertex
+        cuts[owner[a]].add(int(place[a]))
+        cuts[owner[b]].add(int(place[b]))
+        links.append(((int(owner[a]), int(place[a])), (int(owner[b]), int(place[b]))))
+    # twins
+    twins = set()
+    lengths = size.astype(float)
+    if len(xy):
+        widths = 2 * np.concatenate([spline["radius"] for spline in splines]).astype(float) / CYLINDER
+        theta = np.concatenate([np.arctan2(np.gradient(spline["y"]), np.gradient(spline["x"])) for spline in splines])
+        i, j, distance = near_pairs(xy[:, 0], xy[:, 1], widths + RING_MARGIN)
+        turned = np.abs(theta[i] - theta[j]) % np.pi
+        beside = ((owner[i] != owner[j]) & (lengths[owner[j]] > lengths[owner[i]])
+                  & (np.degrees(np.minimum(turned, np.pi - turned)) < SAME_ARM) & (distance <= np.maximum(widths[i], widths[j]) + RING_MARGIN))
+        alongside = np.zeros(len(xy), dtype=bool)
+        alongside[i[beside]] = True
+        for number in range(len(splines)):
+            if alongside[owner == number].mean() > 0.5:
+                twins.add(number)
+    # the vertices: every cut of every spline, joined by the links
+    keys = [(number, spot) for number in range(len(splines)) for spot in sorted(cuts[number])]
+    index = {key: number for number, key in enumerate(keys)}
+    parent = list(range(len(keys)))
+
+    def root(node):
+        while parent[node] != node:
+            parent[node] = parent[parent[node]]
+            node = parent[node]
+        return node
+
+    for a, b in links:
+        if a in index and b in index:
+            parent[root(index[a])] = root(index[b])
+    spot_xy = np.array([[splines[n]["x"][p], splines[n]["y"][p]] for n, p in keys]).reshape(-1, 2)
+    # the pieces between cuts, and the cores contracted as contract_cores (section 26) does: two vertices joined by a
+    # piece no longer than the larger core (half the widest incident width plus RING_MARGIN) are one, shortest piece
+    # first, only while the merged vertex stays within two cores; the piece is then the vertex's core, not an edge
+    pieces = []
+    for number, spline in enumerate(splines):
+        spots = sorted(cuts[number])
+        for first, last in zip(spots[:-1], spots[1:]):
+            pieces.append((number, first, last))
+    width_at = lambda number, spot: 2 * float(splines[number]["radius"][spot]) / CYLINDER
+    core = {}
+    for number, first, last in pieces:
+        for spot in (first, last):
+            node = root(index[(number, spot)])
+            core[node] = max(core.get(node, 0.0), width_at(number, spot) / 2 + RING_MARGIN)
+    box = {node: [*spot_xy[node], *spot_xy[node]] for node in range(len(keys))}
+    for node in range(len(keys)):
+        top = root(node)
+        box[top] = [min(box[top][0], spot_xy[node][0]), min(box[top][1], spot_xy[node][1]),
+                    max(box[top][2], spot_xy[node][0]), max(box[top][3], spot_xy[node][1])]
+    length = lambda piece: float(np.sum(np.hypot(np.diff(splines[piece[0]]["x"][piece[1]:piece[2] + 1]),
+                                                 np.diff(splines[piece[0]]["y"][piece[1]:piece[2] + 1]))))
+    inside = set()
+    for piece in sorted(pieces, key=length):
+        a, b = root(index[(piece[0], piece[1])]), root(index[(piece[0], piece[2])])
+        reach = max(core.get(a, RING_MARGIN), core.get(b, RING_MARGIN))
+        if length(piece) > reach:
+            break
+        if a == b:
+            if length(piece) <= 2 * join:
+                inside.add(piece)  # a piece inside one vertex's core disappears into it
+            continue
+        merged = [min(box[a][0], box[b][0]), min(box[a][1], box[b][1]), max(box[a][2], box[b][2]), max(box[a][3], box[b][3])]
+        if max(merged[2] - merged[0], merged[3] - merged[1]) > 2 * reach:
+            continue
+        parent[b], box[a] = a, merged
+        core[a] = max(core.get(a, 0.0), core.get(b, 0.0))
+        inside.add(piece)
+    roots = sorted({root(node) for node in range(len(keys))})
+    vertex_of = {node: roots.index(root(node)) for node in range(len(keys))}
+    vertices = [{"x": 0.0, "y": 0.0, "ends": [], "members": 0} for _ in roots]
+    for node, (x, y) in enumerate(spot_xy):
+        vertex = vertices[vertex_of[node]]
+        vertex["x"] += x
+        vertex["y"] += y
+        vertex["members"] += 1
+    for vertex in vertices:
+        vertex["x"] /= max(vertex["members"], 1)
+        vertex["y"] /= max(vertex["members"], 1)
+    edges = []
+    for number, first, last in pieces:
+        if (number, first, last) in inside:
+            continue
+        a, b = vertex_of[index[(number, first)]], vertex_of[index[(number, last)]]
+        spline = splines[number]
+        edge = {name: np.asarray(spline[name][first:last + 1]) for name in ("x", "y", "radius")}
+        edge.update({"spline": number, "span": (first, last), "vertices": (a, b), "twin": number in twins})
+        vertices[a]["ends"].append((len(edges), 0))
+        vertices[b]["ends"].append((len(edges), 1))
+        edges.append(edge)
+    used = sorted({v for edge in edges for v in edge["vertices"]})
+    parent_of = {v: v for v in used}
+
+    def top(v):
+        while parent_of[v] != v:
+            v = parent_of[v]
+        return v
+
+    for edge in edges:
+        parent_of[top(edge["vertices"][0])] = top(edge["vertices"][1])
+    components = len({top(v) for v in used})
+    return {"vertices": vertices, "edges": edges, "twins": sorted(twins), "cycles": len(edges) - len(used) + components}
+
+
+# ---------------------------------------------------------------- the scoring of a picture (section 38a)
+
+def scoring_frame(density, valid, quiet, noise=None):
+    """What a picture and its render are scored with (section 19 then 20): the data's noise (a map, section 12's
+    local noise of the density on the quiet pixels, rebuilt from the saved density since section 29 does not save
+    it; or one number, as read_burst takes it on synthetic bursts), the gain that brings the quiet pixels' contrast
+    to a spread of 1, and the per-width noise constants of the data's even fields (channel_answers). The render is
+    never measured: it has no noise."""
+    if noise is None:
+        smooth = blur(np.where(valid, density, 0).astype(np.float32), 1)
+        noise = local_rms(smooth - np.median(smooth[quiet]), quiet, NOISE_WINDOW)
+    contrast = contrast_layer(density, noise, valid)
+    gain = float(robust_sd(contrast[quiet]))
+    frame = {"noise": noise, "gain": gain, "valid": valid, "quiet": quiet}
+    frame["levels"] = channel_levels(contrast / gain, valid, quiet)
+    return frame
+
+
+def to_contrast(picture, frame):
+    """A picture (the data or a render) as section 19's contrast, with the data's noise and gain."""
+    return contrast_layer(picture, frame["noise"], frame["valid"]) / np.float32(frame["gain"])
+
+
+def channel_levels(contrast, valid, quiet, widths=HYPER_WIDTHS):
+    """The per-width noise constants of section 20: the robust spread of the even field over the quiet pixels (the
+    median over orientations), as orientation_hypercolumns measures them."""
+    rows, columns = contrast.shape
+    levels = []
+    for width in widths:
+        factor = reduction(width)
+        spectrum, shape, inner = padded_spectrum(contrast, factor)
+        share = blur(valid.astype(np.float32), ELONGATION * width)
+        small = (columns // factor, rows // factor)
+        places = np.flatnonzero(cv2.resize((quiet & (share >= VALID_SHARE)).astype(np.uint8), small, interpolation=cv2.INTER_NEAREST))
+        sample = places[::max(1, len(places) // NOISE_SAMPLE)]
+        levels.append(float(np.median([robust_sd(field_answers(spectrum, shape, inner, width / factor, k)[0].ravel()[sample])
+                                       for k in range(0, N_ORIENT, 4)])) * factor ** -0.5)
+    return np.array(levels)
+
+
+def channel_answers(contrast, valid, levels, width_index, threads=None):
+    """The N_ORIENT neurons of one width before the widths compete, in noise units of the data's constant for that
+    width (no floor). Returns (N_ORIENT, rows, columns) float32."""
+    rows, columns = contrast.shape
+    width = HYPER_WIDTHS[width_index]
+    factor = reduction(width)
+    spectrum, shape, inner = padded_spectrum(contrast, factor)
+    small = (columns // factor, rows // factor)
+    seen = cv2.resize(blur(valid.astype(np.float32), ELONGATION * width), small, interpolation=cv2.INTER_AREA) >= VALID_SHARE
+    out = np.zeros((N_ORIENT, rows, columns), dtype=np.float32)
+
+    def one(k):
+        even, odd, halves = field_answers(spectrum, shape, inner, width / factor, k)
+        answer = np.where(seen, complex_unit(even, odd, halves), 0).astype(np.float32) * np.float32(factor ** -0.5)
+        out[k] = cv2.resize(answer, (columns, rows), interpolation=cv2.INTER_LINEAR) if factor > 1 else answer
+
+    with ThreadPoolExecutor(max_workers=threads or 1) as pool:
+        list(pool.map(one, range(N_ORIENT)))
+    return out / np.float32(levels[width_index])
+
+
+def channel_winner(contrast, valid, levels, threads=None):
+    """The competition of section 20 on the channels (the largest over widths, then over orientations), without the
+    floor: strength, orientation and half-width per pixel, as winning_neurons gives them."""
+    best = np.zeros((N_ORIENT, *contrast.shape), dtype=np.float32)
+    width = np.zeros((N_ORIENT, *contrast.shape), dtype=np.uint8)
+    for place in range(len(HYPER_WIDTHS)):
+        answers = channel_answers(contrast, valid, levels, place, threads)
+        better = answers > best
+        best[better], width[better] = answers[better], place
+    orientation = np.argmax(best, axis=0).astype(np.uint8)
+    strength = np.take_along_axis(best, orientation[None], axis=0)[0]
+    half_width = np.asarray(HYPER_WIDTHS, dtype=np.float32)[np.take_along_axis(width, orientation[None], axis=0)[0]]
+    return strength, orientation, half_width
+
+
+def ridges_of(contrast, valid, levels, threads=None):
+    """The ridges of a picture's channels after the competition (ridge_crests on the winner, no interactions): what
+    the self-consistency number compares."""
+    strength, orientation, _ = channel_winner(contrast, valid, levels, threads)
+    region = apply_hysteresis_threshold(strength, T_LOW, T_HIGH) & valid
+    return ridge_crests(strength, orientation, region), strength
+
+
+def aligned_window(window, shape, margin=WINDOW_MARGIN, align=WINDOW_ALIGN):
+    """A window (top, left, bottom, right) grown to multiples of `align` and its crop with `margin` around it
+    (clipped to the frame, still aligned)."""
+    rows, columns = shape
+    top, left = (window[0] // align) * align, (window[1] // align) * align
+    bottom, right = min(-(-window[2] // align) * align, rows), min(-(-window[3] // align) * align, columns)
+    # the crop's far edges on multiples of `align` too, unless it reaches the frame's edge: the wide channels are
+    # computed on grids reduced 2, 4 and 5 times, which match the frame's only on such a crop (and only at a frame
+    # edge whose size is a multiple of `align`, as the real burst's 1200 x 1920 are)
+    crop = (max(top - margin, 0) // align * align, max(left - margin, 0) // align * align,
+            min(-(-(bottom + margin) // align) * align, rows), min(-(-(right + margin) // align) * align, columns))
+    return (top, left, bottom, right), crop
+
+
+def rescore_window(contrast, valid, levels, width_index, window, threads=None):
+    """One width's channels re-scored in a window only: computed on the window with WINDOW_MARGIN around it, aligned
+    to WINDOW_ALIGN, and cut back to the window. Returns the window and its (N_ORIENT, rows, columns) channels."""
+    inner, crop = aligned_window(window, contrast.shape)
+    t, l, b, r = crop
+    answers = channel_answers(contrast[t:b, l:r], valid[t:b, l:r], levels, width_index, threads)
+    return inner, answers[:, inner[0] - t:inner[2] - t, inner[1] - l:inner[3] - l]
+
+
+# ---------------------------------------------------------------- darkness and the renderer (section 38)
+
+def blurred_chord(radius, blur_sigma, offsets):
+    """The density across a cylinder of `radius` and unit absorption, blurred by `blur_sigma`, at `offsets` from its
+    axis (a fine grid convolved with the Gaussian, then read off)."""
+    reach = radius + 4 * blur_sigma + 2
+    grid = np.arange(-reach, reach + 1e-9, 0.1)
+    chord = 2 * np.sqrt(np.maximum(radius ** 2 - grid ** 2, 0))
+    kernel = np.exp(-0.5 * (np.arange(-4 * blur_sigma, 4 * blur_sigma + 1e-9, 0.1) / max(blur_sigma, 1e-3)) ** 2)
+    smooth = np.convolve(chord, kernel / kernel.sum(), mode="same")
+    return np.interp(offsets, grid, smooth, left=0.0, right=0.0)
+
+
+def sharp_radius(half_width, blur_sigma):
+    """A vessel's radius from the half-width its line shows, with the blur taken out (as tube_reach does); at least
+    a third of a pixel, where the line is no wider than the blur."""
+    return np.maximum(np.sqrt(np.maximum(np.asarray(half_width, dtype=float) ** 2 - blur_sigma ** 2, 0)) / CYLINDER, 1 / 3)
+
+
+BLUR_TRIES = (0.6, 0.8, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0)  # pixels; the blurs a picture's fit tries
+BLUR_WINDOWS = 200       # windows on the picture's thicker vessels its blur is fitted on
+
+
+def fitted_blur(density, edges, cores, tries=BLUR_TRIES, count=BLUR_WINDOWS):
+    """The picture's blur, fitted on the density profiles across its vessels: at each of up to `count` windows on
+    vessels whose half-width is at least 2.5 px (where R and the blur are separable), the blur that fits the
+    profile best (an offset plus kappa times the blurred chord, R free), and the median over the windows. A sum of
+    the windows' residuals is ruled by the few that catch a neighbouring vessel (it chose the largest blur tried on
+    synthetic burst 1); the median over windows came out at 1.75 px on bursts 1, 2 and 1001, whose trees' true mean
+    blurs are 1.3 to 2.1 px. Section 29's picture_blur (the 5% quantile of the ridges' half-widths) cannot be less
+    than the blur plus the thinnest vessel's own width: 2.2 to 2.8 px on the same bursts. Returns the blur and every
+    window's best blur."""
+    spots = [(e, int(place)) for e, edge in enumerate(edges) if np.median(edge["radius"]) >= 2.5 for place in edge_windows(edge, cores[e])]
+    if not spots:
+        return float(tries[len(tries) // 2]), np.array([])
+    picks = np.random.default_rng(0).choice(len(spots), size=min(count, len(spots)), replace=False)
+    image = np.nan_to_num(density).astype(np.float32)
+    best = []
+    for pick in picks:
+        e, i = spots[pick]
+        edge = edges[e]
+        lo, hi = max(i - 2, 0), min(i + 2, len(edge["x"]) - 1)
+        d = np.array([edge["x"][hi] - edge["x"][lo], edge["y"][hi] - edge["y"][lo]], dtype=float)
+        d /= max(np.hypot(*d), 1e-9)
+        normal = np.array([-d[1], d[0]])
+        reach = PROFILE_REACH * float(edge["radius"][i]) + 8
+        offsets = np.arange(-reach, reach + 1e-9, PROFILE_STEP)
+        values = scipy.ndimage.map_coordinates(image, [edge["y"][i] + offsets * normal[1], edge["x"][i] + offsets * normal[0]],
+                                               order=1, mode="nearest")
+        errors = []
+        for sigma in tries:
+            error = np.inf
+            for radius in np.geomspace(0.5, max(12.0, 3 * float(edge["radius"][i])), 30):
+                design = np.column_stack([np.ones_like(offsets), blurred_chord(radius, sigma, offsets)])
+                solution, *_ = np.linalg.lstsq(design, values, rcond=None)
+                error = min(error, float(np.sum((values - design @ solution) ** 2)))
+            errors.append(error)
+        best.append(tries[int(np.argmin(errors))])
+    best = np.array(best)
+    return float(np.median(best)), best
+
+
+def edge_windows(edge, cores):
+    """The places (point numbers) along an edge where its darkness is read: one every KNOT_SPACING points, none whose
+    centre lies within the core radius of either of its end vertices (`cores`: the two radii)."""
+    count = len(edge["x"])
+    places = np.arange(int(KNOT_SPACING // 2), count, int(KNOT_SPACING))
+    from_start = np.hypot(edge["x"][places] - edge["x"][0], edge["y"][places] - edge["y"][0])
+    from_end = np.hypot(edge["x"][places] - edge["x"][-1], edge["y"][places] - edge["y"][-1])
+    return places[(from_start > cores[0]) & (from_end > cores[1])]
+
+
+RADIUS_TRIES = 24       # radii tried per window when R is fitted (log-spaced)
+
+
+def window_kappa(density, edge, place, blur_sigma):
+    """R and kappa (density per pixel of chord) at one window (section 38): the density profile across the edge
+    fitted with an offset c plus kappa times the cylinder's chord of radius R blurred by the picture's blur, least
+    squares in c and kappa for each of RADIUS_TRIES radii, the best kept. Where the line is no wider than the blur
+    (the radius from its half-width, R_ridge, is at most the blur) R and kappa are not separable: R stays R_ridge and
+    only the line mass pi kappa R^2 means something. Returns kappa, its sigma and R."""
+    i = int(place)
+    lo, hi = max(i - 2, 0), min(i + 2, len(edge["x"]) - 1)
+    d = np.array([edge["x"][hi] - edge["x"][lo], edge["y"][hi] - edge["y"][lo]], dtype=float)
+    d /= max(np.hypot(*d), 1e-9)
+    normal = np.array([-d[1], d[0]])
+    half_width = float(edge["radius"][i])
+    ridge = float(sharp_radius(half_width, blur_sigma))
+    tries = [ridge] if ridge <= blur_sigma else np.geomspace(max(0.5, 0.4 * ridge), 2.5 * ridge + 2, RADIUS_TRIES)
+    reach = max(PROFILE_REACH * half_width, max(tries) + 2) + 2 * blur_sigma
+    offsets = np.arange(-reach, reach + 1e-9, PROFILE_STEP)
+    px, py = edge["x"][i] + offsets * normal[0], edge["y"][i] + offsets * normal[1]
+    values = scipy.ndimage.map_coordinates(np.nan_to_num(density).astype(np.float32), [py, px], order=1, mode="nearest")
+    best = None
+    for radius in tries:
+        design = np.column_stack([np.ones_like(offsets), blurred_chord(radius, blur_sigma, offsets)])
+        solution, *_ = np.linalg.lstsq(design, values, rcond=None)
+        error = float(np.sum((values - design @ solution) ** 2))
+        if best is None or error < best[0]:
+            best = (error, solution, design, float(radius))
+    error, solution, design, radius = best
+    spread = np.sqrt(error / max(len(values) - 3, 1))
+    cov = spread ** 2 * np.linalg.pinv(design.T @ design)
+    return float(solution[1]), float(np.sqrt(max(cov[1, 1], 0))), radius
+
+
+def lumen_groups(graph):
+    """The lumens of a vessel_graph whose junctions were read (read_junctions): its edges united through every group
+    of two or three in a junction's reading and through every two pieces that meet end to end; a crossing's two pairs
+    stay two lumens. Returns per edge its lumen number."""
+    parent = list(range(len(graph["edges"])))
+
+    def root(edge):
+        while parent[edge] != edge:
+            parent[edge] = parent[parent[edge]]
+            edge = parent[edge]
+        return edge
+
+    for node in graph["nodes"]:
+        if node.get("gone"):
+            continue
+        if "arms" in node:
+            for group in node.get("partition", []):
+                if 2 <= len(group) <= 3:
+                    members = [node["arms"][arm]["edge"] for arm in group]
+                    for other in members[1:]:
+                        parent[root(other)] = root(members[0])
+        elif len(node["ends"]) == 2:
+            parent[root(node["ends"][0][0])] = root(node["ends"][1][0])
+    roots = [root(edge) for edge in range(len(graph["edges"]))]
+    names = {value: number for number, value in enumerate(sorted(set(roots)))}
+    return np.array([names[value] for value in roots])
+
+
+def draw_lumen(edges, kappa, blur_sigma, shape, radii=None):
+    """One lumen drawn as section 38's renderer draws it: every edge's chord density (2 kappa sqrt(R^2 - d^2), R the
+    radius per point, `radii`, as kappa_passes fits it, else the sharp radius from its half-width; kappa per point),
+    the edges united by the max, on a canvas around the lumen; the canvas' transmittance blurred by the picture's
+    blur, returned as density. Returns (box, density) with box = (top, left, bottom, right)."""
+    radii = [sharp_radius(edge["radius"], blur_sigma) for edge in edges] if radii is None else [np.asarray(r, dtype=float) for r in radii]
+    rows, columns = shape
+    xs = np.concatenate([edge["x"] for edge in edges])
+    ys = np.concatenate([edge["y"] for edge in edges])
+    reach = max(float(np.max(np.concatenate(radii))), 1) + 4 * blur_sigma + 2
+    top, left = int(max(np.floor(ys.min() - reach), 0)), int(max(np.floor(xs.min() - reach), 0))
+    bottom, right = int(min(np.ceil(ys.max() + reach) + 1, rows)), int(min(np.ceil(xs.max() + reach) + 1, columns))
+    if bottom <= top or right <= left:
+        return (0, 0, 0, 0), np.zeros((0, 0), dtype=np.float32)
+    canvas = np.zeros((bottom - top, right - left))
+    for edge, value, radius_of in zip(edges, kappa, radii):
+        points = np.column_stack([edge["x"], edge["y"]]).astype(float)
+        radii_here = np.broadcast_to(radius_of, (len(points),))
+        value = np.broadcast_to(np.asarray(value, dtype=float), (len(points),))
+        bound = float(np.max(radii_here)) + 1.5
+        # only the pixels of the edge's own box can lie within `bound` of it: a lumen's box spans its whole tree
+        et, el = int(max(np.floor(points[:, 1].min() - bound), top)), int(max(np.floor(points[:, 0].min() - bound), left))
+        eb, er = int(min(np.ceil(points[:, 1].max() + bound) + 1, bottom)), int(min(np.ceil(points[:, 0].max() + bound) + 1, right))
+        if eb <= et or er <= el:
+            continue
+        y, x = np.mgrid[et:eb, el:er]
+        pixels = np.column_stack([x.ravel(), y.ravel()]).astype(float)
+        distance, near = scipy.spatial.cKDTree(points).query(pixels, distance_upper_bound=bound)
+        inside = np.flatnonzero(np.isfinite(distance))
+        if not len(inside):
+            continue
+        fine = RIDGE_FINE if np.min(radii_here) < 2 else 1
+        offsets = (np.arange(fine) + 0.5) / fine - 0.5
+        chord = np.zeros(len(inside))
+        for dy, dx in itertools.product(offsets, offsets):
+            spot = pixels[inside] + (dx, dy)
+            best = np.full(len(inside), np.inf)
+            for step in (-1, 0):
+                first = np.clip(near[inside] + step, 0, max(len(points) - 2, 0))
+                a, b = points[first], points[np.minimum(first + 1, len(points) - 1)]
+                ab = b - a
+                t = np.clip(((spot - a) * ab).sum(axis=1) / np.maximum((ab ** 2).sum(axis=1), 1e-12), 0, 1)
+                best = np.minimum(best, np.hypot(*(spot - (a + t[:, None] * ab)).T))
+            r = radii_here[near[inside]]
+            chord += 2 * np.sqrt(np.maximum(r ** 2 - best ** 2, 0)) * value[near[inside]]
+        flat = canvas.ravel()
+        spots = (y.ravel()[inside] - top) * (right - left) + (x.ravel()[inside] - left)
+        flat[spots] = np.maximum(flat[spots], chord / fine ** 2)
+    density = -np.log(np.maximum(cv2.GaussianBlur(np.exp(-canvas), (0, 0), blur_sigma), 1e-9))
+    return (top, left, bottom, right), density.astype(np.float32)
+
+
+def render_graph(edges, lumens, kappa, blur_sigma, shape, drawn=None, radii=None):
+    """The renderer of section 38: every lumen drawn on its own canvas (draw_lumen), densities added across lumens
+    (their transmittances multiplied). `drawn` per edge says whether it is drawn. Returns the picture and the
+    canvases {lumen: (box, density)}."""
+    picture = np.zeros(shape, dtype=np.float32)
+    canvases = {}
+    drawn = np.ones(len(edges), dtype=bool) if drawn is None else np.asarray(drawn)
+    for lumen in sorted(set(lumens.tolist())):
+        members = [e for e in np.flatnonzero(lumens == lumen) if drawn[e]]
+        if not members:
+            continue
+        box, density = draw_lumen([edges[e] for e in members], [kappa[e] for e in members], blur_sigma, shape,
+                                  None if radii is None else [radii[e] for e in members])
+        if density.size:
+            picture[box[0]:box[2], box[1]:box[3]] += density
+            canvases[lumen] = (box, density)
+    return picture, canvases
+
+
+def kappa_passes(edges, lumens, density, blur_sigma, cores, drawn=None, passes=KAPPA_PASSES, watch=None):
+    """The darkness of every edge (section 37's initialisation, step 4): kappa per window outside the cores
+    (window_kappa), read on the density with the other lumens' render taken off (exact under the renderer, since
+    densities add across lumens), the thickest lumens first, repeated `passes` times (Gauss-Seidel). An edge
+    without a window takes its lumen's median kappa (section 38's windowless edges), else one window at its middle.
+    Returns kappa and R per edge (one per point, smoothed along the edge), the windows' kappa, sigma and R, and the
+    last pass' largest change of kappa in sigmas. `watch` (a vascnet.watch.Recorder) is handed the render before
+    the first pass and after every pass."""
+    drawn = np.ones(len(edges), dtype=bool) if drawn is None else np.asarray(drawn)
+    kappa = [np.full(len(edge["x"]), SYNTH_ABSORB) for edge in edges]
+    order = sorted(set(lumens.tolist()), key=lambda lumen: -max(float(np.max(edges[e]["radius"])) for e in np.flatnonzero(lumens == lumen)))
+    windows = {}
+    change = np.inf
+    radii = [sharp_radius(edge["radius"], blur_sigma) for edge in edges]
+    picture, canvases = render_graph(edges, lumens, kappa, blur_sigma, density.shape, drawn, radii)
+    rest = np.nan_to_num(density).astype(np.float32) - picture  # the density the render does not explain
+    if watch is not None:
+        watch({"kind": "kappa", "taken": True, "pass": 0, "change": np.nan, "render": picture.copy()})
+    for number in range(passes):
+        change = 0.0
+        for lumen in order:
+            members = np.flatnonzero(lumens == lumen)
+            if lumen in canvases:  # the lumen's own render back into what it is fitted on
+                box, values = canvases[lumen]
+                rest[box[0]:box[2], box[1]:box[3]] += values
+            for e in members:
+                places = edge_windows(edges[e], cores[e])
+                found = [window_kappa(rest, edges[e], place, blur_sigma) for place in places]
+                if found:
+                    values = np.array([value for value, _, _ in found])
+                    sigmas = np.array([sigma for _, sigma, _ in found])
+                    fitted = np.array([radius for _, _, radius in found])
+                    old = windows.get(e)
+                    if old is not None:
+                        change = max(change, float(np.max(np.abs(values - old[1]) / np.maximum(sigmas, 1e-9))))
+                    windows[e] = (places, values, sigmas, fitted)
+            for e in members:
+                if e in windows:
+                    places, values, _, fitted = windows[e]
+                    along = np.arange(len(edges[e]["x"]))
+                    kappa[e] = np.interp(along, places, scipy.ndimage.median_filter(values, size=3, mode="nearest"))
+                    radii[e] = np.interp(along, places, scipy.ndimage.median_filter(fitted, size=3, mode="nearest"))
+            known = [np.median(windows[e][1]) for e in members if e in windows]
+            for e in members:
+                if e not in windows:
+                    if known:
+                        kappa[e] = np.full(len(edges[e]["x"]), float(np.median(known)))
+                    else:
+                        value, _, radius = window_kappa(rest, edges[e], len(edges[e]["x"]) // 2, blur_sigma)
+                        kappa[e] = np.full(len(edges[e]["x"]), max(value, 0.0))
+                        radii[e] = np.full(len(edges[e]["x"]), radius)
+            for e in members:
+                kappa[e] = np.maximum(kappa[e], 0.0)
+            shown = [e for e in members if drawn[e]]
+            canvases.pop(lumen, None)
+            if shown:  # the lumen drawn again with its new darkness, and taken out of what the next ones are fitted on
+                box, values = draw_lumen([edges[e] for e in shown], [kappa[e] for e in shown], blur_sigma, density.shape,
+                                         [radii[e] for e in shown])
+                if values.size:
+                    rest[box[0]:box[2], box[1]:box[3]] -= values
+                    canvases[lumen] = (box, values)
+        if watch is not None:
+            watch({"kind": "kappa", "taken": True, "pass": number + 1, "change": change,
+                   "render": (np.nan_to_num(density).astype(np.float32) - rest).copy(), "last": number == passes - 1})
+    return kappa, radii, windows, change
+
+
+def tube_mask(edges, blur_sigma, shape, drawn=None):
+    """The tubes of the drawn edges: within the radius plus TUBE_BLURS sigmas of the blur of their centerlines."""
+    mask = np.zeros(shape, dtype=np.uint8)
+    drawn = np.ones(len(edges), dtype=bool) if drawn is None else drawn
+    for edge, shown in zip(edges, drawn):
+        if not shown:
+            continue
+        reach = tube_reach(np.asarray(edge["radius"], dtype=np.float32), blur_sigma)
+        for x, y, r in zip(edge["x"][::2], edge["y"][::2], reach[::2]):
+            cv2.circle(mask, (int(round(x)), int(round(y))), int(np.ceil(r)), 1, -1)
+    return mask > 0
+
+
+def self_consistency(render_ridges, data_ridges, valid, region=None):
+    """section 38's self-consistency number: the render's ridges found again in the data's within REPEAT_WITHIN, and
+    the data's in the render's (found_again; `repeated` for the share above chance), over `region` (the whole frame,
+    or the tubes). Returns {"render in data": (found, chance, above), "data in render": (...)}."""
+    region = valid if region is None else region & valid
+    same = np.eye(3)
+    return {"render in data": repeated(render_ridges & region, valid, data_ridges, valid, same),
+            "data in render": repeated(data_ridges & region, valid, render_ridges, valid, same)}
+
+
+def zero_points(data_contrast, render_contrast, valid, levels, edges, drawn=None, threads=None):
+    """The zero point of the topology residual per channel (section 38a): on the model's own centerline points, the
+    median of data minus render in the channel of the point's orientation and width (the nearest of the 16 and the
+    8). On a right line the data's rectified answer carries noise with a positive expectation and the render's carries
+    none. Returns (N_ORIENT, widths) with NaN where a channel has fewer than 20 points, and the counts."""
+    drawn = np.ones(len(edges), dtype=bool) if drawn is None else drawn
+    xs = np.concatenate([edge["x"] for edge, shown in zip(edges, drawn) if shown])
+    ys = np.concatenate([edge["y"] for edge, shown in zip(edges, drawn) if shown])
+    theta = np.concatenate([np.arctan2(np.gradient(edge["y"]), np.gradient(edge["x"])) for edge, shown in zip(edges, drawn) if shown])
+    radius = np.concatenate([edge["radius"] for edge, shown in zip(edges, drawn) if shown])
+    k = np.rint((theta % np.pi) / (np.pi / N_ORIENT)).astype(int) % N_ORIENT
+    w = np.argmin(np.abs(np.log(np.asarray(radius, dtype=float)[:, None] / np.asarray(HYPER_WIDTHS)[None])), axis=1)
+    rows, columns = valid.shape
+    row, column = np.clip(np.rint(ys).astype(int), 0, rows - 1), np.clip(np.rint(xs).astype(int), 0, columns - 1)
+    zero = np.full((N_ORIENT, len(HYPER_WIDTHS)), np.nan)
+    counts = np.zeros((N_ORIENT, len(HYPER_WIDTHS)), dtype=int)
+    for place in range(len(HYPER_WIDTHS)):
+        mine = w == place
+        if not mine.any():
+            continue
+        data = channel_answers(data_contrast, valid, levels, place, threads)
+        render = channel_answers(render_contrast, valid, levels, place, threads)
+        for orientation in range(N_ORIENT):
+            spots = mine & (k == orientation)
+            counts[orientation, place] = spots.sum()
+            if spots.sum() >= 20:
+                zero[orientation, place] = float(np.median(data[orientation, row[spots], column[spots]]
+                                                           - render[orientation, row[spots], column[spots]]))
+    return zero, counts
+
+
+def topology_residual(data_contrast, render_contrast, valid, levels, zero, threads=None):
+    """The topology residual (section 38a): per channel data minus render minus the channel's zero point (0 where
+    none was measured), and its strongest positive and negative channel at every pixel with their orientations:
+    a positive ridge is a line the data has and the render lacks, a negative one a line the render has and the data
+    lacks. Returns (positive, positive orientation, negative, negative orientation)."""
+    shape = data_contrast.shape
+    positive, negative = np.zeros(shape, np.float32), np.zeros(shape, np.float32)
+    pos_k, neg_k = np.zeros(shape, np.uint8), np.zeros(shape, np.uint8)
+    for place in range(len(HYPER_WIDTHS)):
+        difference = (channel_answers(data_contrast, valid, levels, place, threads)
+                      - channel_answers(render_contrast, valid, levels, place, threads))
+        difference -= np.nan_to_num(zero[:, place], nan=0.0)[:, None, None].astype(np.float32)
+        top, bottom = difference.max(axis=0), (-difference).max(axis=0)
+        better = top > positive
+        positive[better], pos_k[better] = top[better], np.argmax(difference, axis=0)[better]
+        worse = bottom > negative
+        negative[worse], neg_k[worse] = bottom[worse], np.argmax(-difference, axis=0)[worse]
+    return positive, pos_k, negative, neg_k
+
+
+def initial_model(front, density, valid, threads=None, watch=None):
+    """Section 37's initialisation, up to the first network: the pieces (cyclic_pieces), their graph with the
+    junctions read from the geometry (vessel_graph, read_junctions), the lumens (lumen_groups), the picture's blur
+    (fitted_blur), and the darkness of every edge (kappa_passes), then the render. A twin is not drawn: it and the
+    piece it runs beside are one line mass (twins_and_stubs)."""
+    pieces, joined = cyclic_pieces(front, valid)
+    graph = vessel_graph(pieces, valid, density)
+    read_junctions(graph, density, front["scores"], flow=False)
+    edges, nodes = graph["edges"], graph["nodes"]
+    for edge in edges:
+        edge["length"] = chain_length(edge)
+        edge["loose"] = tuple(len(nodes[node]["ends"]) == 1 for node in edge["nodes"])
+    core = lambda node: nodes[node]["ring"][0] if "ring" in nodes[node] else 0.0
+    cores = [(core(edge["nodes"][0]), core(edge["nodes"][1])) for edge in edges]
+    blur_sigma, window_blurs = fitted_blur(density, edges, cores)
+    kinds = twins_and_stubs(edges, blur_sigma, valid)
+    drawn = np.array([kind != "twin" for kind in kinds])
+    lumens = lumen_groups(graph)
+    kappa, radii, windows, change = kappa_passes(edges, lumens, density, blur_sigma, cores, drawn, watch=watch)
+    render, canvases = render_graph(edges, lumens, kappa, blur_sigma, density.shape, drawn, radii)
+    return {"pieces": pieces, "joined": joined, "graph": graph, "edges": edges, "cores": cores, "blur": blur_sigma,
+            "window blurs": window_blurs, "kinds": kinds, "drawn": drawn, "lumens": lumens, "kappa": kappa, "radii": radii,
+            "windows": windows, "change": change, "render": render, "canvases": canvases}
+
+
+def kappa_frame(state, density, box, size=(8.0, 4.2), dpi=80):
+    """A frame of the darkness fit's film: the density and the render over one box, side by side, with the pass and
+    the largest change of kappa in sigmas."""
+    import matplotlib
+    matplotlib.use("Agg")
+    top, left, bottom, right = box
+    high = float(np.nanpercentile(density[top:bottom, left:right], 99.5))
+    figure, axes = plt.subplots(1, 2, figsize=size, dpi=dpi)
+    for axis, picture, title in ((axes[0], density, "density"), (axes[1], state["render"], "render")):
+        axis.imshow(np.nan_to_num(picture[top:bottom, left:right]), cmap="gray_r", vmin=0, vmax=high)
+        axis.set_title(title, fontsize=9)
+        axis.axis("off")
+    change = state.get("change", np.nan)
+    figure.suptitle(f"darkness fit: pass {state['pass']}" + (f", largest change of kappa {change:.2f} sigma" if np.isfinite(change) else
+                                                               " (kappa at its starting value)"), fontsize=9)
+    frame = vascnet.watch.frame_of(figure)
+    plt.close(figure)
+    return frame
+
+# %%
+# acceptance step 5 on one synthetic burst first: the initial model rendered and scored, its self-consistency against
+# the data's ridges (whole frame and within the tubes), the data's own repeatability (the second fixation), the
+# generator's own truth through the same scoring, the zero points, and spline_to_graph against vessel_graph
+burst = synthetic_burst_35(HARNESS_SEEDS[0], second=True)
+front = ridge_front(burst, workers)
+model = initial_model(front, burst["mean"], burst["valid"], workers)
+frame = scoring_frame(burst["mean"], burst["valid"], burst["quiet"], noise=robust_sd(burst["mean"][burst["quiet"]]))
+data_contrast, render_contrast = to_contrast(burst["mean"], frame), to_contrast(model["render"], frame)
+data_ridges, _ = ridges_of(data_contrast, burst["valid"], frame["levels"], workers)
+render_ridges, _ = ridges_of(render_contrast, burst["valid"], frame["levels"], workers)
+tubes = tube_mask(model["edges"], model["blur"], burst["valid"].shape, model["drawn"])
+whole = self_consistency(render_ridges, data_ridges, burst["valid"])
+inside = self_consistency(render_ridges, data_ridges, burst["valid"], tubes)
+second = burst["second"]
+second_frame = scoring_frame(second["mean"], second["valid"], second["quiet"], noise=robust_sd(second["mean"][second["quiet"]]))
+second_ridges, _ = ridges_of(to_contrast(second["mean"], second_frame), second["valid"], second_frame["levels"], workers)
+own = repeated(data_ridges, burst["valid"], second_ridges, second["valid"], second["to second"])
+truth_ridges, _ = ridges_of(to_contrast(burst["layers"].sum(axis=0), frame), burst["valid"], frame["levels"], workers)
+truth = self_consistency(truth_ridges, data_ridges, burst["valid"])
+zero, zero_counts = zero_points(data_contrast, render_contrast, burst["valid"], frame["levels"], model["edges"], model["drawn"], workers)
+focus = np.linspace(SYNTH_FOCUS[0], SYNTH_FOCUS[1], SYNTH_FRAMES)
+true_blurs = sorted({round(float(np.mean(SYNTH_SHARP + SYNTH_DEFOCUS * np.abs(s["depth"] - focus))), 2) for s in burst["segments"]})
+shares = lambda reading: " | ".join(f"{name}: found {found * 100:.1f}%, by chance {chance * 100:.1f}%, above chance {above * 100:.1f}%"
+                                    for name, (found, chance, above) in reading.items())
+print(f"Synthetic burst {HARNESS_SEEDS[0]}: {len(model['edges'])} edges ({model['drawn'].sum()} drawn, the rest twins) in "
+      f"{model['lumens'].max() + 1} lumens | blur fitted on the profiles {model['blur']:.2f} px (section 29's picture_blur "
+      f"{picture_blur(front['half_width'], model['joined']['ridges']):.2f}; the trees' true mean blurs {true_blurs})")
+print(f"   darkness: kappa median {np.median([np.median(k) for k in model['kappa']]):.4f} (the generator's {SYNTH_ABSORB}), "
+      f"{sum(len(w[0]) for w in model['windows'].values())} windows; the last pass changed kappa by {model['change']:.2f} sigma at the most")
+print(f"   self-consistency, whole frame: {shares(whole)}")
+print(f"   self-consistency, within the tubes: {shares(inside)}")
+print(f"   the data's own repeatability (against the second fixation): found {own[0] * 100:.1f}%, by chance {own[1] * 100:.1f}%, "
+      f"above chance {own[2] * 100:.1f}%")
+print(f"   the generator's own noiseless truth, scored the same way: {shares(truth)}")
+print("   zero point per width (median over the orientations measured; points): " + ", ".join(
+    f"{HYPER_WIDTHS[w]}: {np.nanmedian(zero[:, w]):+.2f} ({zero_counts[:, w].sum()})" for w in range(len(HYPER_WIDTHS)) if np.isfinite(zero[:, w]).any()))
+# spline_to_graph against vessel_graph: the junctions of vessel_graph found again among spline_to_graph's vertices
+view = spline_to_graph(model["pieces"])
+junctions = [(node["x"], node["y"]) for node in model["graph"]["nodes"] if not node.get("gone") and len(node.get("arms", [])) >= 3]
+vertices = np.array([(v["x"], v["y"]) for v in view["vertices"] if len(v["ends"]) >= 3]).reshape(-1, 2)
+found = [bool(len(vertices)) and np.min(np.hypot(*(vertices - place).T)) <= 5 for place in junctions]
+print(f"   spline_to_graph: {len(view['vertices'])} vertices, {len(view['edges'])} edges, {view['cycles']} cycles, {len(view['twins'])} twins | of "
+      f"vessel_graph's {len(junctions)} junctions, {sum(found)} have a vertex of three or more arms within 5 px")
+os.makedirs("vessel_pictures/render", exist_ok=True)
+figure, axes = plt.subplots(1, 3, figsize=(18, 4.6))
+high = np.percentile(burst["mean"], 99.8)
+axes[0].imshow(burst["mean"], cmap="gray_r", vmin=0, vmax=high)
+axes[0].set_title("the mean density", fontsize=10)
+axes[1].imshow(model["render"], cmap="gray_r", vmin=0, vmax=high)
+axes[1].set_title(f"the initial model rendered (blur {model['blur']:.2f} px)", fontsize=10)
+overlay = np.dstack([data_ridges & ~render_ridges, render_ridges & data_ridges, render_ridges & ~data_ridges]).astype(np.uint8) * 255
+axes[2].imshow(overlay)
+axes[2].set_title("ridges: green both, red the data's only, blue the render's only", fontsize=10)
+for axis in axes:
+    axis.axis("off")
+figure.tight_layout()
+figure.savefig("vessel_pictures/render/one_burst.png", dpi=80)
+plt.show()
+del burst, front, second, data_contrast, render_contrast
+
+# %%
+# acceptance step 5 on the real burst: the initial model of the anchor's fixation rendered and scored with the data's
+# own constants; the self-consistency number, whole frame and within the tubes, against the data's own repeatability
+# (the anchor's ridges against the other fixation's); the zero point per channel; the cost of a full re-score and of a
+# windowed one, and whether the windowed one equals the full one. The darkness fit is filmed.
+import time
+
+
+def saved_quiet(front, valid, away=8):
+    """The quiet pixels of a fixation from section 29's saved maps: where there is data and no neuron of the static
+    score answers above T_LOW within `away` px. (Section 12's quiet pixels, judged on the frames, are not saved.)"""
+    lines = (front["strength"] > T_LOW).astype(np.uint8)
+    return valid & (cv2.distanceTransform(1 - lines, cv2.DIST_L2, 5) > away)
+
+
+real_fronts = {number: saved_front(saved, number) for number in range(len(saved["times"]))}
+real_frames, real_ridges = {}, {}
+for number, front in real_fronts.items():
+    valid = saved["valid"][number]
+    real_frames[number] = scoring_frame(saved["density"][number], valid, saved_quiet(front, valid))
+    real_ridges[number], _ = ridges_of(to_contrast(saved["density"][number], real_frames[number]), valid, real_frames[number]["levels"], workers)
+others = [number for number in real_fronts if number != anchor]
+own = repeated(real_ridges[anchor], saved["valid"][anchor], real_ridges[others[0]], saved["valid"][others[0]], saved["to anchor"][others[0]])
+density, valid, frame = saved["density"][anchor], saved["valid"][anchor], real_frames[anchor]
+kappa_recorder = vascnet.watch.Recorder(every=1)
+started = time.time()
+real_model = initial_model(real_fronts[anchor], density, valid, workers, watch=kappa_recorder)
+model_time = time.time() - started
+render_contrast = to_contrast(real_model["render"], frame)
+started = time.time()
+render_ridges, _ = ridges_of(render_contrast, valid, frame["levels"], workers)
+full_time = time.time() - started
+tubes = tube_mask(real_model["edges"], real_model["blur"], valid.shape, real_model["drawn"])
+whole = self_consistency(render_ridges, real_ridges[anchor], valid)
+inside = self_consistency(render_ridges, real_ridges[anchor], valid, tubes)
+data_contrast = to_contrast(density, frame)
+zero, zero_counts = zero_points(data_contrast, render_contrast, valid, frame["levels"], real_model["edges"], real_model["drawn"], workers)
+# the windowed re-score: a 320 px window in the middle of the frame, all eight widths, against the full frame's channels
+rows, columns = valid.shape
+middle = (rows // 2 - 160, columns // 2 - 160, rows // 2 + 160, columns // 2 + 160)
+largest, window_time = 0.0, 0.0
+for place in range(len(HYPER_WIDTHS)):
+    full = channel_answers(render_contrast, valid, frame["levels"], place, workers)
+    started = time.time()
+    inner, part = rescore_window(render_contrast, valid, frame["levels"], place, middle, workers)
+    window_time += time.time() - started
+    largest = max(largest, float(np.abs(full[:, inner[0]:inner[2], inner[1]:inner[3]] - part).max()))
+    del full, part
+view = spline_to_graph(real_model["pieces"])
+degree = np.array([len(vertex["ends"]) for vertex in view["vertices"]])
+places = np.array([(vertex["x"], vertex["y"]) for vertex in view["vertices"]]).reshape(-1, 2)
+close = sum(1 for a, b in scipy.spatial.cKDTree(places).query_pairs(2 * RING_MARGIN)) if len(places) else 0
+short = sum(chain_length(edge) < 2 for edge in view["edges"])
+
+shares = lambda reading: " | ".join(f"{name}: found {found * 100:.1f}%, by chance {chance * 100:.1f}%, above chance {above * 100:.1f}%"
+                                    for name, (found, chance, above) in reading.items())
+print(f"Real burst, fixation {anchor}: the initial model in {model_time / 60:.1f} min: {len(real_model['edges'])} edges "
+      f"({real_model['drawn'].sum()} drawn, {(~real_model['drawn']).sum()} twins not drawn) in {real_model['lumens'].max() + 1} lumens | "
+      f"blur fitted on the profiles {real_model['blur']:.2f} px (section 29's picture_blur 1.50) | kappa median "
+      f"{np.median([np.median(k) for k in real_model['kappa']]):.4f}; the last pass changed kappa by {real_model['change']:.2f} sigma at the most")
+print(f"   spline_to_graph of the pieces: {len(view['vertices'])} vertices ({(degree == 1).sum()} ends, {(degree == 2).sum()} of two arms, "
+      f"{(degree == 3).sum()} of three, {(degree >= 4).sum()} of four or more), {len(view['edges'])} edges, {view['cycles']} cycles, "
+      f"{len(view['twins'])} twins | clean: {close} pairs of vertices closer than {2 * RING_MARGIN:.0f} px, {short} edges under 2 px")
+print(f"   the self-consistency number, whole frame: {shares(whole)}")
+print(f"   within the tubes: {shares(inside)}")
+print(f"   the data's own repeatability (fixation {anchor}'s ridges against fixation {others[0]}'s): found {own[0] * 100:.1f}%, by chance "
+      f"{own[1] * 100:.1f}%, above chance {own[2] * 100:.1f}%")
+print("   zero point per width (median over the orientations measured; points): " + ", ".join(
+    f"{HYPER_WIDTHS[w]}: {np.nanmedian(zero[:, w]):+.2f} ({zero_counts[:, w].sum()})" for w in range(len(HYPER_WIDTHS)) if np.isfinite(zero[:, w]).any()))
+print(f"   cost: a full re-score (all 16 x 8 channels and the ridges, {columns} x {rows}) {full_time:.1f} s; a windowed one (320 px, "
+      f"{WINDOW_MARGIN} px margin, all widths) {window_time:.1f} s; the windowed channels differ from the full ones inside the window by "
+      f"{largest:.4f} at the most")
+reached = all(inside[name][2] >= own[2] for name in inside)
+print(f"\nThe gate: within the tubes the agreement reaches the data's own repeatability ({'yes' if reached else 'no'}: "
+      + ", ".join(f"{name} {inside[name][2] * 100:.1f}%" for name in inside) + f" against {own[2] * 100:.1f}% above chance); the windowed "
+      f"re-score equals the full one within 0.005 ({'yes' if largest <= 0.005 else 'no'}: {largest:.4f}); a move's evaluation (one windowed "
+      f"re-score) under a few seconds ({'yes' if window_time <= 5 else 'no'}: {window_time:.1f} s) -> "
+      f"{'PASSED' if reached and largest <= 0.005 and window_time <= 5 else 'FAILED'}")
+os.makedirs("vessel_pictures/fit", exist_ok=True)
+box = (max(rows // 2 - 200, 0), max(columns // 2 - 300, 0), min(rows // 2 + 200, rows), min(columns // 2 + 300, columns))
+vascnet.watch.animate(kappa_recorder.states, lambda state: kappa_frame(state, density, box), "vessel_pictures/fit/kappa.gif", fps=1.0)
+os.makedirs("vessel_pictures/render", exist_ok=True)
+Image.fromarray(np.uint8(np.clip(real_model["render"] / max(DENSITY_RANGE[1], 1e-6), 0, 1) * 255)).save("vessel_pictures/render/real_render.png")
+print(f"   the darkness fit is filmed in vessel_pictures/fit/kappa.gif ({len(kappa_recorder.states)} frames); the render is in vessel_pictures/render")
+memory_note("section 38, real burst")
+
+# %% [markdown]
+# ## 38(b). The core's matched filter (acceptance step 6)
+#
+# At a four-arm vertex, geometry reads a planar four-way as a crossing, and the flux test passes both readings (section 40). The core's matched filter is the one test that can tell two vessels crossing from one lumen of four arms (`core_z`):
+#
+# - **The template** (`core_template`) is the difference between the two compositions at the core: the arms drawn as two lumens (densities add) minus the arms drawn as one (the max). The arms' κ and R come from section 38's window fit outside the core (`fitted_arms`).
+# - **The residual** is the density minus the one-lumen composition.
+# - **z** is their inner product, whitened by the noise's power spectrum, over the template's whitened norm. Under one lumen z has mean 0 and spread 1; under two vessels its mean is the template's whitened norm.
+# - **The spectrum** (`noise_spectrum`) is measured on noise fields made as the generator makes a mean frame's noise: the tissue's texture and the kept frames' white noise. The texture is not white, and the core z rides on both.
+#
+# **The table** covers radii of 1 to 5 px (`CORE_PAIRS`) and blurs of 0.8, 1.5, 2 and 3.5 px (`CORE_BLURS`). It uses two vessels at right angles, rendered as two lumens and as one, each with 12 noise realisations. Each cell gives the median z under each truth, the z the template expects, and `told_apart` between the two.
+#
+# **The gate** (Part III, step 6): decisive (z ≥ 3) for R ≥ 3 at the real burst's blur (1.5 px). Capillaries are reported as they come out.
+#
+# **Result:** `core_rows` (`vessel_pictures/core/z_table.csv`).
+
+# %%
+CORE_PAIRS = ((1.0, 1.0), (1.5, 1.5), (2.0, 2.0), (3.0, 3.0), (5.0, 3.0), (5.0, 5.0))  # radii of the two vessels at a core
+CORE_BLURS = (0.8, 1.5, 2.0, 3.5)   # pixels; the generator's range, with the real burst's blur among them
+CORE_SEEDS = tuple(range(1, 13))    # noise realisations per radius, blur and composition
+CORE_ANGLE = 90.0                    # degrees between the two vessels
+NOISE_SAMPLES = 24                   # noise fields the spectrum is measured on
+
+
+def noise_spectrum(shape, samples=NOISE_SAMPLES, seed=1000):
+    """The noise's power spectrum (section 38b), measured on noise fields made as the generator makes a mean frame's
+    noise: the tissue's texture (SYNTH_TEXTURE, grain SYNTH_GRAIN) and the white noise of the kept frames
+    (CHECK_NOISE). Measured, not modelled: the texture is not white, and the core z rides on both. Returns the mean
+    of |FFT|^2 over the samples (the variance of every frequency of a field of this shape)."""
+    rng = np.random.default_rng(seed)
+    total = np.zeros(shape)
+    for _ in range(samples):
+        texture = cv2.GaussianBlur(rng.normal(0, 1, shape).astype(np.float32), (0, 0), SYNTH_GRAIN)
+        field = texture * SYNTH_TEXTURE / texture.std() + rng.normal(0, CHECK_NOISE, shape)
+        total += np.abs(np.fft.fft2(field - field.mean())) ** 2
+    return total / samples
+
+
+def core_template(arms, blur_sigma, shape):
+    """The two compositions of a core rendered from its arms' kappa and R (section 38b): the arms as two lumens
+    (two vessels crossing: densities add) and as one (one lumen: the max). `arms` is a list of two edges (x, y,
+    radius as half-width) with their kappa and R. Returns (two vessels, one lumen) as densities of `shape`."""
+    two = np.zeros(shape, dtype=np.float32)
+    for edge, kappa, radius in arms:
+        box, density = draw_lumen([edge], [kappa], blur_sigma, shape, radii=[np.full(len(edge["x"]), radius)])
+        two[box[0]:box[2], box[1]:box[3]] += density
+    one = np.zeros(shape, dtype=np.float32)
+    box, density = draw_lumen([edge for edge, _, _ in arms], [kappa for _, kappa, _ in arms], blur_sigma, shape,
+                              radii=[np.full(len(edge["x"]), radius) for edge, _, radius in arms])
+    one[box[0]:box[2], box[1]:box[3]] += density
+    return two, one
+
+
+def core_z(density, arms, blur_sigma, spectrum, region=None):
+    """The core's matched filter (section 38b): the template is the difference between the two compositions
+    (core_template), the residual the density minus the one-lumen composition (less its median); z is their inner
+    product whitened by the noise's spectrum, over the template's whitened norm. Under one lumen z has mean 0 and
+    spread 1; under two vessels its mean is the template's whitened norm. `region` (a mask) limits both to the core.
+    Returns z and the template's whitened norm (the z two vessels are expected to give)."""
+    two, one = core_template(arms, blur_sigma, density.shape)
+    template = (two - one).astype(float)
+    residual = np.nan_to_num(density).astype(float) - one
+    residual -= np.median(residual)
+    if region is not None:
+        template, residual = template * region, residual * region
+    t, r = np.fft.fft2(template - template.mean()), np.fft.fft2(residual - residual.mean())
+    # no weight where the noise has no measured power: the mean (taken off every noise field) and anything below a
+    # thousandth of the median power
+    floor = 1e-3 * np.median(spectrum)
+    weight = np.where(spectrum > floor, 1 / np.maximum(spectrum, floor), 0.0)
+    weight[0, 0] = 0.0
+    norm = float(np.sqrt(np.sum(np.abs(t) ** 2 * weight)))
+    return float(np.real(np.sum(r * np.conj(t) * weight)) / max(norm, 1e-12)), norm
+
+
+def fitted_arms(density, lines, blur_sigma, core):
+    """The arms' kappa and R as section 38 reads them: the median of window_kappa over windows more than `core` px
+    from the junction. `lines` are (points, half-width) per vessel through the junction."""
+    arms = []
+    for points, half_width in lines:
+        edge = {"x": points[:, 0], "y": points[:, 1], "radius": np.full(len(points), half_width)}
+        centre = points[len(points) // 2]
+        places = [p for p in range(6, len(points) - 6, 6) if np.hypot(*(points[p] - centre)) > core]
+        found = [window_kappa(density, edge, p, blur_sigma) for p in places]
+        arms.append((edge, float(np.median([k for k, _, _ in found])), float(np.median([r for _, _, r in found]))))
+    return arms
+
+
+def core_configuration(radii, angle=CORE_ANGLE):
+    """Two straight vessels of the given radii through the centre of a CHECK_SHAPE picture, `angle` degrees apart:
+    as lines (points, radius), each 150 px long."""
+    rows, columns = CHECK_SHAPE
+    c = np.array([(columns - 1) / 2, (rows - 1) / 2])
+    away = lambda degrees, length: c + length * np.array([np.cos(np.radians(degrees)), np.sin(np.radians(degrees))])
+    return [(line_points(away(180, 75), away(0, 75)), radii[0]), (line_points(away(180 + angle, 75), away(angle, 75)), radii[1])]
+
+# %%
+# acceptance step 6: the core z by radius and blur (section 38b). Two vessels crossing at right angles, rendered as two
+# lumens (densities add) and as one lumen (the max: an anastomosis), CORE_SEEDS noise realisations each; the arms'
+# kappa and R fitted outside the core (fitted_arms), the template and z (core_z) with the noise's measured spectrum.
+spectrum = noise_spectrum(CHECK_SHAPE)
+core_rows = []
+for pair in CORE_PAIRS:
+    lines = core_configuration(pair)
+    for defocus in CORE_BLURS:
+        for composition in ("two vessels", "one lumen"):
+            lumens = [[line] for line in lines] if composition == "two vessels" else [lines]
+            for seed in CORE_SEEDS:
+                picture = render_check(lumens, defocus, seed)
+                core = max(pair) + 2 * defocus + RING_MARGIN
+                measured = []
+                for points, radius in lines:
+                    rows_, columns_ = np.rint(points[:, 1]).astype(int), np.rint(points[:, 0]).astype(int)
+                    far = np.hypot(points[:, 0] - points[len(points) // 2, 0], points[:, 1] - points[len(points) // 2, 1]) > core + 4
+                    measured.append((points, float(np.median(picture["half_width"][rows_[far], columns_[far]]))))
+                arms = fitted_arms(picture["density"], measured, defocus, core)
+                z, expected = core_z(picture["density"], arms, defocus, spectrum)
+                core_rows.append({"radii": f"{pair[0]:g} and {pair[1]:g}", "smaller": min(pair), "blur": defocus,
+                                  "composition": composition, "seed": seed, "z": z, "expected": expected,
+                                  "kappa": np.mean([kappa for _, kappa, _ in arms]), "R": np.mean([radius for _, _, radius in arms])})
+
+print(f"The core's matched filter: z for two vessels against one lumen, at a right-angle core, {len(CORE_SEEDS)} realisations each "
+      f"(median z under each truth, the z the template expects for two vessels, and told_apart between the two)")
+print(f"   {'radii':>10s} " + "".join(f"{f'blur {blur} px':>34s}" for blur in CORE_BLURS))
+for pair in CORE_PAIRS:
+    name = f"{pair[0]:g} and {pair[1]:g}"
+    cells = []
+    for defocus in CORE_BLURS:
+        rows = [row for row in core_rows if row["radii"] == name and row["blur"] == defocus]
+        two = [row["z"] for row in rows if row["composition"] == "two vessels"]
+        one = [row["z"] for row in rows if row["composition"] == "one lumen"]
+        cells.append(f"{np.median(two):6.1f} / {np.median(one):5.1f} ({np.median([r['expected'] for r in rows]):5.1f}) {told_apart(two, one):4.2f}")
+    print(f"   {name:>10s} " + "".join(f"{cell:>34s}" for cell in cells))
+print("   (each cell: median z with two vessels / with one lumen (the expected z) told_apart)")
+gate_blur = min(CORE_BLURS, key=lambda blur: abs(blur - 1.5))
+thick = [row for row in core_rows if row["smaller"] >= 3 and row["blur"] == gate_blur]
+decisive = {name: float(np.median([row["z"] for row in thick if row["radii"] == name and row["composition"] == "two vessels"]))
+            for name in sorted({row["radii"] for row in thick})}
+print(f"\nThe gate: decisive (z >= 3) for R >= 3 at the real burst's blur ({gate_blur} px; section 29's picture_blur 1.50): "
+      + ", ".join(f"R {name}: median z {value:.1f}" for name, value in decisive.items())
+      + f" -> {'PASSED' if all(value >= 3 for value in decisive.values()) else 'FAILED'} | capillaries as they come out, in the table")
+os.makedirs("vessel_pictures/core", exist_ok=True)
+save_table(core_rows, "vessel_pictures/core/z_table.csv")
