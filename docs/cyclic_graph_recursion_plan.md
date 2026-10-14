@@ -57,6 +57,22 @@ The initial spline set is the one section 29 fits to the ridges above; every str
 
 **Vertices and edges** then as in version 4 (cores contracted, cells added, twins kept and marked, multi-edges and loops allowed).
 
+**Initialisation: how the first splines are placed, and when the first network is done.**
+
+1. *Ridges.* `ridge_crests` on the static strength after the interactions: a pixel is on a ridge where its strength is the largest across its own orientation, above `T_LOW` and joined to a pixel above `T_HIGH`. The crest neurons of section 21 carry their place to a fraction of a pixel; the skeleton's pixels are integers. Section 29 fits to the skeleton's staircase; the initialisation carries each ridge pixel's sub-pixel offset across the line (new: `ridge_lines` keeps it), which halves the fit residual.
+2. *Pieces.* Closing within `RIDGE_JOIN`, the skeleton with its `SPUR_LENGTH` pruning, `extend_ends`, then `ridge_lines` with `least = 0` and `to_forks = True`: every piece runs fork to fork or fork to free end with the fork pixel at each end. Section 29 leaves pieces under `SPLINE_LEAST` = 5 px out; here they are kept as straight segments, since `fit_spline` fits a line to two points already.
+3. *Splines.* Each piece through `spline_vessel`: a least-squares cubic B-spline for the place with knots `KNOT_SPACING` = 12 px apart, one for the half-width with knots three times farther, points re-sampled a pixel apart along the spline, and the fit residual (the rms distance of the ridge points from the spline) recorded. *Knot refinement* (new): where a piece's residual exceeds the ridge's own precision (`RIDGE_PRECISION`, about 0.5 px on the staircase, half that with the sub-pixel offsets), the knot spacing on that piece is halved and the fit repeated while the residual's fall pays for the knots at section 39's price; a piece that still bends faster than a 6 px spacing is split at its point of largest residual, since a corner is usually a junction the fork detection missed. A spline is done when no further knot lowers the priced residual.
+4. *Darkness.* κ (or the line mass) per window outside the cores from the chord-profile fit of section 38, the thickest vessels first and the thinner ones on the density with the thicker ones' render subtracted, repeated until no κ changes by more than its own error: a Gauss–Seidel pass over the splines, two or three times.
+5. *The graph.* `spline_to_graph`; every vertex moved to where its arms' axes meet (`where_axes_meet`, read on the ring); cores contracted; the junction cells' rates added; readings by geometry.
+
+The first network is done when three things hold, none of which needs truth:
+
+- every spline's priced residual is at the ridge's precision, every vertex is at its arms' meeting point, and no two vertices lie within one core;
+- κ has converged;
+- **self-consistency along the model's own support**: the splines are rendered, scored and their ridges extracted, and within the tubes of the existing splines (the radius plus `TUBE_BLURS` sigmas of the blur) the render's ridges agree with the data's, within `REPEAT_WITHIN`, at least as well as the data's ridges agree with the other fixation's (`repeated`'s share above chance, section 29). That is the most the render can be asked to match, since the data does not agree with itself better. A disagreement inside a tube is a measurement problem (a width, a κ, the blur, a spline placed off the crest) and is fixed here; a disagreement outside the tubes, a ridge the data has and the model lacks or the reverse, is the recursion's input, not the initialisation's failure.
+
+Then the self-consistency number over the whole frame, with no restriction to the tubes, is recorded as round 0, and the recursion begins. "Done" does not mean every ridge pixel has a spline above a cutoff (stubs and short pieces are splines with low confidence), and it does not mean the topology residual off the splines is empty; that residual is what the rounds are for.
+
 **Confidence per edge**: length in field lengths; strength; repeatability per edge (new code from `found_again`); `flow_share`; twin and stub; and later the rise of J without the edge.
 
 **Structural confidence per join**, which section 40 consumes, and which is never 1 − ε where the new synthetic cases can make the structure wrong:
