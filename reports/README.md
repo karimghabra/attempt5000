@@ -6,7 +6,8 @@ This branch carries out `docs/cyclic_graph_recursion_plan.md` on `burst_2026-09-
 |---|---|---|
 | [reproduction_20261013.md](reproduction_20261013.md) | notebook sections 1–34 on the burst | all 77 cells ran in 26.7 min; tables recorded |
 | [step_1_20261013.md](step_1_20261013.md) | acceptance step 1: the generator (section 35) | **gate passed**: 32 of 32 old seeds bit-identical; counts for 64 new bursts |
+| [step_2_20261013.md](step_2_20261013.md) | acceptance step 2: the graph with confidences (section 37) | **gate passed**: told_apart 0.946 (section 30's held-out bursts) and 0.951 (section 35's trees); the curves pass the consolidated point |
 
-**Current step: 2**, the graph with confidences (section 37). Nothing is blocking.
+**Current step: 3**, the flux network on the whole-vessel graphs (section 40). Nothing is blocking.
 
 `logs/` holds the full printed text of every run, cell by cell, and `data/` holds the tables the reports quote.

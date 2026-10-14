@@ -7209,7 +7209,7 @@ DEFINITION_CELLS = ("setup", "background-functions", "graph-functions", "shared-
                     "hypercolumn-functions", "lateral-functions", "chain-functions", "signal-functions", "flow-functions",
                     "segment-functions", "graph-builder", "junction-functions", "synthetic-functions",
                     "flow-vessel-functions", "harness-functions", "whole-vessel-functions", "flow-evidence-functions",
-                    "generator-functions")
+                    "generator-functions", "cyclic-graph-functions")
 fresh_kernel = "load_saved" not in globals()
 if fresh_kernel:
     import contextlib
@@ -9328,3 +9328,772 @@ figure.savefig("vessel_pictures/synthetic_35/kinds.png", dpi=90)
 plt.show()
 del burst
 memory_note("section 35")
+
+# %% [markdown]
+# ## 37. The clean cyclic graph: every piece kept, each with a confidence (acceptance step 2)
+#
+# Section 29 consolidates its ridges: it joins them, then drops side branches, small networks and short pieces by their length. The plan's first principle is that nothing is dropped below the thinning scale. Every piece is kept and carries a confidence instead, and that has to be worth something. **The gate:** on the held-out bursts, the edge confidence must tell true pieces from false ones with `told_apart` ≥ 0.75 on its five bottom-up terms, and its curve must pass the consolidated row's point. Otherwise section 29's consolidation is kept and the plan stops here for the graph.
+#
+# **The pieces** (`cyclic_pieces`). They are built in five steps:
+#
+# 1. `ridge_crests` on the pre-interaction winner (section 29's saved maps; never section 21's field).
+# 2. Closed within `RIDGE_JOIN`, and thinned with section 18's `SPUR_LENGTH` pruning (`joined_ridges`).
+# 3. Every free end extended into a line it meets (`extend_ends`).
+# 4. Cut fork to fork by `ridge_lines`, with nothing dropped (`least = 0`, `to_forks`).
+# 5. Each point moved to its crest's place across the line, to a fraction of a pixel (`crest_places`; the pixel's centre where it has no crest).
+#
+# Each piece is then fitted with `spline_vessel` after a knot refinement (`refine_knots`). That refinement is priced in the ridge's own unit as a BIC, with no λ:
+#
+# - the χ² is the summed squared distance from the spline over `RIDGE_PRECISION`², counted in independent samples (`RIDGE_CORRELATION` points make one);
+# - each added coefficient costs ln(samples);
+# - one move halves the knot spacing, down to `KNOT_LEAST`;
+# - the other move cuts the piece at its point of largest residual. It is taken only where the two halves meet at a bend of more than `FUSE_STRAIGHT`.
+#
+# **The five bottom-up terms** (`edge_terms`):
+#
+# | term | how it is read |
+# |---|---|
+# | length | in field lengths (`ELONGATION` half-widths), zero at one and full by three |
+# | strength | the median pre-interaction score over `T_HIGH` |
+# | repeatability | `found_again` per edge against the other fixation's joined ridges, above chance (`edge_repeatability`); on the harness, section 35's second fixation |
+# | flow data | `flow_share` |
+# | twin or stub | a twin is a piece running alongside a longer one by `read_arms`' rule; a stub is a free-ended piece with less than `STUB_FIELDS` field lengths outside its parents' tubes (`twins_and_stubs`) |
+#
+# **Section 41's calibration** (`calibrate_terms`). Each term is binned on the bursts for developing, and each bin gets its log-likelihood ratio of a true piece against a false one. The prior is kept apart. The confidence is the prior plus the terms' ratios, squashed (`edge_confidence`). A piece is true when most of its points lie within 2 px of a true centerline, the harness's tolerance.
+#
+# **The curves.** At each cutoff of the confidence, the pieces kept are read as section 29 reads its pieces (a kymograph per piece, the graph, the junctions with flow as tests) and scored with `score_reading`. The curves are compared with the plain and the consolidated rows, read from the same bursts.
+#
+# **Two sets of bursts.**
+#
+# - *Section 30's bursts.* The old seeds are made with a second fixation; their first fixation is section 30's burst to the bit. They are calibrated on `HARNESS_SEEDS` and measured on `HELD_OUT_SEEDS`; the gate is read here.
+# - *Section 35's trees.* These have every thing of section 35 on. They are calibrated on `TREE_SEEDS` and measured on `TREE_HELD_OUT`.
+#
+# **Measured here where the plan guessed** (see `reports/step_2_<date>.md`):
+#
+# - `RIDGE_PRECISION` is 0.38 px with the sub-pixel places and 0.46 px at the pixels' centres.
+# - The points' deviations are correlated over 1.9 points.
+# - The sub-pixel places come from the crests of the pre-interaction score, which is the score the ridges come from. Section 29's saved inputs have no interaction field, and these crests give a lower residual on more pixels.
+#
+# **Result:** per piece its terms and confidence (`vessel_pictures/cyclic/pieces.csv`), the curves (`curves.csv`, `curves.png`), the reliability diagrams (`reliability.png`), the real burst's pieces (`real_confidence.png`), and the knot refinement's film (`vessel_pictures/fit/initialisation.gif`). κ, the twins' line mass and `spline_to_graph` belong to step 5, with the renderer.
+
+# %%
+import vascnet.watch
+
+RIDGE_PRECISION = 0.38    # pixels; the rms distance of the ridge points, at the crests' sub-pixel places, from the true
+                          # centerline (measured on the generator's vessels, away from junctions; 0.46 at the pixels' centres)
+RIDGE_CORRELATION = 1.9   # points; a ridge point's deviation is correlated with its neighbours': this many points are
+                          # worth one independent one (measured: the sum of rho^2 over all lags, median over pieces)
+KNOT_LEAST = 6.0          # pixels; the closest knots a spline gets
+CONFIDENCE_BINS = 6       # bins of a term on the bursts for developing, where its log-likelihood ratio is read
+TRUE_WITHIN = 2.0         # pixels; a piece is true when most of its points lie this close to a true centerline (the
+                          # harness's centerline tolerance)
+CONFIDENCE_CUTOFFS = (0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95)  # the curves over edge confidence
+EDGE_TERMS = ("length", "strength", "repeatability", "flow data", "twin or stub")  # the five bottom-up terms
+
+
+def joined_ridges(strength, orientation, region):
+    """The plain ridges joined, and nothing dropped (section 37): `ridge_crests` on the pre-interaction winner,
+    closed within RIDGE_JOIN, thinned with section 18's SPUR_LENGTH pruning (`centerlines`; a stub of 1 to 11 px is
+    a thinning artefact), and every free end extended into a line it meets (`extend_ends`). None of
+    consolidate_lines' dropping steps (RIDGE_CHILD, LINE_LEAST, RIDGE_NETWORK) is run.
+
+    Returns a dict: `ridges` (the crests), `skeleton` (the joined lines, one pixel wide), `added` (the pixels the
+    extensions added: extended & ~lines) and `closed` (the skeleton before the extensions)."""
+    ridges = ridge_crests(strength, orientation, region)
+    disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * RIDGE_JOIN + 1,) * 2)
+    lines = centerlines(cv2.morphologyEx(ridges.astype(np.uint8), cv2.MORPH_CLOSE, disc) > 0)
+    extended = extend_ends(lines, strength)
+    return {"ridges": ridges, "skeleton": skeletonize(extended), "added": extended & ~lines, "closed": lines}
+
+
+def crest_places(scores, orientation, valid):
+    """The place of the ridge across its line to a fraction of a pixel, at every pixel that has one: the crest
+    neurons (section 21's crest_neurons) of the pre-interaction score, the score the ridges are read from, of the
+    orientation nearest to the pixel's winning one. Returns (x, y) pictures, NaN where a pixel has no crest neuron
+    within one orientation step of its winner; the ridge then keeps the pixel's centre."""
+    stack = np.asarray(scores, dtype=np.float32)
+    widths = np.zeros_like(stack, dtype=np.float32)
+    crests = crest_neurons(stack, widths, valid)
+    turn = np.abs(crests["k"] - orientation[crests["row"], crests["column"]].astype(np.int16)) % N_ORIENT
+    turn = np.minimum(turn, N_ORIENT - turn)
+    kept = np.flatnonzero(turn <= 1)
+    order = kept[np.argsort(-turn[kept], kind="stable")]  # per pixel the nearest orientation is written last
+    x, y = (np.full(orientation.shape, np.nan, dtype=np.float32) for _ in range(2))
+    x[crests["row"][order], crests["column"][order]] = crests["x"][order]
+    y[crests["row"][order], crests["column"][order]] = crests["y"][order]
+    return x, y
+
+
+def fine_lines(skeleton, strength, orientation, half_width, places):
+    """`ridge_lines` with least = 0 and to_forks (every piece fork to fork or fork to free end, nothing dropped),
+    each point moved to its crest's place across the line where it has one (`crest_places`; `offset` says which
+    did). A piece of two points keeps them (fit_spline fits a line to them)."""
+    lines = ridge_lines(skeleton, strength, orientation, half_width, least=0, to_forks=True)
+    x, y = places
+    for line in lines:
+        row, column = np.rint(line["y"]).astype(int), np.rint(line["x"]).astype(int)
+        crest_x, crest_y = x[row, column], y[row, column]
+        line["offset"] = np.isfinite(crest_x)
+        line["x"] = np.where(line["offset"], crest_x, line["x"]).astype(np.float32)
+        line["y"] = np.where(line["offset"], crest_y, line["y"]).astype(np.float32)
+    return lines
+
+
+def along_of(points):
+    """The distance along a polyline at each of its points."""
+    return np.r_[0, np.cumsum(np.maximum(np.hypot(*np.diff(points, axis=0).T), 1e-3))]
+
+
+def priced_fit(points, spacing):
+    """A place spline with knots `spacing` apart and its chi-square in the ridge's own unit: the summed squared
+    distance of the points from it over RIDGE_PRECISION^2, counted in independent samples (RIDGE_CORRELATION points
+    make one). Returns the spline, the chi-square and the number of coefficients."""
+    along = along_of(points)
+    place = fit_spline(points, along, spacing)
+    chi2 = float(np.sum((place(along) - points) ** 2) / (RIDGE_PRECISION ** 2 * RIDGE_CORRELATION))
+    return place, chi2, 2 * len(place.c)
+
+
+def refine_knots(chain, watch=None):
+    """The knot refinement of section 37, priced in the ridge's own unit with no lambda. Two moves are priced as a
+    BIC with sigma RIDGE_PRECISION over the independent samples (points / RIDGE_CORRELATION), each paying ln(samples)
+    per added coefficient:
+
+      halving  the piece's knot spacing halved, from KNOT_SPACING down to KNOT_LEAST at the closest;
+      split    the piece cut in two at its point of largest residual, each half fitted at the same spacing; taken
+               only where the two halves meet at a bend of more than FUSE_STRAIGHT, so that a ridge pulled aside
+               for a few pixels (by a crossing vessel, at the frame's edge) is not cut into two.
+
+    The move that gains most is taken while one gains; the halves of a split are refined again from KNOT_SPACING.
+    Returns a list of (first point, last point, spacing): the pieces the chain is fitted as. `watch`, if given, is
+    handed every candidate move (a `vascnet.watch.Recorder`)."""
+    points = np.column_stack([chain["x"], chain["y"]]).astype(np.float64)
+    out, waiting = [], [(0, len(points) - 1)]
+    while waiting:
+        first, last = waiting.pop()
+        part = points[first:last + 1]
+        spacing = KNOT_SPACING
+        place, chi2, count = priced_fit(part, spacing)
+        price = np.log(max(len(part) / RIDGE_CORRELATION, 2.0))
+        cut = None
+        while len(part) >= 8:
+            moves = []
+            if spacing / 2 >= KNOT_LEAST:
+                finer = priced_fit(part, spacing / 2)
+                moves.append({"kind": "knots", "spacing": spacing / 2, "fit": finer,
+                              "gain": chi2 - finer[1] - price * max(finer[2] - count, 1)})
+            residual = np.hypot(*(place(along_of(part)) - part).T)
+            at = int(np.argmax(residual[3:-3])) + 3 if len(part) > 8 else None
+            if at is not None:
+                halves = [priced_fit(part[:at + 1], spacing), priced_fit(part[at:], spacing)]
+                ahead = [halves[0][0](along_of(part[:at + 1])[-1], 1), halves[1][0](0.0, 1)]
+                cosine = np.dot(*ahead) / max(np.hypot(*ahead[0]) * np.hypot(*ahead[1]), 1e-12)
+                bend = float(np.degrees(np.arccos(np.clip(cosine, -1, 1))))
+                moves.append({"kind": "split", "at": at, "bend": bend, "spacing": spacing,
+                              "gain": chi2 - halves[0][1] - halves[1][1] - price * max(halves[0][2] + halves[1][2] - count, 1)
+                              if bend > FUSE_STRAIGHT else -np.inf})
+            best = max(moves, key=lambda move: move["gain"]) if moves else None
+            for move in moves:
+                if watch is not None:
+                    taken = move is best and move["gain"] > 0
+                    curve = (move["fit"][0] if move["kind"] == "knots" else place)(np.linspace(0, along_of(part)[-1], 4 * len(part)))
+                    watch({"kind": move["kind"], "taken": bool(taken), "piece": (first, last), "spacing": move["spacing"],
+                           "gain": float(move["gain"]) if np.isfinite(move["gain"]) else -1e9, "points": part.copy(),
+                           "fit": curve.copy(), "at": first + move.get("at", 0)})
+            if best is None or best["gain"] <= 0:
+                break
+            if best["kind"] == "split":
+                cut = first + best["at"]
+                break
+            spacing, (place, chi2, count) = best["spacing"], best["fit"]
+        if cut is not None:
+            waiting += [(first, cut), (cut, last)]
+        else:
+            out.append((first, last, spacing))
+    return sorted(out)
+
+
+def other_lines_here(valid, other_lines, other_valid, to_other):
+    """The other fixation's lines brought into this fixation's frame, as found_again (section 18) does: per pixel the
+    distance to them, and where both fixations have data (the other's data area eroded by 9 x 9)."""
+    size = valid.shape[::-1]
+    distance = cv2.warpPerspective(distance_to(other_lines), to_other, size,
+                                   flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP, borderValue=1e3)
+    seen = cv2.warpPerspective(other_valid.astype(np.float32), to_other, size, flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP)
+    return distance, valid & (cv2.erode(np.uint8(seen > 0.99), np.ones((9, 9), np.uint8)) > 0)
+
+
+def edge_repeatability(edges, valid, other_lines, other_valid, to_other):
+    """Per edge, found_again (section 18) applied to the edge alone: the share of its points (where both fixations
+    have data) that the other fixation's lines pass within REPEAT_WITHIN, the share they pass by chance (the
+    other's lines moved aside by CHANCE_SHIFT, as `repeated` does), and how far the first lies above the second
+    (0 chance, 1 found everywhere). `to_other` maps this fixation's (x, y) to the other's. Returns three arrays,
+    NaN for an edge with no point where both have data."""
+    aside = np.array([[1, 0, CHANCE_SHIFT], [0, 1, CHANCE_SHIFT], [0, 0, 1.0]])
+    maps = [other_lines_here(valid, other_lines, other_valid, mapping) for mapping in (to_other, aside @ to_other)]
+    rows, columns = valid.shape
+    found, chance = np.full(len(edges), np.nan), np.full(len(edges), np.nan)
+    for number, edge in enumerate(edges):
+        row = np.clip(np.rint(edge["y"]).astype(int), 0, rows - 1)
+        column = np.clip(np.rint(edge["x"]).astype(int), 0, columns - 1)
+        for values, (distance, both) in zip((found, chance), maps):
+            here = both[row, column]
+            if here.any():
+                values[number] = np.mean(distance[row[here], column[here]] <= REPEAT_WITHIN)
+    with np.errstate(invalid="ignore"):
+        above = (found - chance) / np.maximum(1 - chance, 1e-6)
+    return found, chance, above
+
+
+def near_pairs(x, y, reach):
+    """Every ordered pair (i, j) of points, i != j, closer than the larger of their two reaches, with its distance.
+    The points are queried in classes of reach, so that a few thick vessels do not make every thin one look far."""
+    tree = scipy.spatial.cKDTree(np.column_stack([x, y]))
+    found = []
+    limits = np.unique(np.ceil(reach / 4) * 4)
+    for low, high in zip(np.r_[0, limits[:-1]], limits):
+        members = np.flatnonzero((reach > low) & (reach <= high))
+        if not len(members):
+            continue
+        near = tree.sparse_distance_matrix(scipy.spatial.cKDTree(np.column_stack([x[members], y[members]])), float(high),
+                                           output_type="ndarray")
+        a, b, distance = near["i"], members[near["j"]], near["v"]
+        keep = (a != b) & (distance <= reach[b])
+        found.append(np.column_stack([a[keep], b[keep], distance[keep]]))
+    pairs = np.concatenate(found) if found else np.zeros((0, 3))
+    pairs = np.concatenate([pairs, pairs[:, [1, 0, 2]]])  # both orders
+    _, unique = np.unique(pairs[:, 0] * len(x) + pairs[:, 1], return_index=True)
+    pairs = pairs[unique]
+    return pairs[:, 0].astype(int), pairs[:, 1].astype(int), pairs[:, 2]
+
+
+def twins_and_stubs(edges, blur, valid):
+    """Per edge, the fifth bottom-up term of section 37: "twin" where for most of its points a longer edge runs
+    alongside it by read_arms' rule (within SAME_ARM degrees, closer than the larger width plus RING_MARGIN; a
+    width is 2 x half-width / CYLINDER); "stub" where it has a free end (away from where the data ends) and fewer
+    than STUB_FIELDS field lengths of it lie outside the tubes of its parents (section 31's rule: the parents are the
+    edges without a free end and the longer ones; a tube reaches tube_reach from the parent's centerline); else
+    "plain"."""
+    rows, columns = valid.shape
+    edge_of = np.concatenate([np.full(len(edge["x"]), number) for number, edge in enumerate(edges)])
+    x, y = np.concatenate([edge["x"] for edge in edges]), np.concatenate([edge["y"] for edge in edges])
+    radius = np.concatenate([edge["radius"] for edge in edges]).astype(np.float64)
+    theta = np.concatenate([edge["theta"] for edge in edges]).astype(np.float64)
+    width = 2 * radius / CYLINDER
+    reach = tube_reach(radius, blur).astype(np.float64)
+    lengths = np.array([edge["length"] for edge in edges])
+    border = cv2.distanceTransform(valid.astype(np.uint8), cv2.DIST_L2, 5)
+    at = lambda edge, end: border[int(np.clip(round(float(edge["y"][end])), 0, rows - 1)),
+                                  int(np.clip(round(float(edge["x"][end])), 0, columns - 1))]
+    free = np.array([any(loose and at(edge, end) > FIELD_EDGE for end, loose in zip((0, -1), edge.get("loose", (False, False))))
+                     for edge in edges])
+    i, j, distance = near_pairs(x, y, np.maximum(width + RING_MARGIN, reach))
+    other = edge_of[i] != edge_of[j]
+    i, j, distance = i[other], j[other], distance[other]
+    longer = lengths[edge_of[j]] > lengths[edge_of[i]]
+    turned = np.abs(theta[i] - theta[j]) % np.pi
+    alongside = (longer & (np.degrees(np.minimum(turned, np.pi - turned)) < SAME_ARM)
+                 & (distance <= np.maximum(width[i], width[j]) + RING_MARGIN))
+    beside = np.zeros(len(x), dtype=bool)
+    beside[i[alongside]] = True
+    parent = ~free[edge_of[j]] | longer
+    inside = np.zeros(len(x), dtype=bool)
+    inside[i[parent & (distance <= reach[j])]] = True
+    kinds = []
+    for number, edge in enumerate(edges):
+        mine = edge_of == number
+        if beside[mine].mean() > 0.5:
+            kinds.append("twin")
+        elif free[number] and (~inside[mine]).sum() < STUB_FIELDS * ELONGATION * float(np.median(edge["radius"])):
+            kinds.append("stub")
+        else:
+            kinds.append("plain")
+    return kinds
+
+
+def closing_joins(ridges, lines):
+    """Where the thinned lines join pieces of ridge (connected parts of `ridges`, before the closing within
+    RIDGE_JOIN) that were apart: per join the pieces, its place, and whether it joins two of them end to end (a join
+    of two arms) or at a fork. A line pixel belongs to the ridge piece within 1.5 px of it; one that lies farther
+    is in a gap the closing filled. Returns the joins and the pieces' labels."""
+    count, labels = cv2.connectedComponents(ridges.astype(np.uint8), connectivity=8)
+    distance, (near_y, near_x) = distance_transform_edt(~ridges, return_indices=True)
+    piece = np.where(lines & (distance <= 1.5), labels[near_y, near_x], 0)
+    gap_count, gap_labels = cv2.connectedComponents((lines & (piece == 0)).astype(np.uint8), connectivity=8)
+    unit = np.where(piece > 0, piece, -gap_labels)  # a ridge piece (> 0) or a gap (< 0) per line pixel
+    neighbours = cv2.filter2D(lines.astype(np.uint8), cv2.CV_16S, np.ones((3, 3), np.float32), borderType=cv2.BORDER_CONSTANT) - 1
+    rows, columns = lines.shape
+    meeting = {}  # (unit, unit) -> the line pixels where they meet
+    for y, x in zip(*np.nonzero(lines)):
+        for dy, dx in AROUND:
+            v, u = y + dy, x + dx
+            if 0 <= v < rows and 0 <= u < columns and lines[v, u] and unit[v, u] != unit[y, x]:
+                meeting.setdefault(tuple(sorted((int(unit[y, x]), int(unit[v, u])))), []).append((y, x))
+    groups = {}  # a gap and the pieces it touches; or two pieces that touch directly
+    for (a, b), places in meeting.items():
+        if a < 0 < b:
+            groups.setdefault(a, set()).add(b)
+        elif a > 0:
+            groups[(a, b)] = {a, b}
+    sizes = np.bincount(labels.ravel(), minlength=count)
+    joins = []
+    for key, pieces in groups.items():
+        if len(pieces) < 2:
+            continue
+        where = np.argwhere(unit == key) if not isinstance(key, tuple) else np.array(meeting[key])
+        y, x = where.mean(axis=0)
+        fork = len(pieces) > 2 or bool((neighbours[where[:, 0], where[:, 1]] >= 3).any())
+        pieces = tuple(sorted(int(p) for p in pieces))
+        # a join of lines: every piece is a line of its own (SPUR_LENGTH pixels of ridge or more), not a speck the
+        # closing touched
+        joins.append({"pieces": pieces, "x": float(x), "y": float(y), "two arms": not fork,
+                      "of lines": bool(min(sizes[p] for p in pieces) >= SPUR_LENGTH)})
+    return joins, labels
+
+
+def true_pieces(edges, lines):
+    """Per edge, whether it is true: most of its points lie within TRUE_WITHIN of a true centerline (`lines`, a
+    picture), the harness's centerline tolerance."""
+    distance = distance_to(lines)
+    rows, columns = lines.shape
+    return np.array([np.mean(distance[np.clip(np.rint(edge["y"]).astype(int), 0, rows - 1),
+                                      np.clip(np.rint(edge["x"]).astype(int), 0, columns - 1)] <= TRUE_WITHIN) > 0.5
+                     for edge in edges], dtype=bool)
+
+
+def edge_terms(edges, valid, blur, repeatability):
+    """The five bottom-up terms of section 37 per edge (EDGE_TERMS), as a list of dicts: length in field lengths
+    (zero at one, full by three; a field is ELONGATION half-widths long), strength (the median pre-interaction score
+    over T_HIGH), repeatability (above chance, edge_repeatability; NaN where the other fixation has no data), flow
+    data (flow_share), and twin or stub (twins_and_stubs)."""
+    kinds = twins_and_stubs(edges, blur, valid)
+    rows = []
+    for number, edge in enumerate(edges):
+        field = ELONGATION * max(float(np.median(edge["radius"])), 0.5)
+        rows.append({"length": float(np.clip((edge["length"] / field - 1) / 2, 0, 1)),
+                     "strength": float(np.median(edge["strength"])) / T_HIGH,
+                     "repeatability": float(repeatability[number]), "flow data": float(edge["flow share"]),
+                     "twin or stub": kinds[number]})
+    return rows
+
+
+def bin_of(value, cuts):
+    """The bin a term's value falls in: its place among a word's levels (one more for a level not seen), or among
+    the cuts of a number (one more for NaN)."""
+    if isinstance(cuts, list):
+        return cuts.index(value) if value in cuts else len(cuts)
+    if not np.isfinite(value):
+        return len(cuts) + 1
+    return int(np.searchsorted(cuts, value, side="right"))
+
+
+def calibrate_terms(rows, truth, terms=EDGE_TERMS, bins=CONFIDENCE_BINS):
+    """Section 41 for the edge confidence: each term binned on the bursts for developing (quantile bins of a number,
+    NaN a bin of its own; a word's levels), and per bin the log-likelihood ratio of a true edge against a false
+    one, with half a count added to every bin; the prior is the log odds of a true edge, kept apart. Returns the
+    model: per term its cuts, its ratios, and the share true and count in each bin (the reliability diagram)."""
+    truth = np.asarray(truth, dtype=bool)
+    model = {"prior": float(np.log(max(truth.sum(), 0.5) / max((~truth).sum(), 0.5))), "terms": {}}
+    for term in terms:
+        values = [row[term] for row in rows]
+        if isinstance(values[0], str):
+            cuts = sorted(set(values))
+            count = len(cuts) + 1
+        else:
+            finite = np.array([value for value in values if np.isfinite(value)])
+            cuts = np.unique(np.quantile(finite, np.linspace(0, 1, bins + 1)[1:-1])) if len(finite) else np.array([])
+            count = len(cuts) + 2
+        place = np.array([bin_of(value, cuts) for value in values])
+        right = np.bincount(place[truth], minlength=count) + 0.5
+        wrong = np.bincount(place[~truth], minlength=count) + 0.5
+        model["terms"][term] = {"cuts": cuts, "ratio": np.log(right / right.sum()) - np.log(wrong / wrong.sum()),
+                                "share true": (right - 0.5) / np.maximum(right + wrong - 1, 1), "count": right + wrong - 1}
+    return model
+
+
+def edge_confidence(rows, model, terms=EDGE_TERMS):
+    """The edge confidence: the prior plus the terms' log-likelihood ratios (calibrate_terms), squashed to 0..1.
+    Also returns each term's ratio per edge."""
+    ratios = np.array([[model["terms"][term]["ratio"][bin_of(row[term], model["terms"][term]["cuts"])] for term in terms]
+                       for row in rows], dtype=float).reshape(len(rows), len(terms))
+    return 1 / (1 + np.exp(-(model["prior"] + ratios.sum(axis=1)))), ratios
+
+
+def saved_front(saved, number):
+    """What ridge_front gives for a fixation of the real burst, made from section 29's saved inputs."""
+    strength, valid, flow_strength = saved["static_strength"][number], saved["valid"][number], saved["flow_strength"][number]
+    return {"scores": saved["static_scores"][number], "strength": strength, "orientation": saved["static_orientation"][number],
+            "half_width": saved["half_width"][number], "mask": apply_hysteresis_threshold(strength, T_LOW, T_HIGH) & valid,
+            "flow_strength": flow_strength, "has_flow": apply_hysteresis_threshold(flow_strength, T_LOW, T_HIGH)}
+
+
+def cyclic_pieces(front, valid, watch=None):
+    """Section 37's pieces of one fixation: joined_ridges, fine_lines (the crests' sub-pixel places), and per piece
+    its splines (spline_vessel) after the knot refinement. A piece that refine_knots splits becomes two pieces with a
+    bend between them; `knot spacing` is the spacing the refinement settled on (the splines are drawn at 12 px; a
+    finer spacing is used once a piece is rendered, section 38). Returns the pieces and joined_ridges' dict."""
+    joined = joined_ridges(front["strength"], front["orientation"], front["mask"])
+    places = crest_places(front["scores"], front["orientation"], valid)
+    vessels = []
+    for line in fine_lines(joined["skeleton"], front["strength"], front["orientation"], front["half_width"], places):
+        size = len(line["x"])
+        for first, last, spacing in refine_knots(line, watch):
+            part = {name: value[first:last + 1] if isinstance(value, np.ndarray) and len(value) == size else value
+                    for name, value in line.items()}
+            part["loose"] = (line["loose"][0] and first == 0, line["loose"][1] and last == size - 1)
+            part["flow share"] = flow_share(part, front["has_flow"])
+            vessel = spline_vessel(part, front["flow_strength"])
+            vessel.update({"loose": part["loose"], "knot spacing": spacing, "split": (first, last) != (0, size - 1),
+                           "offset share": float(part["offset"].mean())})
+            vessels.append(vessel)
+    return vessels, joined
+
+
+JOIN_LOOK = 10.0  # pixels; a join is judged by the ridge pixels of its pieces this close to it
+
+
+def join_is_right(join, labels, segments):
+    """A join of pieces of ridge is right when, near the join (JOIN_LOOK), every piece lies on a vessel (most of its
+    pixels there within TRUE_WITHIN of one true segment) and all lie on one segment, or on segments of one lumen
+    that meet in a node."""
+    points = np.concatenate([segment["points"] for segment in segments])
+    owner = np.concatenate([np.full(len(segment["points"]), number) for number, segment in enumerate(segments)])
+    tree = scipy.spatial.cKDTree(points)
+    rows, columns = labels.shape
+    top, bottom = int(max(join["y"] - JOIN_LOOK, 0)), int(min(join["y"] + JOIN_LOOK + 1, rows))
+    left, right = int(max(join["x"] - JOIN_LOOK, 0)), int(min(join["x"] + JOIN_LOOK + 1, columns))
+    ids = []
+    for piece in join["pieces"]:
+        y, x = np.nonzero(labels[top:bottom, left:right] == piece)
+        y, x = y + top, x + left
+        near = np.hypot(x - join["x"], y - join["y"]) <= JOIN_LOOK
+        if not near.any():
+            return False
+        distance, nearest = tree.query(np.column_stack([x[near], y[near]]))
+        votes = np.bincount(np.where(distance <= TRUE_WITHIN, owner[nearest], -1) + 1)
+        ids.append(int(np.argmax(votes)) - 1)
+    if min(ids) < 0:
+        return False
+    ends = lambda number: {segments[number]["start"], segments[number]["end"]}
+    return all(a == b or (segments[a]["tree"] == segments[b]["tree"] and bool(ends(a) & ends(b)))
+               for a, b in itertools.combinations(ids, 2))
+
+
+def edge_table(burst, threads=None):
+    """Section 37 on a synthetic burst made with a second fixation (synthetic_burst_35, second=True): the pieces,
+    their five terms (repeatability against the second fixation's joined ridges), which pieces are true, and the
+    joins the closing within RIDGE_JOIN made, with whether each is right."""
+    front = ridge_front(burst, threads)
+    vessels, joined = cyclic_pieces(front, burst["valid"])
+    blur = picture_blur(front["half_width"], joined["ridges"])
+    second = burst["second"]
+    other = ridge_front(second, threads)
+    other_lines = joined_ridges(other["strength"], other["orientation"], other["mask"])["skeleton"]
+    found, chance, above = edge_repeatability(vessels, burst["valid"], other_lines, second["valid"], second["to second"])
+    joins, labels = closing_joins(joined["ridges"], joined["closed"])
+    for join in joins:
+        join["right"] = join_is_right(join, labels, burst["segments"])
+    return {"front": front, "vessels": vessels, "joined": joined, "blur": blur, "found": found, "chance": chance,
+            "terms": edge_terms(vessels, burst["valid"], blur, above), "truth": true_pieces(vessels, burst["lines"]),
+            "joins": joins, "other lines": other_lines}
+
+
+def confidence_curve(table, confidence, burst, cutoffs=CONFIDENCE_CUTOFFS, threads=None):
+    """The pieces whose edge confidence is at least each cutoff, read as section 29 reads its pieces (a kymograph
+    per piece, the graph, the junctions with flow as tests) and scored against the truth (score_reading): per cutoff
+    one score. Below two pieces nothing is read."""
+    front, vessels = table["front"], table["vessels"]
+    readings, _ = segment_readings(vessels, lambda position: burst["frames"][position], burst["times"], burst["pairs"],
+                                   burst["fps"], threads=threads)
+    vessels = [downstream(vessel, reading) for vessel, reading in zip(vessels, readings)]
+    count = len(burst["times"])
+    halves = (np.arange(0, count, 2), np.arange(1, count, 2)) if count >= SPLIT_FRAMES else None
+    scores = {}
+    for cutoff in cutoffs:
+        keep = [number for number in range(len(vessels)) if confidence[number] >= cutoff]
+        if len(keep) < 2:
+            scores[cutoff] = score_reading(burst, {"chains": [], "graph": {"nodes": []}, "junctions": []})
+            continue
+        kept, kept_readings = [vessels[number] for number in keep], [readings[number] for number in keep]
+        graph = vessel_graph(kept, burst["valid"], burst["mean"], kept_readings, burst["pairs"], burst["fps"])
+        found = read_junctions(graph, burst["mean"], front["scores"], halves)[0]
+        scores[cutoff] = score_reading(burst, {"chains": kept, "readings": kept_readings, "graph": graph, "junctions": found})
+    return scores
+
+
+def passes_point(curve, point, precision, recall):
+    """The cutoffs at which a curve (cutoff -> ablation_row) reaches a row's point: its precision and its recall at
+    least that row's, both."""
+    return [cutoff for cutoff, row in curve.items()
+            if row[precision][0] >= point[precision][0] and row[recall][0] >= point[recall][0]]
+
+
+def knot_frame(state, size=(5.0, 4.0), dpi=80):
+    """A frame of the knot refinement's film: a piece's ridge points, the spline the candidate spacing gives (or
+    where the piece is split), and a caption with the candidate, its gain in the ridge's unit and whether it was
+    taken."""
+    import matplotlib
+    matplotlib.use("Agg")
+    figure, axis = plt.subplots(figsize=size, dpi=dpi)
+    points = state["points"]
+    axis.plot(points[:, 0], points[:, 1], ".", color="gray", markersize=3)
+    if "fit" in state:
+        axis.plot(state["fit"][:, 0], state["fit"][:, 1], "-", color="tab:orange" if state["taken"] else "tab:blue", lw=1.5)
+    if state.get("kind") == "split":
+        at = points[state["at"] - state["piece"][0]]
+        axis.plot(at[0], at[1], "o", color="tab:red", markersize=9, mfc="none", mew=2)
+    caption = (f"candidate {state.get('candidate', '?')}: " + (f"knots {state['spacing']:.0f} px apart, gain {state['gain']:+.1f}"
+               if state.get("kind") == "knots" else "split where it fits worst")
+               + (" — taken" if state.get("taken") else " — refused"))
+    axis.set_title(caption, fontsize=9)
+    axis.set_aspect("equal")
+    axis.invert_yaxis()
+    axis.axis("off")
+    frame = vascnet.watch.frame_of(figure)
+    plt.close(figure)
+    return frame
+
+# %%
+# section 37 on one synthetic burst first: the pieces, their terms, which are true, and what the consolidation drops
+burst = synthetic_burst_35(HARNESS_SEEDS[0], second=True)
+table = edge_table(burst, workers)
+vessels, terms, truth = table["vessels"], table["terms"], table["truth"]
+consolidated = ridge_skeleton(table["front"]["strength"], table["front"]["orientation"], table["front"]["mask"], consolidate=True)
+near_consolidated = distance_to(consolidated)
+rows, columns = consolidated.shape
+dropped = np.array([np.mean(near_consolidated[np.clip(np.rint(v["y"]).astype(int), 0, rows - 1),
+                                              np.clip(np.rint(v["x"]).astype(int), 0, columns - 1)] <= TRUE_WITHIN) < 0.5
+                    for v in vessels])
+kinds = [row["twin or stub"] for row in terms]
+print(f"Synthetic burst {HARNESS_SEEDS[0]}: {len(vessels)} pieces, {sum(v['length'] for v in vessels):.0f} px, of which "
+      f"{truth.sum()} true ({truth.mean() * 100:.0f}%) | {sum(v['split'] for v in vessels)} pieces come from a split, knots "
+      f"closer than 12 px on {sum(v['knot spacing'] < KNOT_SPACING for v in vessels)} | sub-pixel places on "
+      f"{np.mean([v['offset share'] for v in vessels]) * 100:.0f}% of the points")
+print(f"   twins {kinds.count('twin')} ({sum(t for t, k in zip(truth, kinds) if k == 'twin')} true), stubs {kinds.count('stub')} "
+      f"({sum(t for t, k in zip(truth, kinds) if k == 'stub')} true), plain {kinds.count('plain')} | the extensions added "
+      f"{table['joined']['added'].sum()} px | the blur of the picture {table['blur']:.2f} px")
+print(f"   the consolidation drops {dropped.sum()} of these pieces ({sum(v['length'] for v, d in zip(vessels, dropped) if d):.0f} px), "
+      f"{truth[dropped].sum()} of them true | repeatability against the second fixation: found again "
+      f"{np.nanmean(table['found']) * 100:.0f}%, by chance {np.nanmean(table['chance']) * 100:.0f}% (means over pieces)")
+two_arm = [join for join in table["joins"] if join["two arms"]]
+of_lines = [join for join in two_arm if join["of lines"]]
+print(f"   the closing within RIDGE_JOIN made {len(table['joins'])} joins, {len(two_arm)} of two arms: {len(of_lines)} join two lines "
+      f"({sum(not join['right'] for join in of_lines)} false), {len(two_arm) - len(of_lines)} join a line to a speck of under "
+      f"{SPUR_LENGTH} px ({sum(not join['right'] for join in two_arm if not join['of lines'])} of the specks off any vessel)")
+
+picture = np.dstack([np.uint8(np.clip(burst["mean"] / np.percentile(burst["mean"], 99.8), 0, 1) * 110)] * 3)
+for vessel, right, kind in zip(vessels, truth, kinds):
+    color = (90, 255, 90) if right else (255, 60, 60)
+    if kind != "plain":
+        color = (255, 200, 0) if kind == "twin" else (0, 200, 255)
+    cv2.polylines(picture, np.rint(np.column_stack([vessel["x"], vessel["y"]])).astype(np.int32)[None], False, color, 1)
+for join in table["joins"]:
+    cv2.circle(picture, (int(join["x"]), int(join["y"])), 5, (255, 255, 255) if join["right"] else (255, 0, 255), 1)
+os.makedirs("vessel_pictures/cyclic", exist_ok=True)
+Image.fromarray(picture).save("vessel_pictures/cyclic/one_burst.png")
+figure, axis = plt.subplots(figsize=(10, 7.5))
+axis.imshow(picture, interpolation="antialiased")
+axis.set_title("section 37's pieces on one synthetic burst | green true, red false, yellow twin, blue stub | circles: joins the "
+               "closing made (white right, magenta false)", fontsize=9)
+axis.axis("off")
+plt.show()
+del burst, table, picture
+
+# %%
+# acceptance step 2: the edge confidence calibrated on the bursts for developing, its told_apart on the bursts held out,
+# and the curves over the confidence against the consolidated row's point. Two sets: section 30's bursts (the old seeds,
+# made with a second fixation; their first fixation is section 30's burst to the bit) and section 35's trees.
+CYCLIC_SETS = (("section 30's bursts", HARNESS_SEEDS, HELD_OUT_SEEDS, {}),
+               ("section 35's trees", TREE_SEEDS, TREE_HELD_OUT, SYNTH_THINGS))
+cyclic_harness = {}  # per set: the model, and per held-out burst its pieces' terms, truth, confidence and curves
+for name, developing, held_out, things in CYCLIC_SETS:
+    rows, truth = [], []
+    for seed in developing:
+        table = edge_table(synthetic_burst_35(seed, **{**things, "second": True}), workers)
+        rows += table["terms"]
+        truth += list(table["truth"])
+    model = calibrate_terms(rows, truth)
+    held = {"model": model, "developing": len(rows), "truth": [], "confidence": [], "ratios": [], "terms": [], "curves": [],
+            "consolidated": [], "plain": [], "joins": [], "seeds": list(held_out)}
+    for seed in held_out:
+        burst = synthetic_burst_35(seed, **{**things, "second": True})
+        table = edge_table(burst, workers)
+        confidence, ratios = edge_confidence(table["terms"], model)
+        for key, value in (("truth", table["truth"]), ("confidence", confidence), ("ratios", ratios), ("terms", table["terms"]),
+                           ("joins", table["joins"])):
+            held[key].append(value)
+        held["curves"].append(confidence_curve(table, confidence, burst, threads=workers))
+        for way, consolidate in (("consolidated", True), ("plain", False)):
+            held[way].append(score_reading(burst, read_burst_ridges(burst, table["front"], consolidate=consolidate, threads=workers)))
+        del burst, table
+    cyclic_harness[name] = held
+    memory_note(f"section 37, {name}")
+
+for name, held in cyclic_harness.items():
+    truth, confidence = np.concatenate(held["truth"]), np.concatenate(held["confidence"])
+    ratios = np.concatenate(held["ratios"])
+    told = told_apart(confidence[truth], confidence[~truth])
+    picks = np.random.default_rng(0).integers(len(held["truth"]), size=(500, len(held["truth"])))
+    resampled = [told_apart(np.concatenate([held["confidence"][b][held["truth"][b]] for b in pick]),
+                            np.concatenate([held["confidence"][b][~held["truth"][b]] for b in pick])) for pick in picks]
+    low, high = np.percentile(resampled, [2.5, 97.5])
+    curve = {cutoff: ablation_row([scores[cutoff] for scores in held["curves"]]) for cutoff in CONFIDENCE_CUTOFFS}
+    point, plain = ablation_row(held["consolidated"]), ablation_row(held["plain"])
+    centerline_cutoffs = passes_point(curve, point, "centerline precision", "centerline recall")
+    junction_cutoffs = passes_point(curve, point, "junction precision", "junction recall")
+    held.update({"told apart": (told, low, high), "curve": curve, "point": point, "plain row": plain,
+                 "passes": (centerline_cutoffs, junction_cutoffs)})
+    joins = [join for joins in held["joins"] for join in joins if join["two arms"] and join["of lines"]]
+    specks = [join for joins in held["joins"] for join in joins if join["two arms"] and not join["of lines"]]
+    print(f"\n{name}: calibrated on {held['developing']} pieces of the bursts for developing; held out: {len(truth)} pieces of "
+          f"{len(held['truth'])} bursts, {truth.sum()} true and {(~truth).sum()} false")
+    print(f"   told apart, the edge confidence on the five terms: {told:.3f} ({low:.3f} to {high:.3f}, 95% over bursts) | each term "
+          f"alone: " + ", ".join(f"{term} {told_apart(ratios[truth, place], ratios[~truth, place]):.2f}" for place, term in enumerate(EDGE_TERMS)))
+    print(f"   skeleton joins of two arms (the closing within RIDGE_JOIN) between two lines of {SPUR_LENGTH} px or more: {len(joins)}, "
+          f"of which {sum(not j['right'] for j in joins)} false ({(sum(not j['right'] for j in joins) / max(len(joins), 1)) * 100:.0f}%) | "
+          f"{len(specks)} more join a line to a speck, {sum(not j['right'] for j in specks)} of the specks off any vessel")
+    shown = ("centerline precision", "centerline recall", "junction precision", "junction recall", "found and typed right")
+    print(f"   {'cutoff':>8s} {'pieces':>7s} {'true':>6s} " + "".join(f"{column:>24s}" for column in shown))
+    for cutoff, row in list(curve.items()) + [("consolidated", point), ("plain ridges", plain)]:
+        if isinstance(cutoff, float):
+            kept = confidence >= cutoff
+            counts = f"{kept.sum():7d} {truth[kept].sum():6d}"
+        else:
+            counts = " " * 14
+        cells = "".join(f"{row[column][0] * 100:5.1f} ({row[column][1] * 100:3.0f} to {row[column][2] * 100:3.0f})".rjust(24) for column in shown)
+        print(f"   {str(cutoff):>8s} {counts} {cells}")
+    verdict = told >= 0.75 and centerline_cutoffs and junction_cutoffs
+    print(f"   the gate (told apart >= 0.75, the curve passing the consolidated row's point): told apart {told:.3f}; the centerline "
+          f"curve passes it at the cutoffs {centerline_cutoffs or 'none'}, the junction curve at {junction_cutoffs or 'none'} -> "
+          f"{'PASSED' if verdict else 'FAILED'}")
+
+# the reliability diagram of every term on the bursts for developing, and the confidence of the held-out pieces
+figure, axes = plt.subplots(len(cyclic_harness), len(EDGE_TERMS) + 1, figsize=(22, 4.2 * len(cyclic_harness)))
+for row, (name, held) in enumerate(cyclic_harness.items()):
+    for place, term in enumerate(EDGE_TERMS):
+        calibration = held["model"]["terms"][term]
+        labels = list(calibration["cuts"]) + ["new"] if isinstance(calibration["cuts"], list) else (
+            [f"<{calibration['cuts'][0]:.2f}"] + [f">={cut:.2f}" for cut in calibration["cuts"]] + ["none"])
+        axes[row, place].bar(range(len(calibration["ratio"])), calibration["ratio"], color="tab:blue")
+        for spot, (share, count) in enumerate(zip(calibration["share true"], calibration["count"])):
+            axes[row, place].annotate(f"{share * 100:.0f}%\nn={count:.0f}", (spot, 0), ha="center", fontsize=7,
+                                      xytext=(0, -24 if calibration["ratio"][spot] >= 0 else 6), textcoords="offset points")
+        axes[row, place].set_xticks(range(len(labels)))
+        axes[row, place].set_xticklabels(labels, rotation=45, fontsize=7)
+        axes[row, place].axhline(0, color="black", lw=0.6)
+        axes[row, place].set_title(f"{name}: {term}", fontsize=9)
+    truth, confidence = np.concatenate(held["truth"]), np.concatenate(held["confidence"])
+    bins = np.linspace(0, 1, 21)
+    axes[row, -1].hist(confidence[truth], bins=bins, histtype="step", color="tab:green", label="true pieces")
+    axes[row, -1].hist(confidence[~truth], bins=bins, histtype="step", color="tab:red", label="false pieces")
+    axes[row, -1].set_title(f"held out: told apart {held['told apart'][0]:.2f}", fontsize=9)
+    axes[row, -1].legend(fontsize=7)
+figure.suptitle("bars: each term's log-likelihood ratio per bin on the bursts for developing (share true and count below) | right: "
+                "the edge confidence of the held-out pieces", fontsize=10)
+figure.tight_layout()
+figure.savefig("vessel_pictures/cyclic/reliability.png", dpi=90)
+plt.show()
+
+# the curves over the confidence, against the plain and the consolidated rows' points
+figure, axes = plt.subplots(1, 2 * len(cyclic_harness), figsize=(20, 4.6))
+for row, (name, held) in enumerate(cyclic_harness.items()):
+    for place, (precision, recall) in enumerate((("centerline precision", "centerline recall"), ("junction precision", "junction recall"))):
+        axis = axes[2 * row + place]
+        axis.plot([held["curve"][c][recall][0] * 100 for c in CONFIDENCE_CUTOFFS],
+                  [held["curve"][c][precision][0] * 100 for c in CONFIDENCE_CUTOFFS], "o-", color="tab:blue", ms=3,
+                  label="joined, over the edge confidence")
+        for label, point, color in (("consolidated", held["point"], "tab:red"), ("plain ridges", held["plain row"], "tab:gray")):
+            axis.errorbar(point[recall][0] * 100, point[precision][0] * 100, color=color, fmt="s",
+                          xerr=[[(point[recall][0] - point[recall][1]) * 100], [(point[recall][2] - point[recall][0]) * 100]],
+                          yerr=[[(point[precision][0] - point[precision][1]) * 100], [(point[precision][2] - point[precision][0]) * 100]],
+                          label=label, capsize=3)
+        axis.set_xlabel(f"{recall} (%)")
+        axis.set_ylabel(f"{precision} (%)")
+        axis.set_title(f"{name}, held out", fontsize=9)
+        axis.legend(fontsize=7)
+figure.tight_layout()
+figure.savefig("vessel_pictures/cyclic/curves.png", dpi=90)
+plt.show()
+
+# the held-out pieces with their terms, as a table for what follows
+save_table([{"set": name, "seed": seed, "true": bool(right), "confidence": float(value), **terms}
+            for name, held in cyclic_harness.items()
+            for seed, burst_truth, burst_confidence, burst_terms in zip(held["seeds"], held["truth"], held["confidence"], held["terms"])
+            for right, value, terms in zip(burst_truth, burst_confidence, burst_terms)], "vessel_pictures/cyclic/pieces.csv")
+save_table([{"set": name, "cutoff": cutoff, **{column: f"{row[column][0]:.3f} ({row[column][1]:.3f} to {row[column][2]:.3f})"
+                                              for column in ABLATION_COLUMNS}}
+            for name, held in cyclic_harness.items()
+            for cutoff, row in list(held["curve"].items()) + [("consolidated", held["point"]), ("plain ridges", held["plain row"])]],
+           "vessel_pictures/cyclic/curves.csv")
+memory_note("section 37, harness")
+
+# %%
+# section 37 on the real burst, in the anchor's fixation: the pieces, their terms (repeatability against the other
+# fixations), their confidence under each set's calibration, and what the consolidation of section 29 drops of them.
+# The knot refinement is filmed.
+front = saved_front(saved, anchor)
+valid = saved["valid"][anchor]
+knot_recorder = vascnet.watch.Recorder(every=40)
+real_pieces, real_joined = cyclic_pieces(front, valid, watch=knot_recorder)
+real_blur = picture_blur(front["half_width"], real_joined["ridges"])
+others = [number for number in range(len(saved["times"])) if number != anchor]
+other_front = saved_front(saved, others[0])
+other_lines = joined_ridges(other_front["strength"], other_front["orientation"], other_front["mask"])["skeleton"]
+real_found, real_chance, real_above = edge_repeatability(real_pieces, valid, other_lines, saved["valid"][others[0]],
+                                                         saved["to anchor"][others[0]])
+real_terms = edge_terms(real_pieces, valid, real_blur, real_above)
+real_confidence = {name: edge_confidence(real_terms, held["model"])[0] for name, held in cyclic_harness.items()}
+drawn = draw_chains(real_pieces, valid.shape) >= 0
+whole = repeated(drawn, valid, other_lines, saved["valid"][others[0]], saved["to anchor"][others[0]])
+consolidated = ridge_skeleton(front["strength"], front["orientation"], front["mask"], consolidate=True)
+near_consolidated = distance_to(consolidated)
+rows, columns = valid.shape
+dropped = np.array([np.mean(near_consolidated[np.clip(np.rint(v["y"]).astype(int), 0, rows - 1),
+                                              np.clip(np.rint(v["x"]).astype(int), 0, columns - 1)] <= TRUE_WITHIN) < 0.5
+                    for v in real_pieces])
+kinds = [row["twin or stub"] for row in real_terms]
+lengths = np.array([piece["length"] for piece in real_pieces])
+print(f"Real burst, fixation {anchor}: {len(real_pieces)} pieces, {lengths.sum():.0f} px (section 29's consolidated lines: "
+      f"{consolidated.sum()} px) | the extensions added {real_joined['added'].sum()} px | the blur {real_blur:.2f} px")
+print(f"   knots: {sum(p['split'] for p in real_pieces)} pieces come from a split at a bend, "
+      f"{sum(p['knot spacing'] < KNOT_SPACING for p in real_pieces)} took knots closer than 12 px | sub-pixel places on "
+      f"{np.average([p['offset share'] for p in real_pieces], weights=lengths) * 100:.0f}% of the length | twins {kinds.count('twin')}, "
+      f"stubs {kinds.count('stub')}, plain {kinds.count('plain')}")
+print(f"   repeatability against fixation {others[0]}: the pieces are found again on {np.nanmean(real_found) * 100:.0f}% (by chance "
+      f"{np.nanmean(real_chance) * 100:.0f}%; mean over pieces) | all pieces as one picture (section 29's `repeated`): found "
+      f"{whole[0] * 100:.0f}%, by chance {whole[1] * 100:.0f}%, above chance {whole[2] * 100:.0f}% | "
+      f"{np.isnan(real_found).sum()} pieces lie where fixation {others[0]} has no data")
+print(f"   the consolidation drops {dropped.sum()} of the pieces ({lengths[dropped].sum():.0f} px); it keeps {(~dropped).sum()} "
+      f"({lengths[~dropped].sum():.0f} px)")
+for name, confidence in real_confidence.items():
+    print(f"   confidence calibrated on {name}: median {np.median(confidence):.2f} | of the pieces the consolidation keeps, "
+          f"{np.mean(confidence[~dropped] >= 0.5) * 100:.0f}% at 0.5 or more; of those it drops, {np.mean(confidence[dropped] >= 0.5) * 100:.0f}% "
+          f"({lengths[dropped & (confidence >= 0.5)].sum():.0f} px) | told apart, kept against dropped: "
+          f"{told_apart(confidence[~dropped], confidence[dropped]):.2f}")
+
+# the pieces coloured by their confidence (section 35's trees' calibration) over the density
+density = np.nan_to_num(saved["density"][anchor])
+gray = np.uint8(np.clip((density - DENSITY_RANGE[0]) / (DENSITY_RANGE[1] - DENSITY_RANGE[0]), 0, 1) * 90)
+picture = np.dstack([gray, gray, gray])
+colors = plt.get_cmap("RdYlGn")
+for piece, value in zip(real_pieces, real_confidence["section 35's trees"]):
+    color = tuple(int(255 * c) for c in colors(float(value))[:3])
+    cv2.polylines(picture, np.rint(np.column_stack([piece["x"], piece["y"]])).astype(np.int32)[None], False, color, 2)
+Image.fromarray(picture).save("vessel_pictures/cyclic/real_confidence.png")
+figure, axis = plt.subplots(figsize=(16, 10))
+axis.imshow(picture, interpolation="antialiased")
+axis.set_title(f"fixation {anchor}: section 37's pieces coloured by their edge confidence (red 0, green 1; calibrated on section 35's trees)",
+               fontsize=10)
+axis.axis("off")
+plt.show()
+
+# the film of the knot refinement: every candidate taken, and one in 40 of the others
+os.makedirs("vessel_pictures/fit", exist_ok=True)
+film = [state for state in knot_recorder.states if state.get("taken")][:60] + [state for state in knot_recorder.states if not state.get("taken")][:40]
+film.sort(key=lambda state: state["candidate"])
+if film:
+    vascnet.watch.animate(film, knot_frame, "vessel_pictures/fit/initialisation.gif", fps=2.0)
+print(f"   the knot refinement made {knot_recorder.count} candidate moves, {sum(s.get('taken', False) for s in knot_recorder.states)} "
+      f"taken; {len(film)} of them are filmed in vessel_pictures/fit/initialisation.gif")
+del picture, density, gray, front, other_front
+memory_note("section 37, real burst")

@@ -1,0 +1,75 @@
+Run of development copy 2.ipynb started 2026-10-13 23:40:27: 5 code cells (only 4b1e8e10, cyclic-graph-functions, section-37-one-burst, section-37-harness, section-37-real)
+
+===== cell 0 id=4b1e8e10 | started at 23:40:28 | # In a fresh kernel, start here: nothing above this cell has to be run. The cells that only define f
+A fresh kernel: the definitions were run from the notebook file. Opened 2 fixations of 1920 x 1200 px: 113 frames, 18 frames
+[memory] inputs opened: 0.99 GB now, 0.99 GB at the most so far
+----- cell 0 took 2.3 s | 0.1 min since the start
+
+===== cell 1 id=cyclic-graph-functions | started at 23:40:31 | import vascnet.watch
+----- cell 1 took 0.1 s | 0.1 min since the start
+
+===== cell 2 id=section-37-one-burst | started at 23:40:31 | # section 37 on one synthetic burst first: the pieces, their terms, which are true, and what the con
+Synthetic burst 1: 33 pieces, 1977 px, of which 31 true (94%) | 2 pieces come from a split, knots closer than 12 px on 0 | sub-pixel places on 63% of the points
+   twins 10 (8 true), stubs 0 (0 true), plain 23 | the extensions added 42 px | the blur of the picture 2.47 px
+   the consolidation drops 1 of these pieces (27 px), 0 of them true | repeatability against the second fixation: found again 97%, by chance 13% (means over pieces)
+   the closing within RIDGE_JOIN made 36 joins, 20 of two arms: 2 join two lines (1 false), 18 join a line to a speck of under 12 px (16 of the specks off any vessel)
+----- cell 2 took 8.8 s | 0.2 min since the start
+
+===== cell 3 id=section-37-harness | started at 23:40:39 | # acceptance step 2: the edge confidence calibrated on the bursts for developing, its told_apart on 
+[memory] section 37, section 30's bursts: 1.05 GB now, 1.35 GB at the most so far
+[memory] section 37, section 35's trees: 1.06 GB now, 1.36 GB at the most so far
+
+section 30's bursts: calibrated on 582 pieces of the bursts for developing; held out: 643 pieces of 16 bursts, 494 true and 149 false
+   told apart, the edge confidence on the five terms: 0.946 (0.921 to 0.970, 95% over bursts) | each term alone: length 0.79, strength 0.86, repeatability 0.81, flow data 0.74, twin or stub 0.74
+   skeleton joins of two arms (the closing within RIDGE_JOIN) between two lines of 12 px or more: 98, of which 61 false (62%) | 466 more join a line to a speck, 413 of the specks off any vessel
+     cutoff  pieces   true     centerline precision       centerline recall      junction precision         junction recall   found and typed right
+        0.0     643    494        90.8 ( 88 to  94)       93.2 ( 91 to  96)       56.5 ( 43 to  73)       84.8 ( 78 to  92)       60.9 ( 51 to  71)
+       0.05     539    483        94.9 ( 92 to  97)       92.7 ( 90 to  95)       74.0 ( 61 to  88)       83.7 ( 76 to  91)       59.8 ( 49 to  71)
+        0.1     528    480        95.6 ( 93 to  97)       92.5 ( 90 to  95)       78.4 ( 65 to  91)       82.6 ( 75 to  90)       60.9 ( 49 to  73)
+        0.2     511    471        95.8 ( 94 to  98)       92.1 ( 89 to  95)       79.8 ( 66 to  93)       81.5 ( 74 to  89)       60.9 ( 49 to  73)
+        0.3     499    464        96.1 ( 94 to  98)       91.8 ( 89 to  95)       78.9 ( 66 to  92)       77.2 ( 68 to  86)       59.8 ( 48 to  72)
+        0.4     495    462        96.3 ( 95 to  98)       91.6 ( 89 to  94)       78.7 ( 66 to  91)       76.1 ( 67 to  85)       57.6 ( 45 to  70)
+        0.5     463    438        96.8 ( 95 to  98)       91.0 ( 88 to  94)       80.7 ( 70 to  91)       72.8 ( 64 to  82)       54.3 ( 42 to  66)
+        0.6     459    435        96.8 ( 95 to  98)       90.9 ( 88 to  94)       81.9 ( 71 to  92)       73.9 ( 66 to  82)       54.3 ( 42 to  66)
+        0.7     454    430        96.8 ( 95 to  98)       90.7 ( 87 to  94)       81.7 ( 70 to  92)       72.8 ( 63 to  82)       53.3 ( 41 to  66)
+        0.8     424    407        97.0 ( 96 to  98)       90.1 ( 87 to  94)       81.8 ( 70 to  92)       68.5 ( 59 to  78)       50.0 ( 36 to  64)
+        0.9     400    388        97.2 ( 96 to  98)       89.4 ( 86 to  93)       81.1 ( 69 to  92)       65.2 ( 56 to  74)       46.7 ( 35 to  58)
+       0.95     344    340        97.5 ( 97 to  98)       88.1 ( 84 to  92)       87.5 ( 75 to  97)       53.3 ( 40 to  65)       38.0 ( 25 to  51)
+   consolidated                       93.5 ( 91 to  96)       91.8 ( 89 to  94)       71.6 ( 57 to  87)       63.0 ( 55 to  71)       41.3 ( 29 to  53)
+   plain ridges                       94.6 ( 92 to  97)       93.0 ( 90 to  95)       83.5 ( 72 to  93)       77.2 ( 70 to  84)       54.3 ( 43 to  66)
+   the gate (told apart >= 0.75, the curve passing the consolidated row's point): told apart 0.946; the centerline curve passes it at the cutoffs [0.05, 0.1, 0.2], the junction curve at [0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9] -> PASSED
+
+section 35's trees: calibrated on 1032 pieces of the bursts for developing; held out: 987 pieces of 16 bursts, 826 true and 161 false
+   told apart, the edge confidence on the five terms: 0.951 (0.931 to 0.970, 95% over bursts) | each term alone: length 0.89, strength 0.79, repeatability 0.79, flow data 0.60, twin or stub 0.77
+   skeleton joins of two arms (the closing within RIDGE_JOIN) between two lines of 12 px or more: 105, of which 79 false (75%) | 264 more join a line to a speck, 233 of the specks off any vessel
+     cutoff  pieces   true     centerline precision       centerline recall      junction precision         junction recall   found and typed right
+        0.0     987    826        91.9 ( 91 to  93)       87.0 ( 85 to  89)       58.9 ( 51 to  65)       76.3 ( 70 to  83)       40.2 ( 33 to  49)
+       0.05     905    817        94.3 ( 93 to  95)       86.8 ( 85 to  89)       65.3 ( 56 to  74)       75.7 ( 69 to  82)       42.0 ( 34 to  51)
+        0.1     888    812        94.7 ( 94 to  96)       86.8 ( 85 to  89)       66.8 ( 57 to  77)       74.0 ( 66 to  81)       40.8 ( 33 to  49)
+        0.2     865    809        95.9 ( 95 to  97)       86.7 ( 85 to  89)       69.7 ( 60 to  79)       73.4 ( 66 to  80)       42.0 ( 35 to  50)
+        0.3     851    800        96.0 ( 95 to  97)       86.6 ( 85 to  88)       71.1 ( 62 to  80)       72.8 ( 66 to  79)       40.2 ( 35 to  47)
+        0.4     827    790        96.4 ( 95 to  97)       86.4 ( 84 to  88)       74.1 ( 66 to  81)       71.0 ( 63 to  78)       39.6 ( 33 to  47)
+        0.5     801    772        96.5 ( 96 to  97)       86.3 ( 84 to  88)       74.4 ( 66 to  82)       68.6 ( 60 to  76)       37.9 ( 31 to  46)
+        0.6     797    769        96.5 ( 96 to  97)       86.3 ( 84 to  88)       74.2 ( 66 to  82)       68.0 ( 59 to  76)       37.9 ( 31 to  46)
+        0.7     755    736        96.7 ( 96 to  97)       85.7 ( 84 to  88)       77.5 ( 70 to  85)       65.1 ( 57 to  73)       34.9 ( 29 to  42)
+        0.8     745    730        97.0 ( 97 to  98)       85.5 ( 83 to  88)       78.0 ( 70 to  86)       65.1 ( 56 to  73)       34.9 ( 29 to  42)
+        0.9     698    685        97.4 ( 97 to  98)       84.6 ( 82 to  87)       77.2 ( 69 to  85)       56.2 ( 49 to  64)       27.8 ( 23 to  34)
+       0.95     640    633        97.4 ( 97 to  98)       83.5 ( 81 to  86)       76.4 ( 68 to  85)       49.7 ( 45 to  55)       19.5 ( 16 to  23)
+   consolidated                       94.0 ( 93 to  95)       82.1 ( 80 to  84)       66.4 ( 57 to  76)       59.8 ( 55 to  66)       26.0 ( 21 to  31)
+   plain ridges                       94.8 ( 94 to  96)       85.7 ( 84 to  88)       74.4 ( 65 to  83)       58.6 ( 51 to  66)       33.1 ( 25 to  43)
+   the gate (told apart >= 0.75, the curve passing the consolidated row's point): told apart 0.951; the centerline curve passes it at the cutoffs [0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95], the junction curve at [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8] -> PASSED
+[memory] section 37, harness: 1.06 GB now, 1.36 GB at the most so far
+----- cell 3 took 859.4 s | 14.5 min since the start
+
+===== cell 4 id=section-37-real | started at 23:54:59 | # section 37 on the real burst, in the anchor's fixation: the pieces, their terms (repeatability aga
+Real burst, fixation 0: 1961 pieces, 64384 px (section 29's consolidated lines: 56416 px) | the extensions added 1807 px | the blur 1.50 px
+   knots: 106 pieces come from a split at a bend, 37 took knots closer than 12 px | sub-pixel places on 86% of the length | twins 855, stubs 58, plain 1048
+   repeatability against fixation 1: the pieces are found again on 76% (by chance 21%; mean over pieces) | all pieces as one picture (section 29's `repeated`): found 79%, by chance 20%, above chance 73% | 20 pieces lie where fixation 1 has no data
+   the consolidation drops 183 of the pieces (4500 px); it keeps 1778 (59884 px)
+   confidence calibrated on section 30's bursts: median 0.65 | of the pieces the consolidation keeps, 55% at 0.5 or more; of those it drops, 55% (3005 px) | told apart, kept against dropped: 0.59
+   confidence calibrated on section 35's trees: median 0.98 | of the pieces the consolidation keeps, 72% at 0.5 or more; of those it drops, 75% (3725 px) | told apart, kept against dropped: 0.55
+   the knot refinement made 3269 candidate moves, 94 taken; 100 of them are filmed in vessel_pictures/fit/initialisation.gif
+[memory] section 37, real burst: 1.15 GB now, 1.49 GB at the most so far
+----- cell 4 took 15.2 s | 14.8 min since the start
+
+DONE: 5 code cells in 14.8 min (888 s), finished 2026-10-13 23:55:15
