@@ -90,6 +90,12 @@ On a rendered capillary bifurcation the 4 px ring resolves daughters 40 degrees 
 
 **Checks, before any cell map is built for a whole frame**: a thick vessel (R = 6) crossed by a thin one (R = 1.5), on the oriented score (does the thin arm appear as a peak on the ring that matches the thick vessel, at what rate, and on its own ring? If not, a second reading of the ring at the thin width is added, and the plan says so); a thin daughter leaving a thick trunk; a crossing the skeleton broke into two T's 5–10 px apart (does the cell at the midpoint say `n` = 4?).
 
+**Measured (acceptance step 4, eight noise realisations per configuration and blur):**
+
+- *Thin vessel crossing a thick one.* At blurs of 0.8 and 1.5 px the thin arm is an arm on every ring, its own 4 px ring included, in 8 of 8 pictures; densities add across lumens, so the thin line stays visible over the thick vessel. At 3 px it is found on its own ring in 5 of 8, and on the 16 and 24 px rings in 7 of 8. The second reading at the thin width (`width_channels`) sees it exactly where the first does at 0.8 and 1.5 px, and never at 3 px: a thin vessel blurred by 3 px is no longer a thin line. The second reading is therefore built but not used.
+- *Thin daughter of a thick trunk, one lumen.* The daughter is an arm only on the rings outside the trunk (16 and 24 px), at 0.8 and 1.5 px blur, and on none at 3 px. The ring with the largest rate is always the two thick arms' (rate about 98 against 45), so the cell reads a line and misses the junction. The ring with the most arms among those whose rate is above `T_HIGH` reads three arms at 0.8 and 1.5 px.
+- *A crossing the skeleton breaks into two forks.* Two R = 3 vessels crossing at 45 degrees give forks 8–11 px apart. The cell at their midpoint reads four arms in 8 of 8 pictures at 0.8 and 1.5 px and in 7 of 8 at 3 px.
+
 **Result:** `junction_maps[n]`: `n`, `rate`, `ring`, `plaid`.
 
 **Column:** junction recall at the plain ridges' junction precision, scored by each junction's `n` against the truth's `n` (section 35, item 12; the harness's gate `max(6, 2R + 2)` matches a cell and two forks alike, so the per-junction `n` is what is scored).
@@ -365,7 +371,7 @@ Each step has the number it must produce and what that number decides. Nothing i
 - The core filter is marginal at blurred capillary crossings; geometry decides there.
 - The flux's evidence between two through-vessels is worth something only where their fluxes differ by more than about the balance's softness.
 - The harness's flux columns are upper bounds until the generator has a velocity profile; its halo and background columns are approximate until it runs the background fit.
-- Section 36's capillary claim hangs on its first check.
+- Section 36's capillary claim hangs on its first check. That check passes at blurs up to 1.5 px; at 3 px a thin crossing vessel is lost on its own ring in 3 of 8 pictures. A thin daughter leaving a thick trunk is read as a line under the largest-rate rule.
 - A full hypercolumn run per move evaluation is the recursion's cost; the windowed re-score is what makes it affordable, and step 4 measures it before anything depends on it.
 
 ---

@@ -7209,7 +7209,8 @@ DEFINITION_CELLS = ("setup", "background-functions", "graph-functions", "shared-
                     "hypercolumn-functions", "lateral-functions", "chain-functions", "signal-functions", "flow-functions",
                     "segment-functions", "graph-builder", "junction-functions", "synthetic-functions",
                     "flow-vessel-functions", "harness-functions", "whole-vessel-functions", "flow-evidence-functions",
-                    "generator-functions", "cyclic-graph-functions", "flux-network-functions")
+                    "generator-functions", "cyclic-graph-functions", "flux-network-functions",
+                    "junction-cell-functions")
 fresh_kernel = "load_saved" not in globals()
 if fresh_kernel:
     import contextlib
@@ -10043,8 +10044,8 @@ real_found, real_chance, real_above = edge_repeatability(real_pieces, valid, oth
                                                          saved["to anchor"][others[0]])
 real_terms = edge_terms(real_pieces, valid, real_blur, real_above)
 real_confidence = {name: edge_confidence(real_terms, held["model"])[0] for name, held in cyclic_harness.items()}
-drawn = draw_chains(real_pieces, valid.shape) >= 0
-whole = repeated(drawn, valid, other_lines, saved["valid"][others[0]], saved["to anchor"][others[0]])
+drawn_pieces = draw_chains(real_pieces, valid.shape) >= 0
+whole = repeated(drawn_pieces, valid, other_lines, saved["valid"][others[0]], saved["to anchor"][others[0]])
 consolidated = ridge_skeleton(front["strength"], front["orientation"], front["mask"], consolidate=True)
 near_consolidated = distance_to(consolidated)
 rows, columns = valid.shape
@@ -10646,3 +10647,319 @@ for number, graph in enumerate(whole_graphs):
     print(f"   lambda's reference, the consolidated graph: impossible lumens {solution.impossible.sum()} of {len(run['lumens'])} "
           f"({solution.impossible.mean() * 100:.1f}%), directed cycles {len(run['cycles'])} per {len(graph['edges'])} edges")
 memory_note("section 40, real burst")
+
+# %% [markdown]
+# ## 36. Junction cells (acceptance step 4)
+#
+# A junction cell at a pixel counts the arms of a junction there and fires in proportion to how clearly it sees them (`junction_cell`).
+#
+# - **The ring** (`ring_profile`). On a ring of radius ρ around the pixel, at `RING_STEPS` angles φ, the cell reads the pre-interaction score of the neuron whose orientation is the radial direction φ, interpolated between the two nearest of the 16.
+# - **The arms** (`ring_arms`). The arms are the profile's local maxima above `T_LOW`, in runs that reach above `T_HIGH`; two within `SAME_ARM` degrees are one arm.
+# - **The count and the rate.** `n` is the number of arms. `rate` is their scores' geometric mean times a core term: the core's density against the arms', since a junction is at least as dark as its arms.
+# - **The rings.** Rings of `JUNCTION_RINGS` = 4 to 24 px are read, and the ring with the largest rate is kept.
+# - **What `n` says** (`cell_kind`): an end, a line (two arms within `STRAIGHT` of straight, suppressed), a bend, or a candidate for three or four arms.
+# - **Plaid cells** (`plaid_cells`): two orientations at least `PLAID_APART` = 45 degrees apart, both above `T_HIGH`.
+#
+# **The three checks**, before any cell map is built for a whole frame. Each is run on pictures rendered as section 35's generator renders: lumens united, transmittances blurred and multiplied, the tissue's texture and a mean frame's noise added. Each picture is scored by sections 19 and 20 (`render_check`), at blurs of 0.8, 1.5 and 3 px with eight noise realisations.
+#
+# 1. **A thin vessel (R = 1.5) crossing a thick one (R = 6).** Does the thin arm appear as a peak on the ring that matches the thick vessel, at what rate, and on its own ring (4 px)? If not, the second reading of the ring at the thin width is added (`width_channels`: the 16 neurons of one width before the widths compete). That reading is made beside the first, so both can be compared.
+# 2. **A thin daughter (R = 1.5) leaving a thick trunk (R = 6) at 60 degrees, one lumen.** On which rings is the daughter an arm, and what does the cell keep? The ring with the most arms among those above `T_HIGH` (`most_arms_ring`) is reported beside section 36's rule as description.
+# 3. **A crossing the skeleton breaks into two forks 5–10 px apart.** Two R = 3 vessels crossing at 45 degrees give two forks 8 px apart; does the cell at their midpoint say `n` = 4?
+#
+# **The gate** (Part III): the thin arm appears on its own ring at a rate above `T_LOW`, or the second reading at the thin width is added and the plan says so.
+#
+# **Result:** `check_rows` (`vessel_pictures/junction_cells/checks.csv`) and a picture of the three configurations (`checks.png`).
+
+# %%
+JUNCTION_RINGS = (4, 6, 10, 16, 24)  # pixels; the radii of the rings a junction cell reads its arms on
+RING_STEPS = 72                       # angles read on a ring (5 degrees apart)
+PLAID_APART = 45.0                    # degrees; two orientations this far apart, both above T_HIGH, make a plaid cell
+CHECK_SHAPE = (161, 161)              # pixels; the pictures the section's checks are rendered in
+CHECK_NOISE = 0.0025                  # density; the white noise of a mean of the generator's kept frames (shot noise of
+                                      # SYNTH_LIGHT over 62 frames), on top of the tissue's texture
+CHECK_SEEDS = tuple(range(1, 9))      # noise realisations per configuration
+
+
+def ring_profile(scores, x, y, radius, steps=RING_STEPS):
+    """A junction cell's view of a ring of `radius` around (x, y): at every angle phi the score of the neuron whose
+    orientation is the radial direction phi, interpolated between the two nearest of the N_ORIENT orientations, read
+    at the ring's point. Returns the angles (radians) and the profile."""
+    phi = np.arange(steps) * 2 * np.pi / steps
+    px, py = x + radius * np.cos(phi), y + radius * np.sin(phi)
+    k = (phi % np.pi) / (np.pi / N_ORIENT)
+    low, weight = np.floor(k).astype(int) % N_ORIENT, k - np.floor(k)
+    high = (low + 1) % N_ORIENT
+    profile = np.zeros(steps)
+    for layer in np.unique(np.r_[low, high]):
+        values = scipy.ndimage.map_coordinates(np.asarray(scores[layer], dtype=np.float32), [py, px], order=1, mode="nearest")
+        profile += np.where(low == layer, 1 - weight, 0) * values + np.where(high == layer, weight, 0) * values
+    return phi, profile
+
+
+def ring_arms(phi, profile):
+    """The arms on a ring's profile: runs of angles above T_LOW that hold a value above T_HIGH (hysteresis on the
+    circle), each read at its peak; two peaks within SAME_ARM degrees are one arm. Returns [(angle, score)]."""
+    above = profile > T_LOW
+    if above.all() or not above.any():
+        return [] if not above.any() else [(float(phi[np.argmax(profile)]), float(profile.max()))]
+    start = int(np.argmin(above))  # a place below T_LOW, so that no run is cut by the end of the array
+    order = np.r_[np.arange(start, len(profile)), np.arange(0, start)]
+    peak = (profile >= np.roll(profile, 1)) & (profile >= np.roll(profile, -1)) & above  # local maxima on the circle
+    arms, run = [], []
+    for place in list(order) + [order[0]]:
+        if above[place]:
+            run.append(place)
+        elif run:
+            if profile[run].max() > T_HIGH:  # a run joined to a peak above T_HIGH: every peak in it is an arm
+                arms += [(float(phi[spot]), float(profile[spot])) for spot in run if peak[spot]]
+            run = []
+    merged = []
+    for angle, score in sorted(arms, key=lambda arm: -arm[1]):
+        if all(np.degrees(abs(np.angle(np.exp(1j * (angle - other))))) >= SAME_ARM for other, _ in merged):
+            merged.append((angle, score))
+    return sorted(merged)
+
+
+def junction_cell(scores, density, x, y, rings=JUNCTION_RINGS):
+    """A junction cell at (x, y) (section 36): on each ring its arms (ring_arms), n their number, and its rate, the
+    geometric mean of the arms' scores times a core term, the core's density against the arms' (a junction is at
+    least as dark as its arms; 1 without a density). The ring with the largest rate is kept. Returns that ring's
+    reading with every ring's reading under `rings`."""
+    readings = []
+    for radius in rings:
+        phi, profile = ring_profile(scores, x, y, radius)
+        arms = ring_arms(phi, profile)
+        core = 1.0
+        if density is not None and arms:
+            rows, columns = density.shape
+            row, column = int(np.clip(round(y), 1, rows - 2)), int(np.clip(round(x), 1, columns - 2))
+            centre = float(np.nanmax(density[row - 1:row + 2, column - 1:column + 2]))
+            on_arms = [float(density[int(np.clip(round(y + radius * np.sin(a)), 0, rows - 1)),
+                                     int(np.clip(round(x + radius * np.cos(a)), 0, columns - 1))]) for a, _ in arms]
+            core = float(np.clip(centre / max(np.mean(on_arms), 1e-9), 0, 1)) if np.mean(on_arms) > 0 else 1.0
+        rate = float(np.exp(np.mean(np.log([score for _, score in arms]))) * core) if arms else 0.0
+        readings.append({"ring": radius, "n": len(arms), "rate": rate, "arms": arms, "profile": profile})
+    best = max(readings, key=lambda reading: reading["rate"])
+    return {**best, "rings": readings}
+
+
+def cell_kind(cell):
+    """What a cell's n says (section 36): an end, a line (two arms within STRAIGHT of a straight line: suppressed),
+    a bend, or a candidate bifurcation or crossing."""
+    if cell["n"] == 2:
+        (a, _), (b, _) = cell["arms"]
+        turn = 180 - np.degrees(abs(np.angle(np.exp(1j * (a - b)))))
+        return "line" if turn <= STRAIGHT else "bend"
+    return {0: "nothing", 1: "end", 3: "three arms", 4: "four arms"}.get(cell["n"], "more arms")
+
+
+def plaid_cells(scores):
+    """Pixels where two orientations at least PLAID_APART degrees apart both answer above T_HIGH in the
+    pre-interaction score: the weaker line of a crossing is there, before the interactions could tune it away."""
+    strong = np.asarray(scores) > T_HIGH
+    apart = int(np.ceil(PLAID_APART / (180 / N_ORIENT)))
+    plaid = np.zeros(strong.shape[1:], dtype=bool)
+    for k in range(N_ORIENT):
+        for other in range(k + apart, k + N_ORIENT - apart + 1):
+            plaid |= strong[k] & strong[other % N_ORIENT]
+    return plaid
+
+
+def width_channels(contrast, valid, quiet, width):
+    """The N_ORIENT neurons of one width, before the widths compete (section 20's fields and complex unit, the
+    width's own noise level from its even field on the quiet pixels, no floor): what the "second reading at the
+    thin width" of section 36 reads its ring on. Returns (N_ORIENT, rows, columns) in noise units."""
+    rows, columns = contrast.shape
+    factor = reduction(width)
+    spectrum, shape, inner = padded_spectrum(contrast, factor)
+    share = blur(valid.astype(np.float32), ELONGATION * width)
+    small = (columns // factor, rows // factor)
+    seen = cv2.resize(share, small, interpolation=cv2.INTER_AREA) >= VALID_SHARE
+    places = np.flatnonzero(cv2.resize((quiet & (share >= VALID_SHARE)).astype(np.uint8), small, interpolation=cv2.INTER_NEAREST))
+    sample = places[::max(1, len(places) // NOISE_SAMPLE)]
+    out = np.zeros((N_ORIENT, rows, columns), dtype=np.float32)
+    levels = []
+    for k in range(N_ORIENT):
+        even, odd, halves = field_answers(spectrum, shape, inner, width / factor, k)
+        levels.append(robust_sd(even.ravel()[sample]) * factor ** -0.5)
+        answer = np.where(seen, complex_unit(even, odd, halves), 0).astype(np.float32) * np.float32(factor ** -0.5)
+        out[k] = cv2.resize(answer, (columns, rows), interpolation=cv2.INTER_LINEAR) if factor > 1 else answer
+    return out / np.float32(np.median(levels))
+
+
+def line_points(start, end):
+    """A straight polyline from start to end, points a pixel apart."""
+    start, end = np.asarray(start, dtype=float), np.asarray(end, dtype=float)
+    count = int(np.ceil(np.hypot(*(end - start)))) + 1
+    return start + np.linspace(0, 1, count)[:, None] * (end - start)
+
+
+def render_check(lumens, blur, seed, shape=CHECK_SHAPE):
+    """A picture for the section's checks: `lumens` is a list of lumens, each a list of (points, radius); the
+    segments of one lumen are united (max), the lumens' transmittances are blurred by `blur` and multiplied, as
+    section 35's generator does, and the tissue's texture and a mean frame's white noise are added. Returns the
+    density, the score (section 20 on section 19's contrast, as read_burst does), the half-width and the clean
+    density."""
+    rng = np.random.default_rng(seed)
+    rows, columns = shape
+    y, x = np.mgrid[:rows, :columns]
+    pixels = np.column_stack([x.ravel(), y.ravel()]).astype(np.float64)
+    transmitted = np.ones(shape)
+    lines = np.zeros(shape, dtype=np.uint8)
+    for lumen in lumens:
+        layer = np.zeros(rows * columns)
+        for points, radius in lumen:
+            segment = {"points": points, "radius": radius}
+            footprint(segment, pixels, True)
+            layer[segment["pixels"]] = np.maximum(layer[segment["pixels"]], segment["chord"])
+            cv2.polylines(lines, np.rint(points).astype(np.int32)[None], False, 1)
+        transmitted *= cv2.GaussianBlur(np.exp(-layer.reshape(shape)), (0, 0), blur)
+    clean = -np.log(transmitted)
+    texture = cv2.GaussianBlur(rng.normal(0, 1, shape).astype(np.float32), (0, 0), SYNTH_GRAIN)
+    density = (clean + texture * SYNTH_TEXTURE / texture.std() + rng.normal(0, CHECK_NOISE, shape)).astype(np.float32)
+    valid = np.ones(shape, dtype=bool)
+    wall = cv2.distanceTransform((lines == 0).astype(np.uint8), cv2.DIST_L2, 5)
+    quiet = wall > 3 * max(radius for lumen in lumens for _, radius in lumen)
+    contrast = contrast_layer(density, robust_sd(density[quiet]), valid)
+    contrast = contrast / robust_sd(contrast[quiet])
+    scores, radius, _, _ = orientation_hypercolumns(contrast, valid, quiet)
+    strength, orientation, half_width = winning_neurons(scores, radius)
+    return {"density": density, "scores": scores, "strength": strength, "orientation": orientation, "half_width": half_width,
+            "contrast": contrast, "valid": valid, "quiet": quiet, "clean": clean}
+
+
+def check_configurations(apart=45.0):
+    """The three configurations of section 36's checks, centred in a CHECK_SHAPE picture: a thick vessel (R = 6)
+    crossed at right angles by a thin one (R = 1.5), two lumens; a thin daughter (R = 1.5) leaving a thick trunk
+    (R = 6) at 60 degrees, one lumen; and two vessels (R = 3) crossing at `apart` degrees, at which the skeleton breaks
+    the crossing into two forks 5 to 10 px apart (measured: 8 px at 45 degrees, 5.5 at 60, 21 at 30, one fork at 75). Returns {name: (lumens, (x, y) of the junction, the thin arm's
+    angles in degrees, or None)}."""
+    rows, columns = CHECK_SHAPE
+    c = np.array([(columns - 1) / 2, (rows - 1) / 2])
+    away = lambda degrees, length: c + length * np.array([np.cos(np.radians(degrees)), np.sin(np.radians(degrees))])
+    return {
+        "thin crossing a thick vessel": ([[(line_points(away(180, 75), away(0, 75)), 6.0)],
+                                          [(line_points(away(270, 75), away(90, 75)), 1.5)]], tuple(c), (90, 270)),
+        "thin daughter of a thick trunk": ([[(line_points(away(180, 75), away(0, 75)), 6.0),
+                                             (line_points(c, away(-60, 75)), 1.5)]], tuple(c), (300,)),
+        "crossing split into two forks": ([[(line_points(away(180, 75), away(0, 75)), 3.0)],
+                                           [(line_points(away(180 + apart, 75), away(apart, 75)), 3.0)]], tuple(c), None),
+    }
+
+
+def most_arms_ring(cell):
+    """A rule beside section 36's (the ring with the largest rate): the ring with the most arms among those whose rate
+    is above T_HIGH. A thin daughter leaving a thick trunk shows only on the rings outside the trunk, and there the
+    geometric mean with its weaker arm stays below the two thick arms' rate on a smaller ring (measured)."""
+    strong = [reading for reading in cell["rings"] if reading["rate"] > T_HIGH]
+    return max(strong, key=lambda reading: (reading["n"], reading["rate"])) if strong else cell
+
+
+def fork_places(strength, orientation, near, within=30):
+    """The forks of the joined ridges (section 37) within `within` px of a place: the centres of the fork pixels'
+    connected groups."""
+    joined = joined_ridges(strength, orientation, strength > 0)
+    forks = skeleton_parts(joined["skeleton"])[1]
+    count, labels = cv2.connectedComponents(forks.astype(np.uint8), connectivity=8)
+    places = [np.argwhere(labels == label).mean(axis=0)[::-1] for label in range(1, count)]
+    return [place for place in places if np.hypot(*(place - np.asarray(near))) < within]
+
+# %%
+# section 36's three checks, before any cell map is built for a whole frame (acceptance step 4): each configuration
+# rendered at three blurs, CHECK_SEEDS noise realisations each, and the junction cell read at the junction (for the
+# crossing the skeleton splits, at the midpoint of its two forks)
+CHECK_BLURS = (0.8, 1.5, 3.0)  # pixels; the generator's sharpest blur, the real burst's (section 31), a defocused tree
+
+
+def arm_near(arms, target, within=15):
+    """The score of the arm within `within` degrees of a direction (0 when there is none)."""
+    return max([score for angle, score in arms if abs((np.degrees(angle) - target + 180) % 360 - 180) <= within], default=0.0)
+
+
+check_rows = []
+configurations = check_configurations()
+for name, (lumens, place, thin) in configurations.items():
+    for defocus in CHECK_BLURS:
+        for seed in CHECK_SEEDS:
+            picture = render_check(lumens, defocus, seed)
+            x, y = place
+            forks = []
+            if thin is None:
+                forks = fork_places(picture["strength"], picture["orientation"], place)
+                if len(forks) >= 2:
+                    x, y = np.mean(forks, axis=0)
+            cell = junction_cell(picture["scores"], picture["density"], x, y)
+            other = most_arms_ring(cell)
+            row = {"configuration": name, "blur": defocus, "seed": seed, "kept ring": cell["ring"], "n": cell["n"], "kind": cell_kind(cell),
+                   "rate": cell["rate"], "most arms ring": other["ring"], "most arms n": other["n"], "forks": len(forks),
+                   "forks apart": max((float(np.hypot(*(a - b))) for a in forks for b in forks), default=0.0)}
+            for reading in cell["rings"]:
+                row[f"n, ring {reading['ring']}"] = reading["n"]
+                if thin is not None:
+                    row[f"thin arm, ring {reading['ring']}"] = min(arm_near(reading["arms"], target) for target in thin)
+            if name.startswith("thin crossing"):
+                channels = width_channels(picture["contrast"], picture["valid"], picture["quiet"], HYPER_WIDTHS[0])
+                for radius in JUNCTION_RINGS:
+                    arms = ring_arms(*ring_profile(channels, x, y, radius))
+                    row[f"second reading, ring {radius}"] = min(arm_near(arms, target) for target in thin)
+            check_rows.append(row)
+
+
+def share_above(rows, key):
+    """The share of rows whose value under `key` is above T_LOW, and the values' median."""
+    return f"{np.mean([row[key] > T_LOW for row in rows]) * 100:.0f}% ({np.median([row[key] for row in rows]):.1f})"
+
+
+print(f"Section 36's checks: {len(CHECK_SEEDS)} noise realisations per configuration and blur. Per ring, the share of realisations in which "
+      f"the thin arm is an arm above T_LOW = {T_LOW} (in brackets the median score of that arm), and the n the cell keeps")
+for name, (lumens, place, thin) in configurations.items():
+    for defocus in CHECK_BLURS:
+        rows = [row for row in check_rows if row["configuration"] == name and row["blur"] == defocus]
+        kept = {kind: sum(row["kind"] == kind for row in rows) for kind in sorted({row["kind"] for row in rows})}
+        text = f"   {name:30s} blur {defocus:3.1f}: kept {kept}, on ring {np.median([row['kept ring'] for row in rows]):.0f} (median)"
+        if thin is not None:
+            text += " | thin arm " + ", ".join(f"ring {radius}: {share_above(rows, f'thin arm, ring {radius}')}" for radius in JUNCTION_RINGS)
+            text += f" | the most-arms rule keeps n = {sorted({row['most arms n'] for row in rows})}"
+        else:
+            text += (f" | {np.mean([row['forks'] for row in rows]):.1f} forks, {np.median([row['forks apart'] for row in rows]):.1f} px apart "
+                     "(median) | four arms on ring " + ", ".join(
+                         f"{radius}: {np.mean([row[f'n, ring {radius}'] == 4 for row in rows]) * 100:.0f}%" for radius in JUNCTION_RINGS))
+        print(text)
+        if name.startswith("thin crossing"):
+            print(f"   {'':30s} the second reading, at the thin width: " + ", ".join(
+                f"ring {radius}: {share_above(rows, f'second reading, ring {radius}')}" for radius in JUNCTION_RINGS))
+thin_rows = [row for row in check_rows if row["configuration"].startswith("thin crossing")]
+own = np.mean([row[f"thin arm, ring {JUNCTION_RINGS[0]}"] > T_LOW for row in thin_rows])
+print(f"\nThe gate: the thin arm of a thin vessel crossing a thick one is an arm above T_LOW on its own ring ({JUNCTION_RINGS[0]} px) in "
+      f"{own * 100:.0f}% of the {len(thin_rows)} pictures, every blur -> {'PASSED' if own >= 0.9 else 'not on its own ring: the second reading decides'}")
+os.makedirs("vessel_pictures/junction_cells", exist_ok=True)
+save_table(check_rows, "vessel_pictures/junction_cells/checks.csv")
+
+# the three configurations at the real burst's blur: the density, and the arms the cell finds on every ring
+figure, axes = plt.subplots(1, len(configurations), figsize=(15, 5))
+for axis, (name, (lumens, place, thin)) in zip(axes, configurations.items()):
+    picture = render_check(lumens, 1.5, CHECK_SEEDS[0])
+    x, y = place
+    if thin is None:
+        forks = fork_places(picture["strength"], picture["orientation"], place)
+        for fx, fy in forks:
+            axis.plot(fx, fy, "x", color="orange", ms=8, mew=2)
+        if len(forks) >= 2:
+            x, y = np.mean(forks, axis=0)
+    cell = junction_cell(picture["scores"], picture["density"], x, y)
+    axis.imshow(picture["density"], cmap="gray_r", vmin=-0.02, vmax=np.percentile(picture["density"], 99.9))
+    for reading in cell["rings"]:
+        kept = reading["ring"] == cell["ring"]
+        axis.add_patch(plt.Circle((x, y), reading["ring"], fill=False, lw=0.8, color="tab:red" if kept else "tab:blue"))
+        for angle, score in reading["arms"]:
+            axis.plot(x + reading["ring"] * np.cos(angle), y + reading["ring"] * np.sin(angle), "o", ms=3,
+                      color="tab:red" if kept else "tab:blue")
+    axis.set_xlim(x - 40, x + 40)
+    axis.set_ylim(y + 40, y - 40)
+    axis.set_title(f"{name}\nkept ring {cell['ring']} px: n = {cell['n']} ({cell_kind(cell)}), rate {cell['rate']:.0f}", fontsize=9)
+    axis.axis("off")
+figure.suptitle("section 36's checks at a blur of 1.5 px: the rings (red: the one the cell keeps) and the arms found on each; orange: the "
+                "skeleton's forks", fontsize=10)
+figure.tight_layout()
+figure.savefig("vessel_pictures/junction_cells/checks.png", dpi=90)
+plt.show()
