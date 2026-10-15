@@ -12941,3 +12941,53 @@ for number in sorted({state["round"] for state in crop_recorder.states}):
     vascnet.watch.animate(states, lambda state: round_frame(state, crop_density), f"vessel_pictures/fit/real_round_{number}.gif", fps=2.0)
 print(f"   the rounds at lambda 1 are filmed in vessel_pictures/fit/real_round_<r>.gif ({len(crop_recorder.states)} frames)")
 memory_note("section 39, real burst")
+
+# %%
+# description, not the gate: the harness cell scores a model by its drawn pieces, which leaves out the twins and the
+# pieces inside junction cores of section 37's graph (round 0 then finds 25 of 169 junctions and types them right,
+# where step 2's reading of all pieces found and typed 40%). The same rounds again (they do not depend on the scoring),
+# each model scored on its whole graph: every piece but the ones the rounds took out of the rendering.
+import time
+
+
+def graph_pieces(state, start):
+    """The model's whole graph as a state for model_score: every piece drawn now, and every piece that was not drawn
+    at round 0 (twins, pieces inside cores); the ones the rounds took out stay out."""
+    before = np.r_[start["drawn"], np.ones(len(state["pieces"]) - len(start["drawn"]), bool)]
+    return dict(state, drawn=state["drawn"] | ~before)
+
+
+started = time.time()
+whole_runs = []
+for seed in TREE_HELD_OUT:
+    burst = synthetic_burst_35(seed, **{**SYNTH_THINGS, "second": True})
+    front = ridge_front(burst, workers)
+    model = initial_model(front, burst["mean"], burst["valid"], workers)
+    frame = scoring_frame(burst["mean"], burst["valid"], burst["quiet"], noise=robust_sd(burst["mean"][burst["quiet"]]))
+    space = recursion_scene(burst["mean"], burst["valid"], frame, workers)
+    state = piece_state(model, space)
+    zero = round_zero(space, state)
+    cache = {}
+    maps = {"has_flow": front["has_flow"], "flow_strength": front["flow_strength"], "strength": front["strength"]}
+    final, history = recursion_rounds(space, state, zero, 1.0, quiet=burst["quiet"], maps=maps,
+                                      score=lambda candidate: model_score(burst, front, graph_pieces(candidate, state), cache, workers))
+    history.pop("residual")
+    whole_runs.append({"seed": seed, "history": history})
+    del burst, front, model, frame, space, state, final, cache
+rounds_run = max(len(run["history"]["scores"]) for run in whole_runs)
+at_round = lambda run, number: run["history"]["scores"][min(number, len(run["history"]["scores"]) - 1)]
+with open("vessel_pictures/recursion/held_out_rounds.csv", encoding="utf-8") as file:  # the harness cell's rounds
+    earlier = list(csv.DictReader(file))
+same = all(np.allclose([float(row["J"]) for row in earlier if int(row["seed"]) == run["seed"]], run["history"]["J"], rtol=1e-9)
+           for run in whole_runs)
+print(f"The same rounds on the {len(whole_runs)} held-out trees, each model scored on its whole graph ({(time.time() - started) / 60:.1f} min; "
+      f"J per round {'the same as in the harness cell' if same else 'NOT the same as in the harness cell'}):")
+shown = ("centerline precision", "centerline recall", "junction precision", "junction recall", "found and typed right")
+print(f"   {'round':>5s} " + "".join(f"{column:>24s}" for column in shown) + f"{'count':>24s}")
+for number in range(rounds_run):
+    scores = [at_round(run, number) for run in whole_runs]
+    row = ablation_row(scores)
+    count = sum(sum(score["junctions"]["per_type"][kind]["type_correct"] for kind in TRUE_TYPES) for score in scores)
+    print(f"   {number:5d} " + "".join(f"{row[c][0] * 100:7.1f} ({row[c][1] * 100:4.1f}-{row[c][2] * 100:5.1f})".rjust(24) for c in shown)
+          + f"{count:>17d} of {sum(score['junctions']['n_gt'] for score in scores)}")
+memory_note("section 39, whole graph")

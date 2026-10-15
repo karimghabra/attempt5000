@@ -1,0 +1,23 @@
+Run of development copy 2.ipynb started 2026-10-14 16:52:53: 3 code cells (only 4b1e8e10, recursion-functions, section-39-whole-graph)
+
+===== cell 0 id=4b1e8e10 | started at 16:52:54 | # In a fresh kernel, start here: nothing above this cell has to be run. The cells that only define f
+A fresh kernel: the definitions were run from the notebook file. Opened 2 fixations of 1920 x 1200 px: 113 frames, 18 frames
+[memory] inputs opened: 0.99 GB now, 1.00 GB at the most so far
+----- cell 0 took 3.0 s | 0.1 min since the start
+
+===== cell 1 id=recursion-functions | started at 16:52:57 | ROUNDS_MOST = 5            # rounds of the recursion at the most (section 39)
+----- cell 1 took 0.1 s | 0.1 min since the start
+
+===== cell 2 id=section-39-whole-graph | started at 16:52:58 | # description, not the gate: the harness cell scores a model by its drawn pieces, which leaves out t
+The same rounds on the 16 held-out trees, each model scored on its whole graph (12.9 min; J per round the same as in the harness cell):
+   round     centerline precision       centerline recall      junction precision         junction recall   found and typed right                   count
+       0        91.9 (90.5- 93.4)       87.0 (85.1- 88.8)       58.9 (51.2- 65.4)       76.3 (69.9- 83.1)       40.2 (32.7- 49.0)               68 of 169
+       1        91.9 (90.4- 93.5)       86.6 (85.0- 88.2)       58.7 (51.2- 65.1)       75.7 (69.5- 81.9)       39.1 (32.4- 47.2)               66 of 169
+       2        91.8 (90.3- 93.4)       86.7 (85.0- 88.3)       57.3 (49.8- 64.1)       74.6 (67.6- 81.6)       38.5 (32.2- 46.5)               65 of 169
+       3        91.8 (90.3- 93.4)       86.9 (85.2- 88.5)       57.6 (50.0- 64.3)       76.3 (69.9- 82.8)       38.5 (32.2- 46.5)               65 of 169
+       4        91.8 (90.3- 93.4)       86.9 (85.2- 88.6)       57.4 (49.8- 64.2)       75.7 (69.1- 82.5)       38.5 (32.2- 46.5)               65 of 169
+       5        91.8 (90.3- 93.4)       86.9 (85.2- 88.5)       57.6 (50.0- 64.3)       76.3 (69.9- 82.8)       38.5 (32.2- 46.5)               65 of 169
+[memory] section 39, whole graph: 1.03 GB now, 1.41 GB at the most so far
+----- cell 2 took 774.2 s | 13.0 min since the start
+
+DONE: 3 code cells in 13.0 min (779 s), finished 2026-10-14 17:05:52

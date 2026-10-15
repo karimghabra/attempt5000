@@ -15,6 +15,6 @@ This branch carries out `docs/cyclic_graph_recursion_plan.md` on `burst_2026-09-
 
 **Steps 4–7 continue at the user's request.** Step 3's gate failed, and the handoff says to stop there; the user then asked to complete the plan's steps. Step 3's gate stands as failed. The softness of the flux balance (`SIGMA_FLUX` × the flux through a junction, measured at 0.30–0.38) caps any direction inferred through one junction at about 1.7σ.
 
-**All seven steps are built and reported.** Gates passed: 1, 2, 4, 6. Failed: 3, 5, 7.
+**All seven steps are reported.** Step 7 is built in part: its report lists what of section 39 is not. Gates passed: 1, 2, 4, 6. Failed: 3, 5, 7.
 
 `logs/` holds the full printed text of every run, cell by cell, and `data/` holds the tables the reports quote.
